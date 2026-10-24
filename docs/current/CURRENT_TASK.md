@@ -1,6 +1,16 @@
 # Current Task
 
-## Completed: 1.16.26 / 391 日历交互复核与 Windows 安装包
+## Completed locally: 1.17.0 / 392 calendar and account update
+
+Implement the [calendar update contract](CALENDAR_UPDATE_CONTRACT.md) on Android and native Windows. Improve the calendar body, create/adjust workflows, multiple calendars, recurrence, all-day reminders, details/copy, event/display timezones and calendar collaboration. Keep current single strong-reminder delivery and queue; opening a reminder must resolve the complete current item detail.
+
+The normal login surface must show a named server selection action without exposing its domain. Server management remains available in Settings and through the login server selector, including expired-login and changed-server recovery. Improve account action layout with compact grouped controls.
+
+Update versioned data/backup compatibility together with both clients. Preserve existing user records, credentials and local-first operation. Use independent fixtures for schema, recurrence, reminders, timezone and collaboration verification; keep Android device results, isolated Windows results and real server results distinct.
+
+Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33` are built and locally verified. New Debug/signed Release APK, self-contained EXE, Chinese MSI and actual component screenshots exist. Validation: 216 Android units, 25 distinct emulator tests, 51 Windows regressions plus one 14-stage isolated UIA flow, 21 server tests and MSI install/upgrade/repair/uninstall/data preservation. See [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md) for exact scope and paths. Sharing still requires a server update; no push, public release or production deployment was made.
+
+## Completed: 1.16.26 / 391 日历复核与 Windows 安装包
 
 按[REQUEST_2026-10-23_REAUDIT.md](REQUEST_2026-10-23_REAUDIT.md)重新审计原始反馈，补齐循环作用域/日期锚点、全天/跨日/多时段、日历颜色及窗口交互、Windows本机OCR和手机纪念询问；中文MSI已完成实际安装、升级、修复、启动、卸载及数据保留验证。
 

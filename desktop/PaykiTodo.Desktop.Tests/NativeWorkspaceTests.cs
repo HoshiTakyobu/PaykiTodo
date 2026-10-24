@@ -179,12 +179,16 @@ public sealed class NativeWorkspaceTests
                         Screenshot(window, Path.Combine(shotFolder, "windows-calendar.png"));
                         VerifyFeedbackControls(window, workspace, store, shotFolder);
                         VerifyCalendarReaudit(window, workspace, shotFolder);
+                        VerifyCalendarOptions(window, workspace, shotFolder);
                     }
                 }
                 var toggle = Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题");
                 toggle.SelectedIndex = 1; window.UpdateLayout();
                 Assert.True(NativeUi.Dark);
                 Screenshot(window, Path.Combine(shotFolder, "windows-settings-dark.png"));
+                Descendants<Button>(window).Single(button => button.Content as string == "账号与同步").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
+                Screenshot(window, Path.Combine(shotFolder, "windows-account-settings-dark.png"));
+                Descendants<Button>(window).Single(button => button.Content as string == "常规").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
                 var planning = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.规划台");
                 planning.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
                 Descendants<Button>(window).First(button => button.Content as string == "＋ 新建文档").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -226,6 +230,7 @@ public sealed class NativeWorkspaceTests
                 var edit = NativeEditors.Item(window, false, document.Groups, null, DateTime.Today);
                 Assert.Equal("从原生编辑器创建", edit!.Title);
                 Assert.Null(edit.DueAtMillis);
+                VerifyLoginServerChoice(window, shotFolder);
                 window.Close(); app.Shutdown();
             } catch (Exception error) { failure = error; }
         });
@@ -389,6 +394,75 @@ public sealed class NativeWorkspaceTests
         workspace.Edit(doc => { foreach (var id in ids) doc.DeleteCalendar(id); foreach (var id in busyIds) doc.Delete(id); }); Pump();
         Descendants<Button>(window).Single(b => b.Content as string == "今天").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
         window.Width = 1280; Pump();
+    }
+    private static void InspectModal(NativeWindow window, string title, Action open, Action<Window> inspect)
+    {
+        Exception? failure = null; var inspected = false;
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        timer.Tick += (_, _) => {
+            var dialog = System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(candidate => candidate != window && candidate.Title == title);
+            if (dialog == null) return; timer.Stop(); inspected = true;
+            try { dialog.UpdateLayout(); inspect(dialog); } catch (Exception error) { failure = error; dialog.Close(); }
+        };
+        timer.Start(); open(); timer.Stop(); if (failure != null) throw failure; Assert.True(inspected, "Expected modal did not open: " + title); window.UpdateLayout();
+    }
+    private static void ClickDialog(Window window, string text) => Descendants<Button>(window).Single(button => button.Content as string == text).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private static void VerifyCalendarOptions(NativeWindow window, DesktopWorkspace workspace, string folder)
+    {
+        var keys = new[] { "calendarDefaultDurationMinutes", "calendarTimedDefaultRemindersCsv", "calendarDisplayTimeZoneId", "calendarAuxiliaryTimeZoneId", "weekStartMode" };
+        var previous = keys.ToDictionary(key => key, key => workspace.Document!.Settings[key]?.DeepClone());
+        void Preferences(Action<Window> inspect) => InspectModal(window, "日历设置", () => ClickDialog(window, "日历设置"), inspect);
+        Preferences(dialog => {
+            Descendants<ComboBox>(dialog).Single(box => System.Windows.Automation.AutomationProperties.GetName(box) == "默认日程时长").SelectedItem = 60;
+            ClickDialog(dialog, "取消");
+        }); Assert.Equal(30, workspace.Document!.CalendarDefaultDurationMinutes);
+        Preferences(dialog => {
+            Descendants<ComboBox>(dialog).Single(box => System.Windows.Automation.AutomationProperties.GetName(box) == "默认日程时长").SelectedItem = 60;
+            Descendants<ComboBox>(dialog).Single(box => System.Windows.Automation.AutomationProperties.GetName(box) == "日历显示时区").SelectedItem = "Asia/Shanghai";
+            Descendants<ComboBox>(dialog).Single(box => System.Windows.Automation.AutomationProperties.GetName(box) == "辅助时区").SelectedItem = "America/New_York";
+            Descendants<TextBox>(dialog).Single(box => box.Text == "15").Text = "5";
+            Screenshot(dialog, Path.Combine(folder, "windows-calendar-preferences-light.png")); ClickDialog(dialog, "完成");
+        });
+        Assert.Equal(60, workspace.Document.CalendarDefaultDurationMinutes);
+        Assert.Equal(25, Descendants<TextBlock>(window).Count(text => System.Windows.Automation.AutomationProperties.GetAutomationId(text).StartsWith("Calendar.AuxiliaryHour.")));
+        Screenshot(window, Path.Combine(folder, "windows-calendar-timezones-light.png"));
+        var canvas = Descendants<Canvas>(window).First(value => value.Tag is DateTime); var day = (DateTime)canvas.Tag;
+        typeof(NativeWindow).GetMethod("ShowCalendarDraft", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(window, new object[] { canvas, day.AddHours(9).AddMinutes(15) });
+        var draft = Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Draft");
+        Assert.Equal(48, draft.Height);
+        InspectModal(window, "新增日程", () => draft.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), dialog => {
+            Descendants<TextBox>(dialog).First().Text = "默认值与全天切换验收";
+            var clocks = Descendants<TextBox>(dialog).Where(input => System.Windows.Automation.AutomationProperties.GetName(input) == "时间 HH:mm").ToArray();
+            Assert.Equal(2, clocks.Length); clocks[0].Text = "09:37"; clocks[1].Text = "10:22";
+            var allDay = Descendants<System.Windows.Controls.CheckBox>(dialog).Single(box => box.Content as string == "全天");
+            allDay.IsChecked = true; dialog.UpdateLayout();
+            Assert.All(clocks, clock => Assert.Equal(Visibility.Collapsed, clock.Visibility));
+            Screenshot(dialog, Path.Combine(folder, "windows-all-day-editor-light.png"));
+            allDay.IsChecked = false; dialog.UpdateLayout();
+            Assert.Equal("09:37", clocks[0].Text); Assert.Equal("10:22", clocks[1].Text);
+            Screenshot(dialog, Path.Combine(folder, "windows-event-options-light.png")); ClickDialog(dialog, "完成");
+        });
+        var created = workspace.Document.Items.Single(item => item.Title == "默认值与全天切换验收"); var edit = workspace.Document.EditFor(created.Id)!;
+        Assert.Equal("Asia/Shanghai", edit.EventTimeZoneId); Assert.Equal(new[] { 5 }, edit.ReminderOffsets); Assert.Equal("BUSY", edit.EventBusyStatus);
+        Assert.Equal(day.AddHours(9).AddMinutes(37), DesktopCalendarTime.Wall(edit.StartAtMillis!.Value, edit.EventTimeZoneId));
+        workspace.Edit(data => { data.Delete(created.Id); foreach (var key in keys) { if (previous[key] == null) data.Settings.Remove(key); else data.Settings[key] = previous[key]!.DeepClone(); } });
+    }
+    private static void VerifyLoginServerChoice(NativeWindow window, string folder)
+    {
+        Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.设置").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
+        Descendants<Button>(window).Single(button => button.Content as string == "账号与同步").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
+        Screenshot(window, Path.Combine(folder, "windows-account-settings-light.png"));
+        typeof(NativeWindow).GetField("reauthenticating", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(window, true);
+        typeof(NativeWindow).GetMethod("Render", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(window, null); window.UpdateLayout();
+        Assert.DoesNotContain(Descendants<TextBox>(window), input => input.Text.Contains("://"));
+        Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "服务器地址");
+        Screenshot(window, Path.Combine(folder, "windows-login-server-button-light.png"));
+        InspectModal(window, "登录服务器", () => ClickDialog(window, "选择登录服务器"), dialog => {
+            Descendants<TextBox>(dialog).Single(input => System.Windows.Automation.AutomationProperties.GetName(input) == "服务器地址").Text = "https://calendar-fixture.invalid";
+            Screenshot(dialog, Path.Combine(folder, "windows-login-server-picker-light.png")); ClickDialog(dialog, "完成");
+        });
+        Assert.DoesNotContain(Descendants<TextBox>(window), input => input.Text.Contains("://"));
+        Assert.True(File.Exists(Path.Combine((string)typeof(NativeWindow).GetField("profileDirectory", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(window)!, "login-servers.json")));
     }
     internal static void AssertSingleLineFits(TextBox input)
     {

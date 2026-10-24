@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -86,33 +88,49 @@ internal fun CalendarManager(onDismiss: () -> Unit) {
     val workspace = LocalWorkspacePreferences.current
     var editing by remember { mutableStateOf<PlannerCalendar?>(null) }
     var deleting by remember { mutableStateOf<PlannerCalendar?>(null) }
+    var sharing by remember { mutableStateOf(false) }
+    if (sharing) SharedCalendarManager { sharing = false }
     if (editing != null) {
         val source = editing!!
         var name by remember(source.id) { mutableStateOf(source.name) }
         var color by remember(source.id) { mutableStateOf(source.colorHex) }
+        var description by remember(source.id) { mutableStateOf(source.description) }
         AlertDialog(onDismissRequest = { editing = null }, title = { Text("编辑日历") }, text = {
             Column {
                 OutlinedTextField(name, { name = it }, label = { Text("日历名称") }, singleLine = true)
+                OutlinedTextField(description, { description = it }, label = { Text("描述（选填）") })
                 PreferenceChoice("颜色", color, listOf("#3370FF" to "蓝色", "#16A369" to "绿色", "#DB5298" to "粉色", "#BD6B17" to "橙色", "#7955CC" to "紫色", "#D94646" to "红色")) { color = it }
                 Text("课程安排 · 09:00–09:30", color = Color(android.graphics.Color.parseColor(color)))
             }
-        }, confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { workspace.saveCalendar(source.copy(name = name.trim(), colorHex = color)); editing = null }) { Text("完成") } },
+        }, confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { workspace.saveCalendar(source.copy(name = name.trim(), colorHex = color, description = description.trim())); editing = null }) { Text("完成") } },
             dismissButton = { TextButton(onClick = { editing = null }) { Text("取消") } })
-    } else AlertDialog(onDismissRequest = onDismiss, title = { Text("日历") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
+    } else SettingsSectionDialog("日历", onDismiss) {
             Text("分别安排课程表与日常日程。取消勾选仅隐藏日历，不影响提醒。", style = MaterialTheme.typography.bodySmall)
-            workspace.calendars.forEach { calendar ->
-                val accent = runCatching { Color(android.graphics.Color.parseColor(calendar.colorHex)) }.getOrDefault(Color(0xFF3370FF))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = calendar.id !in workspace.settings.hiddenCalendarIds, onCheckedChange = { workspace.visibility(calendar.id, it) }, modifier = Modifier.semantics { contentDescription = "显示日历：${calendar.name}" }, colors = CheckboxDefaults.colors(checkedColor = accent, uncheckedColor = accent, checkmarkColor = if (accent.luminance() > .5f) Color(0xFF182033) else Color.White))
-                    Text(calendar.name, Modifier.weight(1f).clickable { editing = calendar })
-                    TextButton(onClick = { editing = calendar }) { Text("编辑") }
-                    if (calendar.id != DEFAULT_CALENDAR_ID) TextButton(onClick = { deleting = calendar }) { Text("删除") }
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(onClick = { editing = PlannerCalendar(UUID.randomUUID().toString(), "", sortOrder = workspace.calendars.size) }) { Text("新增日历") }
+                TextButton(onClick = { sharing = true }) { Text("共享管理") }
             }
-        }
-    }, confirmButton = { TextButton(onClick = { editing = PlannerCalendar(UUID.randomUUID().toString(), "", sortOrder = workspace.calendars.size) }) { Text("新增日历") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("完成") } })
+            workspace.calendars.sortedWith(compareBy<PlannerCalendar> { it.sortOrder }.thenBy { it.name }).forEach { calendar ->
+                val shared = calendar.id.startsWith("shared:")
+                var menu by remember(calendar.id) { mutableStateOf(false) }
+                val accent = runCatching { Color(android.graphics.Color.parseColor(calendar.colorHex)) }.getOrDefault(Color(0xFF3370FF))
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = calendar.id !in workspace.settings.hiddenCalendarIds, enabled = calendar.sharedRole != "REVOKED", onCheckedChange = { workspace.visibility(calendar.id, it) }, modifier = Modifier.semantics { contentDescription = "显示日历：${calendar.name}" }, colors = CheckboxDefaults.colors(checkedColor = accent, uncheckedColor = accent, checkmarkColor = if (accent.luminance() > .5f) Color(0xFF182033) else Color.White))
+                    Column(Modifier.weight(1f).clickable { if (shared) sharing = true else editing = calendar }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(calendar.name, style = MaterialTheme.typography.titleSmall)
+                        Text(if (shared) "共享 · ${when (calendar.sharedRole) { "OWNER" -> "所有者"; "EDITOR" -> "可编辑"; "REVOKED" -> "访问已撤销"; else -> "只读" }}" else calendar.description.ifBlank { "个人日历" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Box {
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "日历操作：${calendar.name}") }
+                        DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { Text(if (shared) "共享管理" else "编辑日历") }, onClick = { menu = false; if (shared) sharing = true else editing = calendar })
+                            if (!shared && calendar.id != DEFAULT_CALENDAR_ID) DropdownMenuItem(text = { Text("删除日历", color = MaterialTheme.colorScheme.error) }, onClick = { menu = false; deleting = calendar })
+                        }
+                    }
+                }
+                HorizontalDivider()
+            }
+    }
     deleting?.let { calendar -> AlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除日历？") }, text = { Text("日程及其循环规则会移至常规日历，不会删除事项。") },
         confirmButton = { TextButton(onClick = { workspace.deleteCalendar(calendar.id); deleting = null }) { Text("删除") } }, dismissButton = { TextButton(onClick = { deleting = null }) { Text("取消") } }) }
 }

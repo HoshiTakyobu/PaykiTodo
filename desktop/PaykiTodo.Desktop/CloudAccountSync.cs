@@ -106,6 +106,7 @@ internal static class CloudAccountSync
             if (state.Dirty) throw new CloudRevisionConflictException(remoteRevision);
             var downloaded = await DownloadAsync(state, cancellationToken);
             downloaded.Document.PreserveLocalApiKeys(localDocument);
+            downloaded.Document.PreserveSharedData(localDocument);
             var nextState = state with { Revision = downloaded.Revision, Dirty = false, VerifiedDataFingerprint = downloaded.Document.DataFingerprint() };
             return new CloudSyncResult(nextState, downloaded.Document, $"已拉取云端版本 {downloaded.Revision}");
         }
@@ -114,7 +115,7 @@ internal static class CloudAccountSync
         if (!state.Dirty)
             return new CloudSyncResult(state with { VerifiedDataFingerprint = fingerprint }, localDocument, $"{DateTime.Now:HH:mm:ss} 已核对云端版本 {state.Revision} · 本机无待上传修改（其他设备须先上传）");
 
-        var encrypted = SnapshotCrypto.Encrypt(localDocument.ToArchiveBytes(includeSecrets: false), state.EncryptionSecret);
+        var encrypted = SnapshotCrypto.Encrypt(localDocument.ToArchiveBytes(includeSecrets: false, includeShared: false), state.EncryptionSecret);
         using var request = AuthorizedRequest(state, HttpMethod.Put, "/v2/sync/snapshot");
         request.Headers.TryAddWithoutValidation("If-Match", $"\"{state.Revision}\"");
         request.Headers.Add("X-Payki-Operation-Id", "windows:" + Guid.NewGuid().ToString("N"));

@@ -191,11 +191,38 @@ internal sealed partial class NativeWindow
     }
     private void Preview(DesktopItem item)
     {
-        var dialog = Dialog(this, item.IsEvent ? "日程详情" : "待办详情", 580, 490);
-        var body = Column(BrandHeading(dialog.Title), Text(item.Title, 24, bold: true), Text(TimeLabel(item), 16, Forest), Text(item.Location, 14, Muted), Text(item.Notes));
+        item = workspace.Document?.Items.FirstOrDefault(value => value.Id == item.Id) ?? item;
+        var edit = workspace.Document?.EditFor(item.Id);
+        var dialog = Dialog(this, item.IsEvent ? "日程详情" : "待办详情", 620, 580);
+        var body = Column(BrandHeading(dialog.Title), Text(item.Title, 24, bold: true), Text(TimeLabel(item), 16, item.IsEvent ? Ocean : Forest));
+        if (item.IsEvent) {
+            var calendar = workspace.Document!.Calendars.FirstOrDefault(value => value.Id == item.CalendarId);
+            body.Children.Add(Text("日历  ·  " + (calendar?.Name ?? "常规日历"), 14, B(calendar?.ColorHex ?? item.AccentColor)));
+            if (item.RecurringSeriesId != null) body.Children.Add(Text("循环日程 · 可选择当前、当前及之后或全部进行编辑", 13, Muted));
+            body.Children.Add(Text(edit?.ReminderEnabled == true ? "提醒  ·  " + (item.AllDay && !string.IsNullOrWhiteSpace(edit.AllDayReminderRulesJson)
+                ? DesktopCalendarTime.RulesText(edit.AllDayReminderRulesJson) : string.Join("、", edit.ReminderOffsets.Select(value => value == 0 ? "开始时" : $"提前 {value} 分钟"))) : "提醒  ·  无", 14, Muted));
+            body.Children.Add(Text("时区  ·  " + (string.IsNullOrWhiteSpace(item.EventTimeZoneId) ? "跟随设备" : item.EventTimeZoneId), 13, Muted));
+            body.Children.Add(Text((item.EventBusyStatus == "FREE" ? "空闲" : "忙碌") + " · " + (item.EventVisibility == "PRIVATE" ? "私密" : item.EventVisibility == "PUBLIC" ? "公开" : "沿用日历设置"), 13, Muted));
+            if (DesktopSnapshotDocument.IsSharedCalendar(item.CalendarId) && !string.IsNullOrWhiteSpace(item.SharedEventId)) {
+                var options = new[] { "接受", "暂定", "拒绝" }; var response = new ComboBox { ItemsSource = options, SelectedIndex = 0, MinWidth = 110 };
+                var status = Text("", 13, Muted);
+                body.Children.Add(Row(response, Action("回复日程", async () => {
+                    try {
+                        await workspace.SharedRequestAsync(HttpMethod.Post, "/v3/calendars/" + Uri.EscapeDataString(item.CalendarId[7..]) + "/events/" + Uri.EscapeDataString(item.SharedEventId) + "/rsvp",
+                            new System.Text.Json.Nodes.JsonObject { ["response"] = new[] { "ACCEPTED", "TENTATIVE", "DECLINED" }[response.SelectedIndex] });
+                        await workspace.SyncSharedCalendarsAsync(); status.Text = "回复已更新。";
+                    } catch (Exception failure) { status.Text = DesktopWorkspace.FriendlyError(failure); }
+                })));
+                body.Children.Add(status);
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(item.Location)) body.Children.Add(Text("地点  ·  " + item.Location, 14, Muted));
+        if (!string.IsNullOrWhiteSpace(item.Notes)) body.Children.Add(Text(item.Notes, 15));
         var actions = new WrapPanel { Margin = new Thickness(0, 22, 0, 0) };
         void Add(string label, Action action, bool primary = false) => actions.Children.Add(Action(label, () => { dialog.Close(); action(); }, primary));
-        Add("编辑", () => EditItem(item.IsEvent, item.Id), true);
+        var writable = workspace.Document?.SharedWritable(item.CalendarId) != false;
+        if (writable) Add("编辑", () => EditItem(item.IsEvent, item.Id), true);
+        Add("复制", () => CopyItem(item.Id));
         if (!item.IsEvent) Add(item.Completed || item.Canceled ? "恢复" : "我已完成", () => Change(document => {
             if (item.Completed || item.Canceled) document.Restore(item.Id); else document.Complete(item.Id);
         }));
@@ -206,8 +233,8 @@ internal sealed partial class NativeWindow
             if (scope == null || !Confirm(cancel ? "取消所选事项并放入历史记录？" : "删除所选事项？子任务也会一并删除。")) return;
             Change(document => { if (cancel) document.Cancel(item.Id, scope.Value); else document.Delete(item.Id, scope.Value); });
         }
-        if (!item.Completed && !item.Canceled) Add("取消事项", () => Remove(true));
-        Add("删除", () => Remove(false));
+        if (writable && !item.Completed && !item.Canceled) Add("取消事项", () => Remove(true));
+        if (writable) Add("删除", () => Remove(false));
         dialog.Content = DialogLayout(body, actions); dialog.ShowDialog();
     }
 }

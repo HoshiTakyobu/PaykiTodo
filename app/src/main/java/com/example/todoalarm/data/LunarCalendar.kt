@@ -14,6 +14,12 @@ data class LunarDateLabel(
 )
 
 object LunarCalendar {
+    private data class LunarDay(val month: Int, val day: Int, val leap: Boolean)
+    private data class YearKey(val year: Int, val zone: String)
+    private data class YearIndex(val extendedYear: Int, val dates: Map<LunarDay, LocalDate>)
+    private val yearIndexes = object : LinkedHashMap<YearKey, YearIndex>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<YearKey, YearIndex>?): Boolean = size > 16
+    }
     private val monthNames = listOf("正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊")
     private val dayNames = listOf(
         "初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
@@ -45,21 +51,46 @@ object LunarCalendar {
     }
 
     fun findDate(year: Int, month: Int, day: Int, isLeapMonth: Boolean = false): LocalDate? {
-        var cursor = LocalDate.of(year, 1, 1).minusDays(45)
-        val last = LocalDate.of(year, 12, 31).plusDays(45)
-        while (!cursor.isAfter(last)) {
-            val label = labelFor(cursor)
-            if (label.month == month && label.day == day && label.isLeapMonth == isLeapMonth) {
-                return cursor
-            }
-            cursor = cursor.plusDays(1)
-        }
-        return null
+        if (month !in 1..12 || day !in 1..30) return null
+        return yearIndex(year).dates[LunarDay(month, day, isLeapMonth)]
     }
 
     fun sameLunarDateInYear(sourceDate: LocalDate, targetYear: Int): LocalDate? {
-        val source = labelFor(sourceDate)
-        return findDate(targetYear, source.month, source.day, source.isLeapMonth)
-            ?: if (source.isLeapMonth) findDate(targetYear, source.month, source.day, false) else null
+        val sourceCalendar = ChineseCalendar().apply {
+            timeZone = TimeZone.getDefault()
+            time = Date.from(sourceDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())
+        }
+        val sourceLunarYearOffset = sourceCalendar.get(Calendar.EXTENDED_YEAR) - yearIndex(sourceDate.year).extendedYear
+        val month = sourceCalendar.get(Calendar.MONTH) + 1
+        val day = sourceCalendar.get(Calendar.DAY_OF_MONTH)
+        val leap = sourceCalendar.get(ChineseCalendar.IS_LEAP_MONTH) == 1
+        val index = yearIndex(targetYear + sourceLunarYearOffset)
+        return index.dates[LunarDay(month, day, leap)]
+            ?: if (leap) index.dates[LunarDay(month, day, false)] else null
+    }
+
+    /** Index a complete lunar year, including its January/February dates in the next civil year. */
+    @Synchronized
+    private fun yearIndex(year: Int): YearIndex {
+        val zone = java.time.ZoneId.systemDefault()
+        val key = YearKey(year, zone.id)
+        yearIndexes[key]?.let { return it }
+        val calendar = ChineseCalendar().apply {
+            timeZone = TimeZone.getTimeZone(zone.id)
+            time = Date.from(LocalDate.of(year, 7, 1).atStartOfDay(zone).toInstant())
+        }
+        val extendedYear = calendar.get(Calendar.EXTENDED_YEAR)
+        val dates = mutableMapOf<LunarDay, LocalDate>()
+        var cursor = LocalDate.of(year, 1, 1)
+        val end = LocalDate.of(year + 1, 3, 1)
+        while (cursor < end) {
+            calendar.time = Date.from(cursor.atStartOfDay(zone).toInstant())
+            if (calendar.get(Calendar.EXTENDED_YEAR) == extendedYear) {
+                dates[LunarDay(calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DAY_OF_MONTH),
+                    calendar.get(ChineseCalendar.IS_LEAP_MONTH) == 1)] = cursor
+            }
+            cursor = cursor.plusDays(1)
+        }
+        return YearIndex(extendedYear, dates).also { yearIndexes[key] = it }
     }
 }

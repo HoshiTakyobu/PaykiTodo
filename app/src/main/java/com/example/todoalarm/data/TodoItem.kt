@@ -75,6 +75,12 @@ data class TodoItem(
     val startAtMillis: Long? = null,
     val endAtMillis: Long? = null,
     val allDay: Boolean = false,
+    @ColumnInfo(defaultValue = "''") val eventTimeZoneId: String = "",
+    @ColumnInfo(defaultValue = "''") val allDayReminderRulesJson: String = "",
+    @ColumnInfo(defaultValue = "'BUSY'") val eventBusyStatus: String = "BUSY",
+    @ColumnInfo(defaultValue = "'DEFAULT'") val eventVisibility: String = "DEFAULT",
+    @ColumnInfo(defaultValue = "''") val sharedEventId: String = "",
+    @ColumnInfo(defaultValue = "'[]'") val eventParticipantsJson: String = "[]",
     val location: String = "",
     val accentColorHex: String? = null,
     val countdownEnabled: Boolean = false,
@@ -109,6 +115,8 @@ data class TodoItem(
     val multiSlotBundleId: String? = null,
     val recurrenceType: String = RecurrenceType.NONE.name,
     val recurrenceWeekdays: String = "",
+    @ColumnInfo(defaultValue = "1") val recurrenceInterval: Int = 1,
+    @ColumnInfo(defaultValue = "'CLAMP'") val recurrenceInvalidDatePolicy: String = "CLAMP",
     val recurrenceMonthlyOrdinal: Int? = null,
     val recurrenceMonthlyWeekday: Int? = null,
     val recurrenceMonthlyDay: Int? = null,
@@ -179,7 +187,7 @@ data class TodoItem(
     fun eventStartDate(): LocalDate? {
         val start = startAtMillis ?: return null
         return Instant.ofEpochMilli(start)
-            .atZone(ZoneId.systemDefault())
+            .atZone(calendarZone(eventTimeZoneId))
             .toLocalDate()
     }
 }

@@ -30,10 +30,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.key
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +67,8 @@ fun AccountAuthScreen(
     onRecoveryCode: (String) -> Unit,
     turnstileEnabled: Boolean = false,
     turnstileChallengeUrl: String = "",
+    loginServerUrl: String = "",
+    onSelectLoginServer: (suspend (String) -> String?)? = null,
 ) {
     val context = LocalContext.current
     val remembered = remember(context) { RememberedLoginStore(context) }
@@ -84,7 +88,15 @@ fun AccountAuthScreen(
     var turnstileReloadKey by remember { mutableStateOf(0) }
     var turnstileUnavailable by remember { mutableStateOf(false) }
     var turnstileError by remember { mutableStateOf(false) }
+    var serverDialogVisible by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(turnstileChallengeUrl) {
+        turnstileToken = null
+        turnstileUnavailable = false
+        turnstileError = false
+        turnstileReloadKey += 1
+    }
 
     val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Box(modifier = Modifier.fillMaxSize()) {
@@ -243,7 +255,7 @@ fun AccountAuthScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                 )
-                TurnstileChallenge(
+                key(turnstileChallengeUrl) { TurnstileChallenge(
                     challengeUrl = turnstileChallengeUrl,
                     reloadKey = turnstileReloadKey,
                     onToken = {
@@ -262,7 +274,7 @@ fun AccountAuthScreen(
                         turnstileUnavailable = true
                         turnstileError = false
                     }
-                )
+                ) }
                 if (turnstileError) {
                     OutlinedButton(
                         onClick = {
@@ -378,9 +390,30 @@ fun AccountAuthScreen(
                     }) { Text("返回登录") }
                 }
             }
+            if (onSelectLoginServer != null) {
+                TextButton(enabled = !busy, onClick = { serverDialogVisible = true }) { Text("选择登录服务器") }
+            }
                 }
             }
         }
+    }
+
+    if (serverDialogVisible && onSelectLoginServer != null) {
+        LoginServerDialog(
+            currentServerUrl = loginServerUrl,
+            defaultServerUrl = com.example.todoalarm.BuildConfig.PAYKITODO_CLOUD_BASE_URL,
+            onDismiss = { serverDialogVisible = false },
+            onSelect = { selected ->
+                onSelectLoginServer(selected).also { error ->
+                    if (error == null && selected.trimEnd('/') != loginServerUrl.trimEnd('/')) {
+                        password = ""
+                        passwordConfirmation = ""
+                        turnstileToken = null
+                        errorMessage = null
+                    }
+                }
+            },
+        )
     }
 
     if (agreementVisible) {

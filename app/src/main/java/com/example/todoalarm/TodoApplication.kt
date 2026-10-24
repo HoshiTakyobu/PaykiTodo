@@ -86,6 +86,7 @@ class TodoApplication : Application() {
             }
         }
         remoteSyncCoordinator.start()
+        calendarCollaboration.start()
         com.example.todoalarm.sync.AccountExpiryNotifier.schedule(this)
     }
 
@@ -125,7 +126,8 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_28_29,
             DatabaseMigrations.MIGRATION_29_30,
             DatabaseMigrations.MIGRATION_30_31,
-            DatabaseMigrations.MIGRATION_31_32
+            DatabaseMigrations.MIGRATION_31_32,
+            DatabaseMigrations.MIGRATION_32_33
         )
             .build()
     }
@@ -134,6 +136,7 @@ class TodoApplication : Application() {
         TodoRepository(database) {
             TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
             remoteSyncCoordinator.onLocalDataChanged()
+            calendarCollaboration.onLocalDataChanged()
         }
     }
 
@@ -159,6 +162,10 @@ class TodoApplication : Application() {
 
     val remoteSyncCoordinator: RemoteSyncCoordinator by lazy {
         RemoteSyncCoordinator(this, settingsStore)
+    }
+
+    val calendarCollaboration: com.example.todoalarm.sync.CalendarCollaborationCoordinator by lazy {
+        com.example.todoalarm.sync.CalendarCollaborationCoordinator(this)
     }
 
     val alarmScheduler: AlarmScheduler by lazy {

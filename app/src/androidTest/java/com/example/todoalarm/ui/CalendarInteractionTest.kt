@@ -68,7 +68,7 @@ class CalendarInteractionTest {
                     onVisibleDateRangeChange = { first, last -> visibleStart = first; visibleEnd = last },
                     onQuickCreateEvent = { _, _ -> }, onCreateEventAt = { _, _ -> }, onEditEvent = {},
                     onGetEventById = { null }, onGetEventCheckIns = { emptyList() }, onCopyEvent = {},
-                    onMoveEvent = { _, _, _ -> }, onCancelEvent = {}, onDeleteEvent = {}, onOpenBatchImport = {},
+                    onMoveEvent = { _, _, _, _ -> }, onCancelEvent = {}, onDeleteEvent = {}, onOpenBatchImport = {},
                     onSaveWeekAsTemplate = { _, _, _ -> null }, onApplyTemplateToWeek = { _, _ -> null },
                     onGenerateSemesterFromTemplate = { _, _, _ -> null }, onDeleteTemplate = { null }
                 )

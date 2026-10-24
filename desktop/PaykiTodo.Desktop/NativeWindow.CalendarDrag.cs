@@ -9,17 +9,19 @@ namespace PaykiTodo.Desktop;
 
 internal sealed partial class NativeWindow
 {
-    internal static DesktopItemEdit CalendarDragEdit(DesktopItemEdit edit, int days, double verticalPixels, bool resize)
+    internal static DesktopItemEdit CalendarDragEdit(DesktopItemEdit edit, int days, double verticalPixels, bool resize, string? displayZoneId = null)
     {
         var minutes = (int)Math.Round(verticalPixels * 60 / HourHeight / 15, MidpointRounding.AwayFromZero) * 15;
-        var start = Local(edit.StartAtMillis); var end = Local(edit.EndAtMillis);
+        var zone = displayZoneId ?? edit.EventTimeZoneId;
+        var start = DesktopCalendarTime.Wall(edit.StartAtMillis!.Value, zone); var end = DesktopCalendarTime.Wall(edit.EndAtMillis!.Value, zone);
         if (resize) end = new[] { start.AddMinutes(15), end.AddMinutes(minutes) }.Max();
         else { start = start.AddDays(days).AddMinutes(minutes); end = end.AddDays(days).AddMinutes(minutes); }
-        return edit with { StartAtMillis = new DateTimeOffset(start).ToUnixTimeMilliseconds(), EndAtMillis = new DateTimeOffset(end).ToUnixTimeMilliseconds() };
+        return edit with { StartAtMillis = DesktopCalendarTime.Millis(start, zone), EndAtMillis = DesktopCalendarTime.Millis(end, zone) };
     }
 
     private void AttachCalendarDrag(Border tile, DesktopItem item, Canvas dayCanvas, Grid grid, DateTime visibleStart, int count)
     {
+        if (workspace.Document?.SharedWritable(item.CalendarId) != true) { tile.MouseLeftButtonUp += (_, e) => { Preview(item); e.Handled = true; }; return; }
         Point? origin = null; bool dragging = false, resizing = false;
         Canvas? overlay = null; DesktopItemEdit? candidate = null;
         var originalOpacity = tile.Opacity;
@@ -45,10 +47,11 @@ internal sealed partial class NativeWindow
             var oldColumn = ((DateTime)dayCanvas.Tag - visibleStart).Days;
             var newColumn = Math.Clamp((int)((current.X - 56) / columnWidth), 0, count - 1);
             var edit = workspace.Document?.EditFor(item.Id); if (edit == null) { Reset(); return; }
-            candidate = CalendarDragEdit(edit, newColumn - oldColumn, current.Y - point.Y, resizing);
+            try { candidate = CalendarDragEdit(edit, newColumn - oldColumn, current.Y - point.Y, resizing, workspace.Document?.CalendarDisplayTimeZoneId); }
+            catch (InvalidOperationException) { candidate = null; overlay?.Children.Clear(); return; }
             if (overlay == null) { overlay = new Canvas { IsHitTestVisible = false }; Grid.SetColumnSpan(overlay, count + 1); System.Windows.Controls.Panel.SetZIndex(overlay, 25); grid.Children.Add(overlay); }
             overlay.Children.Clear(); tile.Opacity = .3;
-            var at = Local(candidate.StartAtMillis); var end = Local(candidate.EndAtMillis);
+            var at = CalendarLocal(item, candidate.StartAtMillis); var end = CalendarLocal(item, candidate.EndAtMillis);
             var column = Math.Clamp((at.Date - visibleStart).Days, 0, count - 1);
             var ghost = new Border { Width = columnWidth - 5, Height = Math.Max(24, Math.Min(24 * HourHeight, (end - at).TotalMinutes * HourHeight / 60)),
                 Background = B("#3370FF"), CornerRadius = new CornerRadius(4), Padding = new Thickness(5), Opacity = .85,

@@ -22,7 +22,7 @@ internal static class NativeEditors
         dialog.ShowDialog(); return result;
     }
 
-    public static DesktopItemEdit? Item(Window owner, bool isEvent, IReadOnlyList<DesktopGroup> groups, DesktopItemEdit? value, DateTime seed, IReadOnlyList<DesktopCalendar>? calendars = null, RecurrenceScope scope = RecurrenceScope.Current, System.Windows.Point? anchorScreen = null)
+    public static DesktopItemEdit? Item(Window owner, bool isEvent, IReadOnlyList<DesktopGroup> groups, DesktopItemEdit? value, DateTime seed, IReadOnlyList<DesktopCalendar>? calendars = null, RecurrenceScope scope = RecurrenceScope.Current, System.Windows.Point? anchorScreen = null, DesktopSnapshotDocument? preferences = null)
     {
         var dialog = Dialog(owner, (value == null ? "新增" : "编辑") + (isEvent ? "日程" : "待办"), 560, isEvent ? 640 : 690);
         if (isEvent) dialog.Background = Paper;
@@ -32,12 +32,29 @@ internal static class NativeEditors
         var notes = Input(value?.Notes ?? "", true); notes.MinHeight = 54; notes.MaxHeight = 100;
         var location = Input(value?.Location ?? "");
         var due = new TimeField(value?.DueAtMillis, seed.Date.AddHours(23).AddMinutes(59));
-        var start = new TimeField(value?.StartAtMillis, seed);
-        var end = new TimeField(value?.AllDay == true && value.EndAtMillis is { } endMillis ? Millis(DateTimeOffset.FromUnixTimeMilliseconds(endMillis).LocalDateTime.AddDays(-1)) : value?.EndAtMillis, start.Value.AddMinutes(30));
+        var zoneId = value?.EventTimeZoneId ?? (preferences?.CalendarDisplayTimeZoneId is { Length: > 0 } displayZone ? displayZone : DesktopCalendarTime.IanaId(TimeZoneInfo.Local));
+        var duration = preferences?.CalendarDefaultDurationMinutes ?? 30;
+        var start = new TimeField(value?.StartAtMillis, seed, zoneId);
+        var end = new TimeField(value?.AllDay == true && value.EndAtMillis is { } endMillis
+            ? DesktopCalendarTime.Millis(DesktopCalendarTime.Wall(endMillis, zoneId).AddDays(-1), zoneId) : value?.EndAtMillis, start.Value.AddMinutes(duration), zoneId);
         var hasDue = new CheckBox { Content = "设置 DDL", IsChecked = value?.DueAtMillis != null };
         var allDay = new CheckBox { Content = "全天", IsChecked = value?.AllDay ?? false };
-        var reminder = new CheckBox { Content = "提醒", IsChecked = value?.ReminderEnabled ?? false };
-        var offsets = Input(value == null ? "15" : string.Join(",", value.ReminderOffsets));
+        var defaultOffsets = preferences?.CalendarTimedDefaultRemindersCsv ?? "15";
+        var defaultAllDay = preferences?.CalendarAllDayDefaultRemindersJson ?? "[{\"daysBefore\":0,\"minuteOfDay\":480}]";
+        var reminder = new CheckBox { Content = "提醒", IsChecked = value?.ReminderEnabled ?? (isEvent && defaultOffsets.Length > 0) };
+        var offsets = Input(value == null ? defaultOffsets : string.Join(",", value.ReminderOffsets));
+        var initialAllDayRules = value?.AllDay == true && string.IsNullOrWhiteSpace(value.AllDayReminderRulesJson)
+            ? AllDayReminderEditor.FromLegacyOffsets(value.ReminderOffsets) : !string.IsNullOrWhiteSpace(value?.AllDayReminderRulesJson) ? value.AllDayReminderRulesJson : defaultAllDay;
+        var allDayReminders = new AllDayReminderEditor(initialAllDayRules);
+        var zoneChoices = new List<Choice> { new("跟随设备时区", "") };
+        zoneChoices.AddRange(TimeZoneInfo.GetSystemTimeZones().Select(zone => new Choice(DesktopCalendarTime.IanaId(zone), DesktopCalendarTime.IanaId(zone))).DistinctBy(choice => choice.Value).OrderBy(choice => choice.Name));
+        if (zoneChoices.All(choice => choice.Value != zoneId)) zoneChoices.Add(new Choice(zoneId, zoneId));
+        var zone = new ComboBox { ItemsSource = zoneChoices, DisplayMemberPath = "Name", SelectedItem = zoneChoices.First(choice => choice.Value == zoneId) };
+        System.Windows.Automation.AutomationProperties.SetName(zone, "日程时区");
+        var busyChoices = new[] { new Choice("忙碌", "BUSY"), new Choice("空闲", "FREE") };
+        var busy = new ComboBox { ItemsSource = busyChoices, DisplayMemberPath = "Name", SelectedItem = busyChoices.First(choice => choice.Value == (value?.EventBusyStatus ?? "BUSY")) };
+        var visibilityChoices = new[] { new Choice("沿用日历设置", "DEFAULT"), new Choice("私密", "PRIVATE"), new Choice("公开", "PUBLIC") };
+        var visibility = new ComboBox { ItemsSource = visibilityChoices, DisplayMemberPath = "Name", SelectedItem = visibilityChoices.First(choice => choice.Value == (value?.EventVisibility ?? "DEFAULT")) };
         var countdown = new CheckBox { Content = "倒数日", IsChecked = value?.CountdownEnabled ?? false };
         var hidden = new CheckBox { Content = "仅提醒，不在看板显示", IsChecked = value?.HiddenFromBoard ?? false };
         var checkin = new CheckBox { Content = "打卡追踪", IsChecked = value?.CheckInEnabled ?? false };
@@ -55,7 +72,7 @@ internal static class NativeEditors
         var pastModes = new[] { new Choice("按设置自动隐藏", "AUTO"), new Choice("一直保留纪念", "KEEP"), new Choice("不再展示", "HIDE") };
         var pastMode = new ComboBox { ItemsSource = pastModes, DisplayMemberPath = "Name", SelectedItem = pastModes.FirstOrDefault(mode => mode.Value == value?.CountdownPastMode) ?? pastModes[0] };
         System.Windows.Automation.AutomationProperties.SetName(pastMode, "倒数日结束后");
-        var repeats = new List<Choice> { new("不重复", "NONE"), new("每天", "DAILY"), new("每周", "WEEKLY"), new("每月同日（月末自动适配）", "MONTHLY_DAY"), new("每月第几个星期几", "MONTHLY_NTH_WEEKDAY"), new("每年同月日", "YEARLY_DATE"), new("每年同农历月日", "YEARLY_LUNAR_DATE") };
+        var repeats = new List<Choice> { new("不重复", "NONE"), new("按天重复", "DAILY"), new("按周重复", "WEEKLY"), new("每月同日", "MONTHLY_DAY"), new("每月第几个星期几", "MONTHLY_NTH_WEEKDAY"), new("每年同月日", "YEARLY_DATE"), new("每年同农历月日", "YEARLY_LUNAR_DATE") };
         if (value != null && repeats.All(item => item.Value != value.RecurrenceType))
             repeats.Add(new Choice(value.RecurrenceType switch {
                 "MONTHLY_NTH_WEEKDAY" => "保留每月第几个星期的规则", "YEARLY_LUNAR_DATE" => "保留农历循环规则", _ => "保留已有循环规则"
@@ -71,14 +88,56 @@ internal static class NativeEditors
         void UpdateWeekly() => weeklyRow.Visibility = (recurrence.SelectedItem as Choice)?.Value == "WEEKLY" ? Visibility.Visible : Visibility.Collapsed;
         recurrence.SelectionChanged += (_, _) => UpdateWeekly(); UpdateWeekly();
         var until = new DatePicker { SelectedDate = value?.RecurrenceEndEpochDay is { } day ? DateTime.UnixEpoch.AddDays(day) : null };
+        var interval = new ComboBox { ItemsSource = Enumerable.Range(1, 30).Concat(new[] { value?.RecurrenceInterval ?? 1 }).Distinct().Order().ToArray(), SelectedItem = value?.RecurrenceInterval ?? 1 };
+        System.Windows.Automation.AutomationProperties.SetName(interval, "重复间隔");
+        var policies = new[] { new Choice("跳过不存在的日期", "SKIP"), new Choice("使用该月最后一天", "CLAMP") };
+        var policy = new ComboBox { ItemsSource = policies, DisplayMemberPath = "Name", SelectedItem = policies.First(choice => choice.Value == (value?.RecurrenceInvalidDatePolicy ?? (isEvent ? "SKIP" : "CLAMP"))) };
+        var ordinals = new[] { new Choice("第一个", "1"), new Choice("第二个", "2"), new Choice("第三个", "3"), new Choice("第四个", "4"), new Choice("第五个", "5"), new Choice("最后一个", "-1") };
+        var ordinal = new ComboBox { ItemsSource = ordinals, DisplayMemberPath = "Name", SelectedItem = ordinals.First(choice => int.Parse(choice.Value) == (value?.RecurrenceMonthlyOrdinal ?? (seed.Day - 1) / 7 + 1)) };
+        var ordinalWeekday = new ComboBox { ItemsSource = Enumerable.Range(1, 7).Select(day => new Choice(new[] { "周一", "周二", "周三", "周四", "周五", "周六", "周日" }[day - 1], day.ToString())).ToArray(), DisplayMemberPath = "Name", SelectedIndex = (value?.RecurrenceMonthlyWeekday ?? ((int)seed.DayOfWeek + 6) % 7 + 1) - 1 };
+        var nthRow = Pair(ordinal, ordinalWeekday);
+        var repeatDetails = Column(LabeledField("间隔", interval), weeklyRow, nthRow, Text("截止日期 · 留空表示一直重复", 12, Muted), until);
+        if (isEvent) repeatDetails.Children.Add(policy);
+        void UpdateRepeatDetails() {
+            var kind = (recurrence.SelectedItem as Choice)?.Value ?? "NONE";
+            repeatDetails.Visibility = kind == "NONE" ? Visibility.Collapsed : Visibility.Visible;
+            nthRow.Visibility = kind == "MONTHLY_NTH_WEEKDAY" ? Visibility.Visible : Visibility.Collapsed;
+            policy.Visibility = kind is "MONTHLY_DAY" or "YEARLY_DATE" ? Visibility.Visible : Visibility.Collapsed;
+        }
+        recurrence.SelectionChanged += (_, _) => UpdateRepeatDetails(); UpdateRepeatDetails();
         var fields = Column(Text("标题", 14, bold: true), title);
         if (isEvent) {
             fields.Children.Add(allDay); fields.Children.Add(LabeledField("开始", start.Control));
             fields.Children.Add(LabeledField("结束", end.Control));
             var allDayHint = Text("全天结束日期包含当天", 12, Muted); fields.Children.Add(allDayHint);
-            void UpdateAllDay() { start.ShowTime(allDay.IsChecked != true); end.ShowTime(allDay.IsChecked != true); allDayHint.Visibility = allDay.IsChecked == true ? Visibility.Visible : Visibility.Collapsed; }
+            var mode = allDay.IsChecked == true;
+            var memory = new Dictionary<bool, (DateTime Start, DateTime End, bool Enabled, string Offsets, string Rules, string Busy)>();
+            void UpdateAllDay() {
+                var next = allDay.IsChecked == true;
+                if (mode != next) {
+                    try {
+                        memory[mode] = (start.Value, end.Value, reminder.IsChecked == true, offsets.Text, allDayReminders.Json, ((Choice)busy.SelectedItem).Value);
+                        if (memory.TryGetValue(next, out var saved)) {
+                            start.SetValue(saved.Start); end.SetValue(saved.End); reminder.IsChecked = saved.Enabled; offsets.Text = saved.Offsets;
+                            allDayReminders.SetJson(saved.Rules); busy.SelectedItem = busyChoices.First(choice => choice.Value == saved.Busy);
+                        } else if (next) {
+                            var endDate = end.Value.AddTicks(-1).Date; start.SetValue(start.Value.Date); end.SetValue(endDate < start.Value.Date ? start.Value.Date : endDate);
+                            allDayReminders.SetJson(defaultAllDay); reminder.IsChecked = DesktopCalendarTime.ParseRules(defaultAllDay).Count > 0; busy.SelectedItem = busyChoices[1];
+                        } else {
+                            var now = DesktopCalendarTime.Wall(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ((Choice)zone.SelectedItem).Value);
+                            var minutes = (Math.Floor(now.TimeOfDay.TotalMinutes / 30) + 1) * 30;
+                            var begin = start.Value.Date.AddMinutes(minutes); var finish = end.Value.Date.AddMinutes(minutes + duration);
+                            start.SetValue(begin); end.SetValue(finish); offsets.Text = defaultOffsets; reminder.IsChecked = defaultOffsets.Length > 0; busy.SelectedItem = busyChoices[0];
+                        }
+                    } catch { allDay.IsChecked = mode; return; }
+                    mode = next;
+                }
+                start.ShowTime(!next); end.ShowTime(!next); allDayHint.Visibility = next ? Visibility.Visible : Visibility.Collapsed;
+                allDayReminders.Control.Visibility = next && reminder.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+                offsets.Visibility = !next ? Visibility.Visible : Visibility.Collapsed;
+            }
             allDay.Checked += (_, _) => UpdateAllDay(); allDay.Unchecked += (_, _) => UpdateAllDay(); UpdateAllDay();
-            fields.Children.Add(LabeledField("日历", calendar)); fields.Children.Add(LabeledField("地点", location));
+            fields.Children.Add(LabeledField("时区", zone)); fields.Children.Add(LabeledField("日历", calendar)); fields.Children.Add(LabeledField("地点", location));
         }
         else {
             fields.Children.Add(hasDue); fields.Children.Add(due.Control);
@@ -86,8 +145,14 @@ internal static class NativeEditors
             hasDue.Checked += (_, _) => UpdateDue(); hasDue.Unchecked += (_, _) => UpdateDue(); UpdateDue();
         }
         fields.Children.Add(reminder);
-        var reminderDetails = Column(Text("提前提醒（分钟，例如 30,15,5）", 12, Muted), offsets); fields.Children.Add(reminderDetails);
-        void UpdateReminder() => reminderDetails.Visibility = reminder.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        var minuteHint = Text("提前提醒（分钟，例如 30,15,5）", 12, Muted);
+        var reminderDetails = Column(minuteHint, offsets, allDayReminders.Control); fields.Children.Add(reminderDetails);
+        void UpdateReminder() {
+            reminderDetails.Visibility = reminder.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            minuteHint.Visibility = offsets.Visibility = allDay.IsChecked == true && isEvent ? Visibility.Collapsed : Visibility.Visible;
+            allDayReminders.Control.Visibility = isEvent && allDay.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        }
+        allDay.Checked += (_, _) => UpdateReminder(); allDay.Unchecked += (_, _) => UpdateReminder();
         reminder.Checked += (_, _) => UpdateReminder(); reminder.Unchecked += (_, _) => UpdateReminder(); UpdateReminder();
         fields.Children.Add(isEvent ? LabeledField("备注", notes) : Column(Text("备注"), notes));
         var advanced = Column(Row(countdown, isEvent ? checkin : hidden));
@@ -97,7 +162,7 @@ internal static class NativeEditors
             var addSlot = Action("添加时段", () => {
                 allDay.IsChecked = false; allDay.IsEnabled = false;
                 var next = extraSlots.LastOrDefault().End?.Value.AddHours(1) ?? end.Value.AddHours(1);
-                var slot = (Start: new TimeField(null, next), End: new TimeField(null, next.AddMinutes(30)));
+                var slot = (Start: new TimeField(null, next), End: new TimeField(null, next.AddMinutes(duration)));
                 extraSlots.Add(slot);
                 var row = Column(LabeledField("开始", slot.Start.Control), LabeledField("结束", slot.End.Control));
                 row.Children.Add(Action("移除此时段", () => { extraSlots.Remove(slot); slotRows.Children.Remove(row); allDay.IsEnabled = extraSlots.Count == 0; }));
@@ -108,10 +173,10 @@ internal static class NativeEditors
         var retention = Column(Text("倒数日结束后", 13), pastMode); advanced.Children.Add(retention);
         void UpdateCountdown() => retention.Visibility = countdown.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         countdown.Checked += (_, _) => UpdateCountdown(); countdown.Unchecked += (_, _) => UpdateCountdown(); UpdateCountdown();
-        advanced.Children.Add(Text("循环安排", 16, bold: true)); advanced.Children.Add(recurrence); advanced.Children.Add(weeklyRow);
-        advanced.Children.Add(Text("循环截止日期（可留空）", 12, Muted)); advanced.Children.Add(until);
+        advanced.Children.Add(Text("循环安排", 16, bold: true)); advanced.Children.Add(recurrence); advanced.Children.Add(repeatDetails);
+        if (isEvent) advanced.Children.Add(Pair(Column(Text("忙闲状态", 13), busy), Column(Text("公开范围", 13), visibility)));
         if (value?.RecurrenceType is not (null or "NONE") && scope == RecurrenceScope.Current) {
-            recurrence.IsEnabled = false; weeklyRow.IsEnabled = false; until.IsEnabled = false;
+            recurrence.IsEnabled = false; repeatDetails.IsEnabled = false;
             advanced.Children.Add(Text("仅修改当前事项，循环规则保持不变", 12, Muted));
         }
         advanced.Children.Add(Pair(Column(Text("分组"), group), Column(Text("强调色"), color)));
@@ -127,20 +192,27 @@ internal static class NativeEditors
                 var startAt = allDay.IsChecked == true ? start.Value.Date : start.Value;
                 var endAt = allDay.IsChecked == true ? end.Value.Date.AddDays(1) : end.Value;
                 if (isEvent && endAt <= startAt) throw new InvalidOperationException("结束时间必须晚于开始时间");
-                if (reminder.IsChecked == true && (!isEvent && hasDue.IsChecked != true || minutes.Count == 0)) throw new InvalidOperationException("开启提醒需要设置时间和提前提醒分钟数");
+                var rulesJson = allDayReminders.Json;
+                if (reminder.IsChecked == true && (!isEvent && hasDue.IsChecked != true || (isEvent && allDay.IsChecked == true ? DesktopCalendarTime.ParseRules(rulesJson).Count == 0 : minutes.Count == 0))) throw new InvalidOperationException("开启提醒需要设置时间和至少一条提醒");
                 var repeat = (recurrence.SelectedItem as Choice)?.Value ?? "NONE";
                 var weekdayCsv = string.Join(",", weekdays.Where(day => day.IsChecked == true).Select(day => day.Tag));
                 if (repeat == "WEEKLY" && weekdayCsv.Length == 0) throw new InvalidOperationException("请选择至少一个重复星期");
                 if (extraSlots.Any(slot => slot.End.Value <= slot.Start.Value)) throw new InvalidOperationException("每个时段的结束时间必须晚于开始时间");
                 result = new DesktopItemEdit(isEvent, title.Text.Trim(), notes.Text, location.Text,
-                    !isEvent && hasDue.IsChecked == true ? Millis(due.Value) : null, isEvent ? Millis(startAt) : null, isEvent ? Millis(endAt) : null,
+                    !isEvent && hasDue.IsChecked == true ? Millis(due.Value) : null, isEvent ? DesktopCalendarTime.Millis(startAt, ((Choice)zone.SelectedItem).Value) : null, isEvent ? DesktopCalendarTime.Millis(endAt, ((Choice)zone.SelectedItem).Value) : null,
                     allDay.IsChecked == true, reminder.IsChecked == true, minutes, (group.SelectedItem as DesktopGroup)?.Id ?? 1,
                     color.SelectedItem?.ToString() ?? colors[0], countdown.IsChecked == true, repeat, weekdayCsv,
                     until.SelectedDate is { } date ? (long)(date.Date - DateTime.UnixEpoch.Date).TotalDays : null)
                     { HiddenFromBoard = hidden.IsChecked == true, CheckInEnabled = checkin.IsChecked == true,
                         CalendarId = isEvent ? ((DesktopCalendar)calendar.SelectedItem).Id : value?.CalendarId ?? "default",
                         CountdownPastMode = ((Choice)pastMode.SelectedItem).Value,
-                        AdditionalTimeSlots = extraSlots.Select(slot => new DesktopTimeSlot(Millis(slot.Start.Value), Millis(slot.End.Value))).ToList() };
+                        EventTimeZoneId = isEvent ? ((Choice)zone.SelectedItem).Value : "",
+                        AllDayReminderRulesJson = !isEvent ? "" : allDay.IsChecked == true && value?.AllDay == true && string.IsNullOrWhiteSpace(value.AllDayReminderRulesJson) && rulesJson == initialAllDayRules ? "" : rulesJson,
+                        EventBusyStatus = ((Choice)busy.SelectedItem).Value, EventVisibility = ((Choice)visibility.SelectedItem).Value,
+                        RecurrenceInterval = (int)interval.SelectedItem, RecurrenceInvalidDatePolicy = ((Choice)policy.SelectedItem).Value,
+                        RecurrenceMonthlyOrdinal = repeat == "MONTHLY_NTH_WEEKDAY" ? int.Parse(((Choice)ordinal.SelectedItem).Value) : null,
+                        RecurrenceMonthlyWeekday = repeat == "MONTHLY_NTH_WEEKDAY" ? int.Parse(((Choice)ordinalWeekday.SelectedItem).Value) : null,
+                        AdditionalTimeSlots = extraSlots.Select(slot => new DesktopTimeSlot(DesktopCalendarTime.Millis(slot.Start.Value, ((Choice)zone.SelectedItem).Value), DesktopCalendarTime.Millis(slot.End.Value, ((Choice)zone.SelectedItem).Value))).ToList() };
                 dialog.DialogResult = true;
             } catch (Exception problem) { error.Text = problem.Message; }
         }
@@ -225,9 +297,10 @@ internal static class NativeEditors
         public DateTime Value => (date.SelectedDate ?? throw new InvalidOperationException("请选择日期")).Date + (time.Visibility == Visibility.Collapsed ? TimeSpan.Zero :
             (TimeSpan.TryParseExact(time.Text.Trim(), new[] { "h\\:mm", "hh\\:mm" }, CultureInfo.InvariantCulture, out var parsed) && parsed.TotalHours < 24
                 ? parsed : throw new InvalidOperationException("时间请填写 HH:mm，例如 09:30")));
-        public TimeField(long? millis, DateTime fallback)
+        public void SetValue(DateTime value) { date.SelectedDate = value.Date; time.Text = value.ToString("HH:mm"); }
+        public TimeField(long? millis, DateTime fallback, string? zoneId = null)
         {
-            var value = millis is { } existing ? DateTimeOffset.FromUnixTimeMilliseconds(existing).LocalDateTime : fallback;
+            var value = millis is { } existing ? DesktopCalendarTime.Wall(existing, zoneId) : fallback;
             date = new DatePicker { SelectedDate = value, Width = 200, Height = 42, Margin = new Thickness(0, 4, 12, 8) };
             time = Input(value.ToString("HH:mm")); time.Width = 100; time.Height = 42; time.TextAlignment = TextAlignment.Center;
             time.Margin = new Thickness(0, 4, 0, 8);

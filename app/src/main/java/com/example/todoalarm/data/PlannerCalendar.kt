@@ -2,6 +2,7 @@ package com.example.todoalarm.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.ColumnInfo
 
 /** Calendar ownership is independent of task group tags. */
 @Entity(tableName = "planner_calendars")
@@ -9,7 +10,14 @@ data class PlannerCalendar(
     @PrimaryKey val id: String = DEFAULT_CALENDAR_ID,
     val name: String = "常规日历",
     val colorHex: String = "#3370FF",
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    @ColumnInfo(defaultValue = "''") val description: String = "",
+    @ColumnInfo(defaultValue = "''") val ownerAccount: String = "",
+    @ColumnInfo(defaultValue = "'PRIVATE'") val shareMode: String = "PRIVATE",
+    @ColumnInfo(defaultValue = "'[]'") val membersJson: String = "[]",
+    @ColumnInfo(defaultValue = "'OWNER'") val sharedRole: String = "OWNER",
+    @ColumnInfo(defaultValue = "0") val sharedRevision: Long = 0,
+    @ColumnInfo(defaultValue = "''") val sharedServerUrl: String = ""
 )
 
 const val DEFAULT_CALENDAR_ID = "default"

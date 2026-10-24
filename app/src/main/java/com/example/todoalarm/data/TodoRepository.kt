@@ -1329,6 +1329,8 @@ class TodoRepository(
     }
 
     suspend fun updateTodo(item: TodoItem): TodoItem {
+        todoDao.getById(item.id)?.takeIf { it.isEvent }?.let { requireCalendarWritable(it.calendarId) }
+        if (item.isEvent) requireCalendarWritable(item.calendarId)
         todoDao.update(item)
         syncPlanningNodeCompletionFromItem(item)
         item.quickChecklistGroupId?.let { groupId ->
@@ -1538,6 +1540,13 @@ class TodoRepository(
     }
 
     suspend fun createCalendarEventFromDraft(draft: CalendarEventDraft): List<TodoItem> {
+        val created = database.withTransaction { createCalendarEventFromDraftTransaction(draft) }
+        notifyItemsChanged()
+        return created
+    }
+
+    private suspend fun createCalendarEventFromDraftTransaction(draft: CalendarEventDraft): List<TodoItem> {
+        requireCalendarWritable(draft.calendarId)
         val now = System.currentTimeMillis()
         val resolvedGroupId = resolveCalendarGroupId(draft)
         val resolvedDraft = draft.copy(groupId = resolvedGroupId)
@@ -1550,12 +1559,12 @@ class TodoRepository(
         } else {
             listOf(buildCalendarEventItem(resolvedDraft, now = now))
         }
+        require(generated.isNotEmpty()) { "所选日期范围内没有循环日程" }
         val ids = todoDao.insertAll(generated)
         val created = generated.zip(ids) { item, id -> item.copy(id = id) }
         if (resolvedDraft.recurrence.isRecurring) {
             todoDao.insertTemplate(buildCalendarTemplate(created.first(), resolvedDraft))
         }
-        notifyItemsChanged()
         return created
     }
 
@@ -1687,6 +1696,7 @@ class TodoRepository(
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
         if (!item.isEvent) return emptyList()
+        requireCalendarWritable(item.calendarId)
         val now = System.currentTimeMillis()
         val activeSeries = if (item.isRecurring) {
             val seriesId = item.recurringSeriesId ?: return emptyList()
@@ -1902,10 +1912,14 @@ class TodoRepository(
         val createdItems = mutableListOf<TodoItem>()
 
         templates.forEach { template ->
+            if (template.calendarId.startsWith("shared:")) {
+                val calendar = todoDao.getCalendars().firstOrNull { it.id == template.calendarId }
+                if (calendar?.shareMode != "SHARED" || calendar.sharedRole.uppercase() !in setOf("OWNER", "EDITOR")) return@forEach
+            }
             val recurrenceType = RecurrenceType.fromStorage(template.recurrenceType)
             if (recurrenceType == RecurrenceType.NONE) return@forEach
 
-            val templateEndDate = LocalDate.ofEpochDay(template.endEpochDay)
+            val templateEndDate = if (template.recurrenceNeverEnds) horizonDate else LocalDate.ofEpochDay(template.endEpochDay)
             val targetEndDate = if (templateEndDate.isBefore(horizonDate)) templateEndDate else horizonDate
             if (targetEndDate.isBefore(today)) return@forEach
 
@@ -1960,6 +1974,7 @@ class TodoRepository(
     fun observeCountdownCandidates() = todoDao.observeCountdownCandidates()
 
     suspend fun saveCalendar(calendar: PlannerCalendar) {
+        require(!calendar.id.startsWith("shared:")) { "请在协作管理中修改共享日历" }
         require(calendar.name.isNotBlank()) { "请填写日历名称" }
         require(Regex("#[0-9a-fA-F]{6}").matches(calendar.colorHex)) { "请选择有效颜色" }
         database.withTransaction {
@@ -1978,6 +1993,7 @@ class TodoRepository(
 
     suspend fun deleteCalendar(id: String) {
         require(id != DEFAULT_CALENDAR_ID) { "常规日历需要保留" }
+        require(!id.startsWith("shared:")) { "请在协作管理中删除共享日历" }
         database.withTransaction {
             todoDao.moveCalendarItemsToDefault(id)
             todoDao.moveCalendarTemplatesToDefault(id)
@@ -2038,6 +2054,18 @@ class TodoRepository(
         draft: CalendarEventDraft,
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
+        val updated = database.withTransaction { updateCalendarEventFromDraftTransaction(original, draft, scope) }
+        notifyItemsChanged()
+        return updated
+    }
+
+    private suspend fun updateCalendarEventFromDraftTransaction(
+        original: TodoItem,
+        draft: CalendarEventDraft,
+        scope: RecurrenceScope
+    ): List<TodoItem> {
+        requireCalendarWritable(original.calendarId)
+        requireCalendarWritable(draft.calendarId)
         val resolvedGroupId = when {
             draft.groupId > 0 -> draft.groupId
             draft.groupName.isNotBlank() -> resolveGroupIdByNameOrCreate(draft.groupName)
@@ -2068,7 +2096,6 @@ class TodoRepository(
             }
         }
         updatedItems.forEach { syncPlanningNodeFromItem(it) }
-        notifyItemsChanged()
         return updatedItems
     }
 
@@ -2131,6 +2158,7 @@ class TodoRepository(
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
         if (!item.isEvent) return emptyList()
+        requireCalendarWritable(item.calendarId)
         val seriesId = item.recurringSeriesId
         val deletedItems = when {
             item.isRecurring && scope == RecurrenceScope.CURRENT -> {
@@ -3433,8 +3461,8 @@ class TodoRepository(
     private fun planningLineFromItem(item: TodoItem, groupName: String): String {
         val groupPart = groupName.takeIf { it.isNotBlank() }?.let { " #group $it" }.orEmpty()
         return if (item.isEvent) {
-            val start = item.startAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
-            val end = item.endAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
+            val start = item.startAtMillis?.let { Instant.ofEpochMilli(it).atZone(calendarZone(item.eventTimeZoneId)).toLocalDateTime() }
+            val end = item.endAtMillis?.let { Instant.ofEpochMilli(it).atZone(calendarZone(item.eventTimeZoneId)).toLocalDateTime() }
             val startLabel = start?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) ?: ""
             val endLabel = end?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: ""
             "- [ ] $startLabel-$endLabel ${item.title}$groupPart #imported".trim()
@@ -3543,6 +3571,44 @@ class TodoRepository(
             }
         }
         if (targets.isEmpty()) return emptyList()
+
+        val originalEnd = original.calendarEndDateTime().let { if (original.allDay) it.minusDays(1) else it }
+        val contentOnly = draft.recurrence.isRecurring && draft.startAt == original.calendarStartDateTime() &&
+            draft.endAt == originalEnd && draft.allDay == original.allDay && draft.eventTimeZoneId == original.eventTimeZoneId &&
+            draft.recurrence.type == original.recurrenceTypeEnum && draft.recurrence.weeklyDays == storageStringToWeekdays(original.recurrenceWeekdays) &&
+            draft.recurrence.interval == original.recurrenceInterval && draft.recurrence.endDate == original.recurrenceEndDate &&
+            draft.recurrence.invalidDatePolicy == original.recurrenceInvalidDatePolicy &&
+            (draft.recurrence.monthlyOrdinal ?: original.recurrenceMonthlyOrdinal) == original.recurrenceMonthlyOrdinal
+        if (contentOnly && scope != RecurrenceScope.CURRENT && template != null) {
+            val nextSeriesId = if (scope == RecurrenceScope.CURRENT_AND_FUTURE) UUID.randomUUID().toString() else seriesId
+            if (scope == RecurrenceScope.CURRENT_AND_FUTURE) truncateTemplateBefore(seriesId, template, seriesItems, splitDate)
+            if (nextSeriesId != seriesId) {
+                todoDao.getRecurringSkipEpochDays(seriesId).filter { it >= splitDate.toEpochDay() }.forEach { day ->
+                    todoDao.insertRecurringSkip(RecurringInstanceSkip(seriesId = nextSeriesId, instanceEpochDay = day))
+                }
+            }
+            val updated = targets.map { item ->
+                val instanceStart = item.calendarStartDateTime()
+                val instanceEnd = item.calendarEndDateTime().let { if (item.allDay) it.minusDays(1) else it }
+                buildCalendarEventItem(draft.copy(startAt = instanceStart, endAt = instanceEnd), item.createdAtMillis, item, keepSeries = true)
+                    .copy(recurringSeriesId = nextSeriesId)
+            }
+            updated.forEach { todoDao.update(it) }
+            todoDao.insertTemplate(template.copy(
+                id = if (nextSeriesId == seriesId) template.id else 0,
+                seriesId = nextSeriesId,
+                title = draft.title.trim(), notes = draft.notes.trim(), location = draft.location.trim(),
+                accentColorHex = draft.accentColorHex, calendarId = draft.calendarId,
+                reminderOffsetMinutes = draft.normalizedReminderOffsetsMinutes.firstOrNull(),
+                reminderOffsetsCsv = encodeReminderOffsets(draft.normalizedReminderOffsetsMinutes),
+                allDayReminderRulesJson = draft.allDayReminderRulesJson,
+                eventBusyStatus = draft.eventBusyStatus, eventVisibility = draft.eventVisibility,
+            eventParticipantsJson = draft.eventParticipantsJson,
+                ringEnabled = draft.ringEnabled, vibrateEnabled = draft.vibrateEnabled,
+                startEpochDay = if (scope == RecurrenceScope.ALL) template.startEpochDay else splitDate.toEpochDay()
+            ))
+            return updated
+        }
 
         return when (scope) {
             RecurrenceScope.CURRENT -> {
@@ -3714,7 +3780,7 @@ class TodoRepository(
             todoDao.deleteTemplateBySeriesId(seriesId)
             return
         }
-        todoDao.updateTemplate(existingTemplate.copy(endEpochDay = newEndEpochDay))
+        todoDao.updateTemplate(existingTemplate.copy(endEpochDay = newEndEpochDay, recurrenceNeverEnds = false))
     }
 
     private fun TodoItem.recurrenceScopeDate(): LocalDate {
@@ -3932,6 +3998,12 @@ class TodoRepository(
             startAtMillis = eventStartAtMillis,
             endAtMillis = eventEndAtMillis,
             allDay = draft.allDay,
+            eventTimeZoneId = draft.eventTimeZoneId,
+            allDayReminderRulesJson = draft.allDayReminderRulesJson,
+            eventBusyStatus = draft.eventBusyStatus,
+            eventVisibility = draft.eventVisibility,
+            eventParticipantsJson = draft.eventParticipantsJson,
+            sharedEventId = existing?.sharedEventId?.takeIf { it.isNotBlank() } ?: if (draft.calendarId.startsWith("shared:")) (seriesId?.let { "$it:$eventStartAtMillis" } ?: UUID.randomUUID().toString()) else "",
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             countdownEnabled = draft.countdownEnabled,
@@ -3942,7 +4014,7 @@ class TodoRepository(
             totalCheckInMinutes = existing?.totalCheckInMinutes ?: 0,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
-            reminderEnabled = normalizedAllOffsets.isNotEmpty(),
+            reminderEnabled = draft.reminderTriggerTimesMillis().isNotEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             voiceEnabled = false,
@@ -3970,7 +4042,7 @@ class TodoRepository(
             recurrenceMonthlyOrdinal = if (recurrence.isRecurring && keepSeries) {
                 existing?.recurrenceMonthlyOrdinal
             } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
-                startDate.nthWeekOrdinal()
+                recurrence.monthlyOrdinal ?: startDate.nthWeekOrdinal()
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyOrdinal
             } else {
@@ -3994,6 +4066,8 @@ class TodoRepository(
             } else {
                 null
             },
+            recurrenceInterval = if (keepSeries) existing?.recurrenceInterval ?: recurrence.interval else recurrence.interval,
+            recurrenceInvalidDatePolicy = if (keepSeries) existing?.recurrenceInvalidDatePolicy ?: recurrence.invalidDatePolicy else recurrence.invalidDatePolicy,
             recurrenceEndEpochDay = if (recurrence.isRecurring) recurrence.endDate?.toEpochDay() else if (keepSeries) {
                 existing?.recurrenceEndEpochDay
             } else {
@@ -4055,7 +4129,10 @@ class TodoRepository(
                 else -> null
             },
             startEpochDay = dueDate.toEpochDay(),
-            endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: dueDate.toEpochDay()
+            endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: dueDate.plusYears(100).toEpochDay(),
+            recurrenceNeverEnds = draft.recurrence.endDate == null,
+            recurrenceInterval = draft.recurrence.interval,
+            recurrenceInvalidDatePolicy = draft.recurrence.invalidDatePolicy
         )
     }
 
@@ -4077,6 +4154,11 @@ class TodoRepository(
             checkInReminderOffsetsCsv = encodeReminderOffsets(draft.normalizedCheckInReminderOffsetsMinutes),
             multiSlotBundleId = draft.multiSlotBundleId?.takeIf { it.isNotBlank() },
             allDay = draft.allDay,
+            eventTimeZoneId = draft.eventTimeZoneId,
+            allDayReminderRulesJson = draft.allDayReminderRulesJson,
+            eventBusyStatus = draft.eventBusyStatus,
+            eventVisibility = draft.eventVisibility,
+            eventParticipantsJson = draft.eventParticipantsJson,
             groupId = draft.groupId,
             dueHour = draft.startAt.hour,
             dueMinute = draft.startAt.minute,
@@ -4088,7 +4170,7 @@ class TodoRepository(
             reminderDeliveryMode = draft.reminderDeliveryMode.name,
             recurrenceType = draft.recurrence.type.name,
             recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
-            recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) startDate.nthWeekOrdinal() else null,
+            recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) draft.recurrence.monthlyOrdinal ?: startDate.nthWeekOrdinal() else null,
             recurrenceMonthlyWeekday = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) startDate.dayOfWeek.value else null,
             recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) startDate.dayOfMonth else null,
             recurrenceYearlyMonth = when (draft.recurrence.type) {
@@ -4102,7 +4184,10 @@ class TodoRepository(
                 else -> null
             },
             startEpochDay = startDate.toEpochDay(),
-            endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: startDate.toEpochDay()
+            endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: startDate.plusYears(100).toEpochDay(),
+            recurrenceNeverEnds = draft.recurrence.endDate == null,
+            recurrenceInterval = draft.recurrence.interval,
+            recurrenceInvalidDatePolicy = draft.recurrence.invalidDatePolicy
         )
     }
 
@@ -4147,19 +4232,11 @@ class TodoRepository(
 
         val dueDateTime = requireNotNull(draft.dueAt) { "Recurring todo requires DDL" }
         val dueDate = dueDateTime.toLocalDate()
-        val endDate = config.endDate ?: return listOf(buildTaskItem(draft, now = now, seriesId = seriesId))
+        val endDate = config.endDate ?: dueDate.plusDays(INITIAL_RECURRING_LOOKAHEAD_DAYS)
         val dueTime = dueDateTime.toLocalTime()
         val offsetMinutes = draft.normalizedReminderOffsetsMinutes.firstOrNull()
 
-        val dates = when (config.type) {
-            RecurrenceType.NONE -> listOf(dueDate)
-            RecurrenceType.DAILY -> generateDailyDates(dueDate, endDate)
-            RecurrenceType.WEEKLY -> generateWeeklyDates(dueDate, endDate, config.weeklyDays.ifEmpty { setOf(dueDate.dayOfWeek) })
-            RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(dueDate, endDate)
-            RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(dueDate, endDate)
-            RecurrenceType.YEARLY_DATE -> generateYearlyDates(dueDate, endDate)
-            RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(dueDate, endDate)
-        }
+        val dates = calendarRecurrenceDates(dueDate, config, rangeEnd = endDate)
 
         return dates.take(INITIAL_RECURRING_INSTANCE_LIMIT).map { instanceDate ->
             val instanceDue = LocalDateTime.of(instanceDate, dueTime)
@@ -4184,18 +4261,10 @@ class TodoRepository(
 
         val startDateTime = draft.startAt
         val startDate = startDateTime.toLocalDate()
-        val endDate = config.endDate ?: return listOf(buildCalendarEventItem(draft, now = now, seriesId = seriesId))
+        val endDate = config.endDate ?: startDate.plusDays(INITIAL_RECURRING_LOOKAHEAD_DAYS)
         val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30)
 
-        val dates = when (config.type) {
-            RecurrenceType.NONE -> listOf(startDate)
-            RecurrenceType.DAILY -> generateDailyDates(startDate, endDate)
-            RecurrenceType.WEEKLY -> generateWeeklyDates(startDate, endDate, config.weeklyDays.ifEmpty { setOf(startDate.dayOfWeek) })
-            RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(startDate, endDate)
-            RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(startDate, endDate)
-            RecurrenceType.YEARLY_DATE -> generateYearlyDates(startDate, endDate)
-            RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(startDate, endDate)
-        }
+        val dates = calendarRecurrenceDates(startDate, config, rangeEnd = endDate)
 
         return dates.take(INITIAL_RECURRING_INSTANCE_LIMIT).map { instanceDate ->
             val instanceStart = LocalDateTime.of(instanceDate, draft.startAt.toLocalTime())
@@ -4214,23 +4283,7 @@ class TodoRepository(
         targetEndDate: LocalDate
     ): List<LocalDate> {
         val anchorDate = LocalDate.ofEpochDay(template.startEpochDay)
-        val templateEndDate = LocalDate.ofEpochDay(template.endEpochDay)
-        val generationEnd = if (templateEndDate.isBefore(targetEndDate)) templateEndDate else targetEndDate
-        if (generationEnd.isBefore(targetStartDate)) return emptyList()
-        val dates = when (RecurrenceType.fromStorage(template.recurrenceType)) {
-            RecurrenceType.NONE -> listOf(anchorDate)
-            RecurrenceType.DAILY -> generateDailyDates(anchorDate, generationEnd)
-            RecurrenceType.WEEKLY -> generateWeeklyDates(
-                anchorDate,
-                generationEnd,
-                storageStringToWeekdays(template.recurrenceWeekdays).ifEmpty { setOf(anchorDate.dayOfWeek) }
-            )
-            RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(anchorDate, generationEnd)
-            RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(anchorDate, generationEnd)
-            RecurrenceType.YEARLY_DATE -> generateYearlyDates(anchorDate, generationEnd)
-            RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(anchorDate, generationEnd)
-        }
-        return dates.filter { !it.isBefore(targetStartDate) && !it.isAfter(targetEndDate) }
+        return calendarRecurrenceDates(anchorDate, template.toRecurrenceConfig(), targetStartDate, targetEndDate)
     }
 
     private fun buildItemFromTemplate(
@@ -4250,6 +4303,11 @@ class TodoRepository(
                         startAt = startAt,
                         endAt = startAt.plusMinutes(duration.toLong()),
                         allDay = template.allDay,
+                        eventTimeZoneId = template.eventTimeZoneId,
+                        allDayReminderRulesJson = template.allDayReminderRulesJson,
+                        eventBusyStatus = template.eventBusyStatus,
+                        eventVisibility = template.eventVisibility,
+                        eventParticipantsJson = template.eventParticipantsJson,
                         accentColorHex = template.accentColorHex ?: DEFAULT_ITEM_ACCENT_COLOR_HEX,
                         reminderMinutesBefore = template.reminderOffsetMinutes,
                         reminderOffsetsMinutes = template.configuredReminderOffsetsMinutes,
@@ -4306,7 +4364,10 @@ class TodoRepository(
             enabled = type != RecurrenceType.NONE,
             type = type,
             weeklyDays = storageStringToWeekdays(recurrenceWeekdays),
-            endDate = LocalDate.ofEpochDay(endEpochDay)
+            endDate = if (recurrenceNeverEnds) null else LocalDate.ofEpochDay(endEpochDay),
+            interval = recurrenceInterval,
+            invalidDatePolicy = recurrenceInvalidDatePolicy,
+            monthlyOrdinal = recurrenceMonthlyOrdinal
         )
     }
 
@@ -4315,23 +4376,26 @@ class TodoRepository(
             enabled = isRecurring,
             type = recurrenceTypeEnum,
             weeklyDays = storageStringToWeekdays(recurrenceWeekdays),
-            endDate = recurrenceEndDate
+            endDate = recurrenceEndDate,
+            interval = recurrenceInterval,
+            invalidDatePolicy = recurrenceInvalidDatePolicy,
+            monthlyOrdinal = recurrenceMonthlyOrdinal
         )
     }
 
     private fun TodoItem.recurrenceInstanceDateOrNull(): LocalDate? {
         recurrenceAnchorDueAtMillis?.let { anchorMillis ->
-            return Instant.ofEpochMilli(anchorMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+            return Instant.ofEpochMilli(anchorMillis).atZone(if (isEvent) calendarZone(eventTimeZoneId) else ZoneId.systemDefault()).toLocalDate()
         }
         return if (isEvent) eventStartDate() else dueDateTimeOrNull()?.toLocalDate()
     }
 
     private fun TodoItem.eventStartDateTimeOrNull(): LocalDateTime? {
-        return startAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
+        return startAtMillis?.let { Instant.ofEpochMilli(it).atZone(calendarZone(eventTimeZoneId)).toLocalDateTime() }
     }
 
     private fun TodoItem.eventEndDateTimeOrNull(): LocalDateTime? {
-        return endAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
+        return endAtMillis?.let { Instant.ofEpochMilli(it).atZone(calendarZone(eventTimeZoneId)).toLocalDateTime() }
     }
 
     private fun generateDailyDates(start: LocalDate, end: LocalDate): List<LocalDate> {
@@ -4605,7 +4669,7 @@ class TodoRepository(
     }
 
     private fun reminderAnchorMillis(draft: CalendarEventDraft): Long {
-        return draft.reminderAnchorAt.toEpochMillis()
+        return calendarEpochMillis(draft.reminderAnchorAt, draft.eventTimeZoneId)
     }
 
     private fun eventDisplayStartMillis(draft: CalendarEventDraft): Long {
@@ -4614,7 +4678,7 @@ class TodoRepository(
         } else {
             draft.startAt
         }
-        return start.toEpochMillis()
+        return calendarEpochMillis(start, draft.eventTimeZoneId)
     }
 
     private fun eventDisplayEndMillis(draft: CalendarEventDraft): Long {
@@ -4623,7 +4687,15 @@ class TodoRepository(
         } else {
             draft.endAt
         }
-        return end.toEpochMillis()
+        return calendarEpochMillis(end, draft.eventTimeZoneId)
+    }
+
+    private suspend fun requireCalendarWritable(calendarId: String) {
+        if (!calendarId.startsWith("shared:")) return
+        val calendar = todoDao.getCalendars().firstOrNull { it.id == calendarId }
+        require(calendar?.shareMode == "SHARED" && calendar.sharedRole.uppercase() in setOf("OWNER", "EDITOR")) {
+            "当前账号没有此共享日历的编辑权限"
+        }
     }
 
     private fun notifyItemsChanged() {

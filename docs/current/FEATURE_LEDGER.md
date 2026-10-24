@@ -1,10 +1,14 @@
 # Feature Ledger
 
-This file tracks the product at a practical level for new coding sessions.
+This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
+
+## Current local update: 1.17.0 / 392
+
+Both clients implement display/event timezones, auxiliary time scale, calendar descriptions/order/defaults, recurrence intervals/no cutoff/invalid-date policies, independent all-day reminder clock rules and draft state, current-instance copy, shared-calendar permissions/invitations/responses/conflicts, domain-free login with server selection, and compact account actions. Strong-reminder delivery and queue remain; detail navigation rereads the current record and shared access. Room33 migration and cache/reference isolation preserve personal data. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Direct results and limits: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). Shared features require updated server interfaces; no production rollout or all-device parity is claimed.
 
 ## Implemented And In Use
 
-### v1.16.26 日历作用域、参照交互与安装包
+### v1.16.26 日历作用域、拖动交互与安装包
 
 - Windows循环编辑/取消/删除明确选择当前、当前及之后、全部；单次改期保留原锚点和系列模板，之后拆分系列，全部保留完成/取消历史。修复跨午夜、空实例补齐及旧Windows锚点，补齐月末、闰年、每月第几个星期和农历重复。
 - 全天使用午夜排他结束与09:00提醒基准，跨日显示结束日期；新建日程支持多个时段并统一校验/提交。两端日历改色更新沿用旧默认色的日程/模板，保留其他自定义色。
@@ -178,7 +182,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
-- daily board schedule rows use compact schedule-row density with explicit small line heights, one-line locations, tighter padding, and smaller in-progress check-in actions
+- daily board schedule rows use compact density with explicit small line heights, one-line locations, tighter padding, and smaller in-progress check-in actions
 - board in-progress schedule rows show check-in status for check-in-enabled events and expose compact `签到` / `签退` actions
 - board in-progress schedule rows route check-in-enabled events to the independent full-screen check-in surface through `去签到` / `查看`, keeping the board focused on overview rather than inline operations
 - daily board uses a compact `暂无日程` state when today's visible schedule is empty, including after all of today's events have ended
@@ -312,7 +316,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Calendar System
 
 - timeline-style calendar foundation
-- Desktop Web Calendar `1.15.15` uses a specified workstation composition at 125% Windows scaling: 58px top navigation, 296px mini-calendar sidebar, unframed continuous calendar grid, restrained blue action/selection accents, and thin neutral separators; the misleading sidebar group list is removed and Excel import is an explicit preview action
+- Desktop Web Calendar `1.15.15` uses a compact workstation composition at 125% Windows scaling: 58px top navigation, 296px mini-calendar sidebar, unframed continuous calendar grid, restrained blue action/selection accents, and thin neutral separators; the misleading sidebar group list is removed and Excel import is an explicit preview action
 - Desktop Web Calendar supports functional day, seven-day week, and 42-cell month views; mini-calendar month/date navigation, event/location search, per-group visibility filtering, and collapsed Excel import share the left sidebar
 - Desktop Web event editing opens a reference-proportioned two-column window with the PaykiTodo event form on the left and a live single-day timeline preview on the right; title/date/time/color edits update the preview without changing save semantics
 - Desktop Web calendar CSS explicitly neutralizes old full-width navigation/modal-button inheritance, preventing document-width expansion, off-screen tab scrolling, second-row header actions, and stretched close controls

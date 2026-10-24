@@ -7,6 +7,7 @@ import com.example.todoalarm.data.TodoItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.LocalDateTime
@@ -48,9 +49,30 @@ class CalendarCopyDraftTest {
         assertEquals(event.location, draft.location)
         assertEquals(listOf(15), draft.normalizedReminderOffsetsMinutes)
         assertEquals(listOf(30), draft.normalizedCheckInReminderOffsetsMinutes)
-        assertTrue(draft.recurrence.enabled)
-        assertEquals(setOf(DayOfWeek.FRIDAY), draft.recurrence.weeklyDays)
+        assertFalse(draft.recurrence.enabled)
+        assertTrue(draft.recurrence.weeklyDays.isEmpty())
+        assertEquals(LocalDateTime.of(2026, 8, 28, 10, 20), draft.startAt)
         assertNull(draft.multiSlotBundleId)
+    }
+
+    @Test
+    fun allDayCopyPreservesZoneAndInclusiveDatesAndExplicitReminders() {
+        val zone = ZoneId.of("America/New_York")
+        val start = LocalDateTime.of(2026, 11, 1, 0, 0)
+        val end = LocalDateTime.of(2026, 11, 3, 0, 0)
+        val event = TodoItem(id = 100, itemType = PlannerItemType.EVENT.name, title = "两天日程", reminderAtMillis = null,
+            reminderEnabled = true, ringEnabled = true, vibrateEnabled = true,
+            dueAtMillis = start.atZone(zone).toInstant().toEpochMilli(), startAtMillis = start.atZone(zone).toInstant().toEpochMilli(),
+            endAtMillis = end.atZone(zone).toInstant().toEpochMilli(), allDay = true, eventTimeZoneId = zone.id,
+            allDayReminderRulesJson = "[{\"daysBefore\":1,\"minuteOfDay\":497}]", eventBusyStatus = "FREE", eventVisibility = "PRIVATE")
+        val draft = event.toCalendarCopyDraft()
+        assertEquals(start, draft.startAt)
+        assertEquals(end.minusDays(1), draft.endAt)
+        assertEquals(zone.id, draft.eventTimeZoneId)
+        assertEquals(event.allDayReminderRulesJson, draft.allDayReminderRulesJson)
+        assertEquals("FREE", draft.eventBusyStatus)
+        assertEquals("PRIVATE", draft.eventVisibility)
+        assertFalse(draft.recurrence.enabled)
     }
 
     private fun LocalDateTime.toMillis(): Long {

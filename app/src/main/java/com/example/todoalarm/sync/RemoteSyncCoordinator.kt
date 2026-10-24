@@ -13,6 +13,8 @@ import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.BackupArchiveCodec
 import com.example.todoalarm.data.BackupSnapshot
+import com.example.todoalarm.data.personalSyncSnapshot
+import com.example.todoalarm.data.withSharedCacheFrom
 import com.example.todoalarm.widget.TodoWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -161,16 +163,24 @@ class RemoteSyncCoordinator(
         displayName: String,
         register: Boolean,
         turnstileToken: String? = null
-    ): String? = syncMutex.withLock {
-        authenticateAccount(username, password, displayName, register, turnstileToken).error
+    ): String? {
+        if (serverUrl.isNotBlank()) selectLoginServer(serverUrl)?.let { return it }
+        return if (register) register(username, displayName, password, turnstileToken).error
+        else login(username, password, turnstileToken).error
     }
 
     suspend fun login(username: String, password: String, turnstileToken: String? = null): AccountAuthResult {
-        return withContext(Dispatchers.IO) { syncMutex.withLock { authenticateAccount(username, password, "", false, turnstileToken) } }
+        return withContext(Dispatchers.IO) {
+            invalidateSharedCacheForAccountChange(username)
+            syncMutex.withLock { authenticateAccount(username, password, "", false, turnstileToken) }
+        }
     }
 
     suspend fun register(username: String, displayName: String, password: String, turnstileToken: String? = null): AccountAuthResult {
-        return withContext(Dispatchers.IO) { syncMutex.withLock { authenticateAccount(username, password, displayName, true, turnstileToken) } }
+        return withContext(Dispatchers.IO) {
+            invalidateSharedCacheForAccountChange(username)
+            syncMutex.withLock { authenticateAccount(username, password, displayName, true, turnstileToken) }
+        }
     }
 
     suspend fun recoverPassword(
@@ -223,10 +233,11 @@ class RemoteSyncCoordinator(
             )
             val canonicalUsername = response.getJSONObject("user").getString("username")
             val remoteRevision = response.optLong("snapshotRevision", 0L)
-            val localSnapshot = app.repository.exportSnapshot(settingsStore.currentSettings())
+            val localSnapshot = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
             val hasLocalData = localSnapshot.hasMeaningfulData()
             val previous = settingsStore.currentSettings()
-            val sameAccount = previous.remoteSyncUsername == canonicalUsername && previous.remoteSyncSecret == deriveAccountSecret(canonicalUsername, password)
+            val sameAccount = previous.remoteSyncUsername == canonicalUsername && previous.remoteSyncSecret == deriveAccountSecret(canonicalUsername, password) &&
+                previous.remoteSyncAccountServerUrl.ifBlank { previous.remoteSyncServerUrl } == normalizedServer
             val initialSyncState = if (sameAccount) InitialSyncState(previous.remoteSyncRevision, previous.remoteSyncDirty, previous.remoteSyncConflictRevision)
                 else initialSyncState(hasLocalData, remoteRevision)
             if (!sameAccount && hasLocalData) saveSafetyCopy(localSnapshot, "before-account-change")
@@ -388,7 +399,7 @@ class RemoteSyncCoordinator(
         if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
         settings = settingsStore.currentSettings()
         val generation = settingsStore.remoteChangeGeneration()
-        val localBefore = app.database.withTransaction { app.repository.exportSnapshot(settings) }
+        val localBefore = app.database.withTransaction { app.repository.exportSnapshot(settings).personalSyncSnapshot() }
         val fingerprint = BackupArchiveCodec.dataFingerprint(localBefore)
         val previousFingerprint = settingsStore.remoteDataFingerprint()
         if (!settings.remoteSyncDirty && previousFingerprint.isNotBlank() && previousFingerprint != fingerprint) {
@@ -425,7 +436,7 @@ class RemoteSyncCoordinator(
             val snapshot = downloaded.snapshot
             app.database.withTransaction {
                 if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return@withTransaction
-                val current = app.repository.exportSnapshot(settingsStore.currentSettings())
+                val current = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
                 if (generation != settingsStore.remoteChangeGeneration() || BackupArchiveCodec.contentFingerprint(current) != BackupArchiveCodec.contentFingerprint(localBefore)) {
                     settingsStore.markRemoteSyncDirty()
                     settingsStore.markRemoteSyncConflict(downloaded.revision)
@@ -433,7 +444,7 @@ class RemoteSyncCoordinator(
                 }
                 saveSafetyCopy(current, "before-cloud")
                 applyRemoteSnapshot(snapshot)
-                val applied = app.repository.exportSnapshot(settingsStore.currentSettings())
+                val applied = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
                 settingsStore.markRemoteSyncSuccess(downloaded.revision, generation, BackupArchiveCodec.dataFingerprint(applied))
             }
             if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
@@ -483,7 +494,7 @@ class RemoteSyncCoordinator(
             check(settingsStore.hasValidRemoteSession()) { "请先重新登录账号" }
             val token = ensureAccessToken(cloudServerUrl(), settings)
             val remote = downloadAccountSnapshot(cloudServerUrl(), token, settings.remoteSyncSecret)
-            val local = app.database.withTransaction { app.repository.exportSnapshot(settingsStore.currentSettings()) }
+            val local = app.database.withTransaction { app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot() }
             check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已改变，请重新检查" }
             CloudReview(remote.snapshot, remote.revision, BackupArchiveCodec.contentFingerprint(local), account)
         }
@@ -502,13 +513,13 @@ class RemoteSyncCoordinator(
             saveSafetyCopy(review.snapshot, "cloud-v${review.revision}")
             val generation = settingsStore.remoteChangeGeneration()
             val local = app.database.withTransaction {
-                val current = app.repository.exportSnapshot(settingsStore.currentSettings())
+                val current = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
                 require(BackupArchiveCodec.contentFingerprint(current) == review.localFingerprint) { "本机已有新修改，请重新检查后确认" }
                 saveSafetyCopy(current, "local-before-conflict")
                 if (!keepLocal) {
                     check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已退出" }
                     applyRemoteSnapshot(review.snapshot)
-                    val applied = app.repository.exportSnapshot(settingsStore.currentSettings())
+                    val applied = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
                     settingsStore.markRemoteSyncSuccess(review.revision, generation, BackupArchiveCodec.dataFingerprint(applied))
                 }
                 current
@@ -549,7 +560,7 @@ class RemoteSyncCoordinator(
                 ?.maxByOrNull { it.lastModified() } ?: error("尚无操作前恢复副本")
             val snapshot = file.inputStream().use(BackupArchiveCodec::read)
             app.database.withTransaction {
-                saveSafetyCopy(app.repository.exportSnapshot(settingsStore.currentSettings()), "before-safety-restore")
+                saveSafetyCopy(app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot(), "before-safety-restore")
                 applyRemoteSnapshot(snapshot)
                 settingsStore.markRemoteSyncDirty()
             }
@@ -561,10 +572,13 @@ class RemoteSyncCoordinator(
         val current = settingsStore.currentSettings()
         app.repository.getAllTodos().forEach { existing ->
             app.alarmScheduler.cancel(existing.id)
+            com.example.todoalarm.alarm.ReminderForegroundService.dismiss(app, existing.id)
             ReminderDispatchTracker.clear(app, existing.id)
         }
-        app.repository.importSnapshot(snapshot, notify = false)
-        settingsStore.replaceAll(snapshot.settings.withRemoteAccountFrom(current))
+        val sharedCache = app.repository.exportSnapshot(current)
+        val merged = snapshot.withSharedCacheFrom(sharedCache)
+        app.repository.importSnapshot(merged, notify = false)
+        settingsStore.replaceAll(merged.settings.withRemoteAccountFrom(current))
         app.repository.ensureRecurringInstancesAhead()
         app.repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
         TodoWidgetProvider.notifyWidgetDataChanged(app)
@@ -575,6 +589,7 @@ class RemoteSyncCoordinator(
         autoBackupEnabled = current.autoBackupEnabled,
         remoteSyncEnabled = current.remoteSyncEnabled,
         remoteSyncServerUrl = current.remoteSyncServerUrl,
+        remoteSyncAccountServerUrl = current.remoteSyncAccountServerUrl,
         remoteSyncDeviceId = current.remoteSyncDeviceId,
         remoteSyncSecret = current.remoteSyncSecret,
         remoteSyncUsername = current.remoteSyncUsername,
@@ -729,15 +744,67 @@ class RemoteSyncCoordinator(
             settingsStore.clearExpiredRemoteSessionIfNeeded(Long.MAX_VALUE)
     }
 
+    fun effectiveServerUrl(): String = cloudServerUrl()
+
+    suspend fun calendarRequest(method: String, path: String, body: JSONObject? = null): JSONObject = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            val generation = accountGeneration
+            val server = cloudServerUrl()
+            val token = ensureAccessToken(server, settingsStore.currentSettings())
+            val connection = openApiConnection(server, path, method, token)
+            try {
+                body?.toString()?.toByteArray(StandardCharsets.UTF_8)?.let { payload ->
+                    require(payload.size <= 2 * 1024 * 1024) { "共享日历内容过大" }
+                    connection.doOutput = true
+                    connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    connection.setFixedLengthStreamingMode(payload.size)
+                    connection.outputStream.use { it.write(payload) }
+                }
+                val status = connection.responseCode
+                invalidateRejectedToken(status, token)
+                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                val raw = stream?.use { it.readBytesLimited(2 * 1024 * 1024) } ?: ByteArray(0)
+                val json = if (raw.isEmpty()) JSONObject() else JSONObject(raw.toString(StandardCharsets.UTF_8))
+                if (status !in 200..299) throw CalendarServiceException(status, json.optLong("currentRevision", -1),
+                    if (status == 409) "共享日历已在其他设备更新，请先检查冲突" else json.optString("message", "共享日历请求失败（HTTP $status）"))
+                require(generation == accountGeneration && server == cloudServerUrl()) { "登录服务器已变更，请重试" }
+                json
+            } finally { connection.disconnect() }
+        }
+    }
+
+    suspend fun selectLoginServer(serverUrl: String): String? = withContext(Dispatchers.IO) {
+        val normalized = runCatching { normalizeServerUrl(serverUrl) }.getOrElse { return@withContext it.message ?: "服务器地址无效" }
+        if (normalized != cloudServerUrl()) app.calendarCollaboration.invalidateCachedPermissions()
+        syncMutex.withLock {
+            runCatching {
+                val normalized = normalizeServerUrl(serverUrl)
+                if (normalized != cloudServerUrl()) {
+                    accountGeneration++
+                    settingsStore.selectRemoteServer(normalized)
+                }
+                null
+            }.getOrElse { it.message ?: "服务器地址无效" }
+        }
+    }
+
+    private suspend fun invalidateSharedCacheForAccountChange(username: String) {
+        val settings = settingsStore.currentSettings()
+        if (settings.remoteSyncUsername != username.trim().lowercase() ||
+            settings.remoteSyncAccountServerUrl.ifBlank { settings.remoteSyncServerUrl } != cloudServerUrl())
+            app.calendarCollaboration.invalidateCachedPermissions()
+    }
+
     private fun cloudServerUrl(): String {
-        return normalizeServerUrl(serverBaseUrl)
+        return normalizeServerUrl(settingsStore.currentSettings().remoteSyncServerUrl.ifBlank { serverBaseUrl })
     }
 
     private fun normalizeServerUrl(value: String): String {
         val normalized = value.trim().trimEnd('/')
         val url = URL(normalized)
+        require(url.userInfo == null && url.query == null && url.ref == null) { "服务器地址不能包含账号、查询参数或片段" }
         val localDevelopment = url.host == "127.0.0.1" || url.host == "localhost" || url.host == "10.0.2.2"
-        require(url.protocol.equals("https", ignoreCase = true) || localDevelopment) { "云同步服务器必须使用 HTTPS" }
+        require(url.protocol.equals("https", ignoreCase = true) || (url.protocol.equals("http", ignoreCase = true) && localDevelopment)) { "云同步服务器必须使用 HTTPS" }
         return normalized
     }
 
@@ -758,7 +825,7 @@ class RemoteSyncCoordinator(
     private suspend fun syncLegacyNow(settings: AppSettings): RemoteSyncResult {
         val serverUrl = normalizeServerUrl(settings.remoteSyncServerUrl)
         val credentials = settingsStore.remoteSyncCredentials()
-        val snapshot = app.repository.exportSnapshot(settings)
+        val snapshot = app.repository.exportSnapshot(settings).personalSyncSnapshot()
         val encrypted = RemoteSyncCrypto.encrypt(BackupArchiveCodec.encode(snapshot), credentials.second)
         uploadLegacy(serverUrl, credentials.first, credentials.second, encrypted)
         return RemoteSyncResult.Uploaded(snapshot.exportedAtMillis, 0L)

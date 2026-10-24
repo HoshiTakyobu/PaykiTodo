@@ -172,9 +172,11 @@ class MainActivity : ComponentActivity() {
                         onRegister = viewModel::registerAccount,
                         onRecover = viewModel::recoverAccount,
                         onRecoveryCode = { recoveryCodeNotice = it },
-                        turnstileEnabled = BuildConfig.PAYKITODO_CLOUD_BASE_URL.isNotBlank() &&
-                            !BuildConfig.PAYKITODO_CLOUD_BASE_URL.endsWith(".invalid"),
-                        turnstileChallengeUrl = BuildConfig.PAYKITODO_CLOUD_BASE_URL.trimEnd('/') + "/v2/auth/challenge",
+                        turnstileEnabled =
+                            !uiState.settings.remoteSyncServerUrl.ifBlank { BuildConfig.PAYKITODO_CLOUD_BASE_URL }.endsWith(".invalid"),
+                        turnstileChallengeUrl = uiState.settings.remoteSyncServerUrl.ifBlank { BuildConfig.PAYKITODO_CLOUD_BASE_URL }.trimEnd('/') + "/v2/auth/challenge",
+                        loginServerUrl = uiState.settings.remoteSyncServerUrl.ifBlank { BuildConfig.PAYKITODO_CLOUD_BASE_URL }.trimEnd('/'),
+                        onSelectLoginServer = (application as TodoApplication).remoteSyncCoordinator::selectLoginServer,
                     )
                 } else DashboardScreen(
                     uiState = uiState,

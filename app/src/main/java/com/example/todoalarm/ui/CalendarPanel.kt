@@ -140,6 +140,8 @@ import java.time.LocalTime
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.time.ZoneId
+import com.example.todoalarm.data.RecurrenceScope
+import com.example.todoalarm.data.calendarStartDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.max
@@ -228,7 +230,7 @@ internal fun CalendarPanel(
     onGetEventById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onCopyEvent: (TodoItem) -> Unit,
-    onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
+    onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime, RecurrenceScope) -> Unit,
     onCancelEvent: (TodoItem) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit,
     onOpenBatchImport: () -> Unit,
@@ -238,12 +240,13 @@ internal fun CalendarPanel(
     onDeleteTemplate: suspend (Long) -> String?
 ) {
     val workspace = LocalWorkspacePreferences.current
+    val displayZone = remember(workspace.settings.calendarDisplayTimeZoneId) { com.example.todoalarm.data.calendarZone(workspace.settings.calendarDisplayTimeZoneId) }
     val events = remember(events, workspace.settings.hiddenCalendarIds) { events.filter { it.calendarId !in workspace.settings.hiddenCalendarIds } }
     var showCalendars by remember { mutableStateOf(false) }
     if (showCalendars) CalendarManager { showCalendars = false }
     val context = LocalContext.current
     val density = LocalDensity.current
-    val anchorDate = remember { LocalDate.now() }
+    val anchorDate = remember(displayZone) { LocalDate.now(displayZone) }
     var selectedDateEpochDay by rememberSaveable { mutableStateOf(anchorDate.toEpochDay()) }
     val selectedDate = remember(selectedDateEpochDay) { LocalDate.ofEpochDay(selectedDateEpochDay) }
     var viewMode by rememberSaveable { mutableStateOf(CalendarViewMode.THREE_DAY) }
@@ -264,18 +267,18 @@ internal fun CalendarPanel(
     var handledTargetEventSerial by rememberSaveable { mutableStateOf(-1) }
     var calendarEventDragActive by remember { mutableStateOf(false) }
     var todayRequestSerial by remember { mutableStateOf(0) }
-    val initialMoment = remember { LocalDateTime.now() }
-    val currentDate by produceState(initialValue = LocalDate.now()) {
+    val initialMoment = remember(displayZone) { LocalDateTime.now(displayZone) }
+    val currentDate by produceState(initialValue = LocalDate.now(displayZone), displayZone) {
         while (true) {
-            val now = LocalDateTime.now()
+            val now = LocalDateTime.now(displayZone)
             val nextMidnight = now.toLocalDate().plusDays(1).atStartOfDay().plusSeconds(1)
             delay(Duration.between(now, nextMidnight).toMillis().coerceAtLeast(60_000L))
-            value = LocalDate.now()
+            value = LocalDate.now(displayZone)
         }
     }
     val currentDateIndex = dateWindow.indexOf(currentDate) ?: -1
 
-    val eventsByDate = remember(events) { buildEventsByDate(events) }
+    val eventsByDate = remember(events, displayZone) { buildEventsByDate(events, displayZone) }
 
     val calendarBackground = MaterialTheme.colorScheme.background
     val todayHighlightColor = Color(0x334C8BF5)
@@ -353,8 +356,8 @@ internal fun CalendarPanel(
                 )
             }
 
-            val visibleTimedEventPlacements = remember(events, visibleDays) {
-                buildTimedEventPlacementsForDays(events, visibleDays)
+            val visibleTimedEventPlacements = remember(events, visibleDays, displayZone) {
+                buildTimedEventPlacementsForDays(events, visibleDays, displayZone)
             }
 
             val horizontalScrollableState = rememberScrollableState { delta ->
@@ -458,10 +461,15 @@ internal fun CalendarPanel(
             LaunchedEffect(targetEventSerial, targetEventId, events) {
                 val id = targetEventId ?: return@LaunchedEffect
                 if (handledTargetEventSerial == targetEventSerial) return@LaunchedEffect
-                val target = events.firstOrNull { it.id == id && it.isEvent } ?: return@LaunchedEffect
+                val target = events.firstOrNull { it.id == id && it.isEvent } ?: onGetEventById(id)?.takeIf { it.isEvent } ?: run {
+                    handledTargetEventSerial = targetEventSerial
+                    Toast.makeText(context, "日程已删除或不可访问", Toast.LENGTH_SHORT).show()
+                    return@LaunchedEffect
+                }
+                if (target.calendarId in workspace.settings.hiddenCalendarIds) workspace.visibility(target.calendarId, true)
                 handledTargetEventSerial = targetEventSerial
                 val targetDate = target.startAtMillis
-                    ?.let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+                    ?.let { java.time.Instant.ofEpochMilli(it).atZone(if (target.allDay) com.example.todoalarm.data.calendarZone(target.eventTimeZoneId) else displayZone).toLocalDate() }
                     ?: target.dueDate()
                 revealDate(targetDate)
                 openDetails(target)
@@ -471,7 +479,8 @@ internal fun CalendarPanel(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    CalendarDefaultsButton()
                     TextButton(onClick = { showCalendars = true }) { Text("日历 · ${workspace.calendars.count { it.id !in workspace.settings.hiddenCalendarIds }}") }
                 }
                 Surface(
@@ -484,7 +493,7 @@ internal fun CalendarPanel(
                         viewMode = viewMode,
                         onPickDate = ::openDatePicker,
                         onToday = {
-                            revealDate(LocalDate.now())
+                            revealDate(LocalDate.now(displayZone))
                             todayRequestSerial += 1
                         },
                         onChangeView = ::changeView,
@@ -591,7 +600,8 @@ internal fun CalendarPanel(
                                     CalendarTimeAxis(
                                         width = timeAxisWidth,
                                         hourHeight = hourHeight,
-                                        verticalScroll = verticalScroll
+                                        verticalScroll = verticalScroll,
+                                        referenceDate = selectedDate
                                     )
                                     CalendarTimedBoard(
                                         modifier = Modifier
@@ -644,40 +654,38 @@ internal fun CalendarPanel(
             onGetEventById = onGetEventById,
             onGetEventCheckIns = onGetEventCheckIns,
             onDismiss = { detailsTarget = null },
-            onCopy = {
+            onCopy = { current ->
                 detailsTarget = null
-                onCopyEvent(item)
+                onCopyEvent(current)
             },
-            onEdit = {
+            onEdit = { current ->
                 detailsTarget = null
-                onEditEvent(item)
+                onEditEvent(current)
             },
-            onCancel = {
+            onCancel = { current ->
                 detailsTarget = null
-                if (item.isRecurring) {
-                    onCancelEvent(item)
+                if (current.isRecurring) {
+                    onCancelEvent(current)
                 } else {
-                    pendingCancelTarget = item
+                    pendingCancelTarget = current
                 }
             },
-            onDelete = {
+            onDelete = { current ->
                 detailsTarget = null
-                pendingDeleteTarget = item
+                pendingDeleteTarget = current
             }
         )
     }
     draggingEvent?.let { dragging ->
-        PaykiDecisionBottomSheet(
-            title = "移动日程",
-            message = "将“${dragging.item.title}”移动到 ${formatLocalDateTime(dragging.startAt)} - ${formatLocalDateTime(dragging.endAt)}？",
-            confirmLabel = "确定",
-            confirmLabelColor = MaterialTheme.colorScheme.primary,
-            onDismiss = { draggingEvent = null },
-            onConfirm = {
-                onMoveEvent(dragging.item, dragging.startAt, dragging.endAt)
-                draggingEvent = null
+        var moveScope by remember(dragging) { mutableStateOf(RecurrenceScope.CURRENT) }
+        AlertDialog(onDismissRequest = { draggingEvent = null }, title = { Text("移动日程") }, text = {
+            Column {
+                Text("将“${dragging.item.title}”移动到 ${formatLocalDateTime(dragging.startAt)} - ${formatLocalDateTime(dragging.endAt)}？")
+                if (dragging.item.isRecurring) PreferenceChoice("作用范围", moveScope.name, RecurrenceScope.entries.map { it.name to it.label }) { moveScope = RecurrenceScope.valueOf(it) }
             }
-        )
+        }, confirmButton = { TextButton(onClick = {
+            onMoveEvent(dragging.item, dragging.startAt, dragging.endAt, moveScope); draggingEvent = null
+        }) { Text("确定") } }, dismissButton = { TextButton(onClick = { draggingEvent = null }) { Text("取消") } })
     }
 
     pendingCancelTarget?.let { item ->
@@ -1225,7 +1233,7 @@ private fun AgendaEventCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    if (item.allDay) "全天" else timeRangeLabel(item),
+                    if (item.allDay) "全天" else timeRangeLabel(item, com.example.todoalarm.data.calendarZone(LocalWorkspacePreferences.current.settings.calendarDisplayTimeZoneId)),
                     color = textColor,
                     fontSize = 13.sp,
                     lineHeight = 15.sp
@@ -1601,7 +1609,7 @@ private fun CalendarHeaderRow(
     ) {
         Box(modifier = Modifier.width(timeAxisWidth), contentAlignment = Alignment.Center) {
             Text(
-                text = timezoneShortLabel(),
+                text = timezoneShortLabel(com.example.todoalarm.data.calendarZone(LocalWorkspacePreferences.current.settings.calendarDisplayTimeZoneId)),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp,
                 lineHeight = 12.sp,
@@ -1701,8 +1709,9 @@ private fun CalendarAllDaySection(
         ) {
             events.forEachIndexed { rowIndex, item ->
                 if (rowIndex >= 6) return@forEachIndexed
-                val startDate = item.startAtMillis?.let(::millisToDate) ?: return@forEachIndexed
-                val endDateInclusive = item.endAtMillis?.let(::millisToDate)?.minusDays(1) ?: startDate
+                val eventZone = com.example.todoalarm.data.calendarZone(item.eventTimeZoneId)
+                val startDate = item.startAtMillis?.let { java.time.Instant.ofEpochMilli(it).atZone(eventZone).toLocalDate() } ?: return@forEachIndexed
+                val endDateInclusive = item.endAtMillis?.let { java.time.Instant.ofEpochMilli(it).atZone(eventZone).toLocalDate().minusDays(1) } ?: startDate
                 val startIndex = (dateWindow.indexOf(startDate) ?: visibleRange.first).coerceAtLeast(visibleRange.first)
                 val endIndex = (dateWindow.indexOf(endDateInclusive) ?: visibleRange.last).coerceAtMost(visibleRange.last)
                 if (endIndex < visibleRange.first || startIndex > visibleRange.last || endIndex < startIndex) return@forEachIndexed
@@ -1765,12 +1774,16 @@ private fun CalendarAllDaySection(
 private fun CalendarTimeAxis(
     width: Dp,
     hourHeight: Dp,
-    verticalScroll: androidx.compose.foundation.ScrollState
+    verticalScroll: androidx.compose.foundation.ScrollState,
+    referenceDate: LocalDate
 ) {
-    val currentMoment by produceState(initialValue = LocalDateTime.now()) {
+    val zone = com.example.todoalarm.data.calendarZone(LocalWorkspacePreferences.current.settings.calendarDisplayTimeZoneId)
+    val auxiliaryZoneId = LocalWorkspacePreferences.current.settings.calendarAuxiliaryTimeZoneId
+    val auxiliaryZone = auxiliaryZoneId.takeIf { it.isNotBlank() }?.let { com.example.todoalarm.data.calendarZone(it) }
+    val currentMoment by produceState(initialValue = LocalDateTime.now(zone), zone) {
         while (true) {
             delay(60_000L)
-            value = LocalDateTime.now()
+            value = LocalDateTime.now(zone)
         }
     }
     val currentMinutes = currentMoment.hour * 60 + currentMoment.minute
@@ -1792,16 +1805,20 @@ private fun CalendarTimeAxis(
                     modifier = Modifier
                         .offset(y = if (hour == 0) 0.dp else (hourHeight * hour) - 9.dp)
                         .width(width)
-                        .height(18.dp),
+                        .height(if (auxiliaryZone == null) 18.dp else 30.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Text(
+                    Column {
+                      Text(
                         text = "%02d:00".format(hour),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                         lineHeight = 11.sp,
                         fontWeight = FontWeight.Medium
-                    )
+                      )
+                      if (auxiliaryZone != null) Text(referenceDate.atTime(hour, 0).atZone(zone).withZoneSameInstant(auxiliaryZone).format(DateTimeFormatter.ofPattern("HH:mm")),
+                          fontSize = 9.sp, lineHeight = 10.sp, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
 
@@ -1847,6 +1864,7 @@ private fun CalendarTimedBoard(
     onEventDragActiveChange: (Boolean) -> Unit,
     currentDayIndex: Int
 ) {
+    val workspace = LocalWorkspacePreferences.current
     val density = LocalDensity.current
     val outline = MaterialTheme.colorScheme.outline
     val latestPendingDraft by rememberUpdatedState(pendingDraft)
@@ -1904,7 +1922,7 @@ private fun CalendarTimedBoard(
                                 dateWindow.dateAt(dayIndex),
                                 LocalTime.of(snappedMinutes / 60, snappedMinutes % 60)
                             )
-                            val endAt = startAt.plusMinutes(30)
+                            val endAt = startAt.plusMinutes(workspace.settings.calendarDefaultDurationMinutes.toLong())
                             val nextDraft = PendingCalendarDraft(startAt, endAt)
                             if (latestPendingDraft == nextDraft) {
                                 onQuickCreateEvent(startAt, endAt)
@@ -2189,10 +2207,11 @@ private fun CurrentTimeLine(
     boardHeightPx: Float,
     hourHeightPx: Float
 ) {
-    val currentMoment by produceState(initialValue = LocalDateTime.now()) {
+    val zone = com.example.todoalarm.data.calendarZone(LocalWorkspacePreferences.current.settings.calendarDisplayTimeZoneId)
+    val currentMoment by produceState(initialValue = LocalDateTime.now(zone), zone) {
         while (true) {
             delay(60_000L)
-            value = LocalDateTime.now()
+            value = LocalDateTime.now(zone)
         }
     }
     val minutes = currentMoment.hour * 60 + currentMoment.minute
@@ -2258,15 +2277,18 @@ private fun CalendarEventDetailsDialog(
     onGetEventById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onDismiss: () -> Unit,
-    onCopy: () -> Unit,
-    onEdit: () -> Unit,
-    onCancel: () -> Unit,
-    onDelete: () -> Unit
+    onCopy: (TodoItem) -> Unit,
+    onEdit: (TodoItem) -> Unit,
+    onCancel: (TodoItem) -> Unit,
+    onDelete: (TodoItem) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
     var displayItem by remember(item.id) { mutableStateOf(item) }
+    val calendar = LocalWorkspacePreferences.current.calendars.firstOrNull { it.id == displayItem.calendarId }
+    val editable = calendar?.id?.startsWith("shared:") != true || calendar.sharedRole.uppercase() in setOf("OWNER", "EDITOR")
+    var missing by remember(item.id) { mutableStateOf(false) }
     var checkIns by remember(item.id) { mutableStateOf<List<EventCheckIn>>(emptyList()) }
     var checkInLoading by remember(item.id) { mutableStateOf(item.checkInEnabled) }
     var actionRunning by remember(item.id) { mutableStateOf(false) }
@@ -2288,17 +2310,23 @@ private fun CalendarEventDetailsDialog(
     )
     val totalInvestedMinutes = closedMinutes + activeMinutes
 
-    LaunchedEffect(item.id, refreshSerial) {
-        if (!item.checkInEnabled) return@LaunchedEffect
-        checkInLoading = true
-        checkIns = onGetEventCheckIns(item.id)
-        displayItem = onGetEventById(item.id) ?: displayItem
+    LaunchedEffect(item.id, refreshSerial, calendar?.sharedRole, calendar?.sharedRevision) {
+        if (displayItem.calendarId.startsWith("shared:") && (calendar == null || calendar.sharedRole == "REVOKED")) {
+            Toast.makeText(context, "日历访问权限已变化", Toast.LENGTH_SHORT).show()
+            onDismiss()
+            return@LaunchedEffect
+        }
+        val refreshed = onGetEventById(item.id)
+        missing = refreshed == null
+        if (refreshed != null) displayItem = refreshed
+        checkInLoading = displayItem.checkInEnabled
+        checkIns = if (displayItem.checkInEnabled) onGetEventCheckIns(item.id) else emptyList()
         checkInLoading = false
     }
 
     DisposableEffect(lifecycleOwner, item.id, item.checkInEnabled) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && item.checkInEnabled) {
+            if (event == Lifecycle.Event.ON_RESUME) {
                 refreshSerial += 1
             }
         }
@@ -2335,21 +2363,24 @@ private fun CalendarEventDetailsDialog(
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                 }
-                IconButton(onClick = onCopy) {
+                IconButton(onClick = { onCopy(displayItem) }) {
                     Icon(Icons.Rounded.ContentCopy, contentDescription = "创建副本", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         },
         bottomBar = {
             CalendarEventDetailsFixedActions(
-                onCancel = onCancel,
-                onEdit = onEdit,
-                onDelete = onDelete
+                onCancel = { onCancel(displayItem) },
+                onEdit = { onEdit(displayItem) },
+                onDelete = { onDelete(displayItem) },
+                enabled = editable && !missing
             )
         },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 8.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            if (missing) Text("日程已删除或不可访问", color = MaterialTheme.colorScheme.error)
+            if (!editable) Text(if (calendar?.sharedRole == "REVOKED") "此日历的访问已撤销。" else "你拥有此日历的只读权限。", style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                 Surface(
                     modifier = Modifier
@@ -2360,18 +2391,18 @@ private fun CalendarEventDetailsDialog(
                 ) {}
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(
-                        text = item.title,
+                        text = displayItem.title,
                         color = tint,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (item.allDay) formatDateRange(item) else formatDateTimeRangeWithoutTimezone(item),
+                        text = if (displayItem.allDay) formatDateRange(displayItem) else formatDateTimeRangeWithoutTimezone(displayItem),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    recurrencePreviewLine(item)?.let {
+                    recurrencePreviewLine(displayItem)?.let {
                         Text(
                             text = it,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2383,14 +2414,19 @@ private fun CalendarEventDetailsDialog(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
 
-            item.location.takeIf { it.isNotBlank() }?.let {
+            EventInfoRow(icon = { Icon(Icons.Rounded.CalendarMonth, contentDescription = null) },
+                text = LocalWorkspacePreferences.current.calendars.firstOrNull { it.id == displayItem.calendarId }?.name ?: "日历")
+            EventInfoRow(icon = { Icon(Icons.Rounded.Place, contentDescription = null) },
+                text = "${com.example.todoalarm.data.calendarZone(displayItem.eventTimeZoneId).id} · ${if (displayItem.eventBusyStatus == "FREE") "空闲" else "忙碌"} · ${when (displayItem.eventVisibility) { "PRIVATE" -> "私密"; "PUBLIC" -> "公开"; else -> "沿用日历设置" }}")
+            CalendarRsvpRow(displayItem)
+            displayItem.location.takeIf { it.isNotBlank() }?.let {
                 EventInfoRow(
                     icon = { Icon(Icons.Rounded.Place, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     text = it
                 )
             }
 
-            eventReminderSummary(item)?.let {
+            eventReminderSummary(displayItem)?.let {
                 EventInfoRow(
                     icon = { Icon(Icons.Rounded.NotificationsNone, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     text = it
@@ -2412,7 +2448,7 @@ private fun CalendarEventDetailsDialog(
                 )
             }
 
-            item.notes.takeIf { it.isNotBlank() }?.let {
+            displayItem.notes.takeIf { it.isNotBlank() }?.let {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) 0.34f else 0.48f)
@@ -2433,7 +2469,8 @@ private fun CalendarEventDetailsDialog(
 private fun CalendarEventDetailsFixedActions(
     onCancel: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    enabled: Boolean = true
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -2453,6 +2490,7 @@ private fun CalendarEventDetailsFixedActions(
             ) {
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
+                    enabled = enabled,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                     onClick = onCancel
                 ) {
@@ -2466,6 +2504,7 @@ private fun CalendarEventDetailsFixedActions(
                 }
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
+                    enabled = enabled,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                     onClick = onEdit
                 ) {
@@ -2478,6 +2517,7 @@ private fun CalendarEventDetailsFixedActions(
                 }
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
+                    enabled = enabled,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                     onClick = onDelete
                 ) {
@@ -2585,26 +2625,32 @@ private fun EventCheckInSection(
 
 private fun recurrencePreviewLine(item: TodoItem): String? {
     if (!item.isRecurring) return null
-    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return null
-    val endDate = item.recurrenceEndDate ?: return null
+    val start = item.calendarStartDateTime()
+    val endDate = item.recurrenceEndDate
+    val suffix = if (endDate == null) "永不截止" else "截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+    val interval = item.recurrenceInterval
     return when (item.recurrenceTypeEnum) {
-        com.example.todoalarm.data.RecurrenceType.DAILY -> "每天重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        com.example.todoalarm.data.RecurrenceType.DAILY -> "每隔${interval}天重复，$suffix"
         com.example.todoalarm.data.RecurrenceType.WEEKLY -> {
             val labels = com.example.todoalarm.data.storageStringToWeekdays(item.recurrenceWeekdays)
                 .sortedBy { it.value }
                 .joinToString("、") { it.shortLabel() }
-            "每周的${labels}重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+            "每隔${interval}周的${labels}重复，$suffix"
         }
-        com.example.todoalarm.data.RecurrenceType.MONTHLY_NTH_WEEKDAY -> "每月重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
-        com.example.todoalarm.data.RecurrenceType.MONTHLY_DAY -> "每月${start.dayOfMonth}日重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
-        com.example.todoalarm.data.RecurrenceType.YEARLY_DATE -> "每年${start.monthValue}月${start.dayOfMonth}日重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
-        com.example.todoalarm.data.RecurrenceType.YEARLY_LUNAR_DATE -> "每年农历${com.example.todoalarm.data.LunarCalendar.labelFor(start.toLocalDate()).displayText}重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        com.example.todoalarm.data.RecurrenceType.MONTHLY_NTH_WEEKDAY -> "每隔${interval}月的${if (item.recurrenceMonthlyOrdinal == -1) "最后一个" else "第${item.recurrenceMonthlyOrdinal ?: ((start.dayOfMonth - 1) / 7 + 1)}个"}${start.dayOfWeek.shortLabel()}，$suffix"
+        com.example.todoalarm.data.RecurrenceType.MONTHLY_DAY -> "每隔${interval}月${start.dayOfMonth}日重复，$suffix"
+        com.example.todoalarm.data.RecurrenceType.YEARLY_DATE -> "每隔${interval}年${start.monthValue}月${start.dayOfMonth}日重复，$suffix"
+        com.example.todoalarm.data.RecurrenceType.YEARLY_LUNAR_DATE -> "每隔${interval}年农历${com.example.todoalarm.data.LunarCalendar.labelFor(start.toLocalDate()).displayText}重复，$suffix"
         com.example.todoalarm.data.RecurrenceType.NONE -> null
     }
 }
 
 private fun eventReminderSummary(item: TodoItem): String? {
     val summaries = buildList {
+        if (item.allDay && item.allDayReminderRulesJson.isNotBlank()) {
+            val rules = runCatching { com.example.todoalarm.data.decodeAllDayReminderRules(item.allDayReminderRulesJson) }.getOrDefault(emptyList())
+            if (rules.isNotEmpty()) add("全天提醒：" + rules.joinToString("、") { "${if (it.daysBefore == 0) "当天" else "提前${it.daysBefore}天"} ${"%02d:%02d".format(it.minuteOfDay / 60, it.minuteOfDay % 60)}" })
+        }
         item.configuredReminderOffsetsMinutes.takeIf { it.isNotEmpty() }?.let { offsets ->
             add("普通提醒：${offsets.sortedDescending().joinToString("、") { reminderOffsetLabel(it) }}")
         }
@@ -2654,8 +2700,9 @@ private fun formatCheckInMinutes(minutes: Int): String {
 }
 
 private fun formatDateTimeRangeWithoutTimezone(item: TodoItem): String {
-    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return "未设置时间"
-    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
+    val zone = com.example.todoalarm.data.calendarZone(item.eventTimeZoneId)
+    val start = item.startAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDateTime() } ?: return "未设置时间"
+    val end = item.endAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDateTime() } ?: start
     return if (start.toLocalDate() == end.toLocalDate()) {
         "${start.monthValue}月${start.dayOfMonth}日 ${formatClockTime(start)} - ${formatClockTime(end)}"
     } else {
@@ -2751,13 +2798,13 @@ private fun layoutTimedEventSegments(segments: List<TimedEventSegment>): List<Ti
 
 private fun buildTimedEventPlacementsForDays(
     events: List<TodoItem>,
-    days: List<LocalDate>
+    days: List<LocalDate>,
+    zoneId: ZoneId = ZoneId.systemDefault()
 ): List<Pair<LocalDate, TimedEventPlacement>> {
     if (events.isEmpty() || days.isEmpty()) return emptyList()
     val daySet = days.toSet()
     val windowStart = days.minOrNull() ?: return emptyList()
     val windowEndExclusive = (days.maxOrNull() ?: windowStart).plusDays(1)
-    val zoneId = ZoneId.systemDefault()
     val windowStartMillis = windowStart.atStartOfDay(zoneId).toInstant().toEpochMilli()
     val windowEndMillis = windowEndExclusive.atStartOfDay(zoneId).toInstant().toEpochMilli()
     val segmentsByDay = linkedMapOf<LocalDate, MutableList<TimedEventSegment>>()
@@ -2768,11 +2815,11 @@ private fun buildTimedEventPlacementsForDays(
         val endMillis = item.endAtMillis ?: (startMillis + 30 * 60_000L)
         if (endMillis <= windowStartMillis || startMillis >= windowEndMillis) return@forEach
 
-        var cursor = millisToDate(startMillis.coerceAtLeast(windowStartMillis))
-        val inclusiveEnd = millisToDate((endMillis - 1).coerceAtLeast(startMillis))
+        var cursor = millisToDate(startMillis.coerceAtLeast(windowStartMillis), zoneId)
+        val inclusiveEnd = millisToDate((endMillis - 1).coerceAtLeast(startMillis), zoneId)
         while (!cursor.isAfter(inclusiveEnd) && cursor.isBefore(windowEndExclusive)) {
             if (cursor in daySet) {
-                item.toSegmentForDay(cursor)?.let { segment ->
+                item.toSegmentForDay(cursor, zoneId)?.let { segment ->
                     segmentsByDay.getOrPut(cursor) { mutableListOf() } += segment
                 }
             }
@@ -2786,17 +2833,16 @@ private fun buildTimedEventPlacementsForDays(
     }
 }
 
-private fun TodoItem.toSegmentForDay(day: LocalDate): TimedEventSegment? {
+private fun TodoItem.toSegmentForDay(day: LocalDate, zoneId: ZoneId = ZoneId.systemDefault()): TimedEventSegment? {
     val itemStart = startAtMillis ?: dueAtMillis
     val itemEnd = endAtMillis ?: (itemStart + 30 * 60_000L)
-    val zoneId = ZoneId.systemDefault()
     val dayStart = day.atStartOfDay(zoneId).toInstant().toEpochMilli()
     val dayEnd = day.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
     if (itemEnd <= dayStart || itemStart >= dayEnd) return null
     val segmentStart = max(itemStart, dayStart)
     val segmentEnd = max(segmentStart + 60_000L, minOf(itemEnd, dayEnd))
-    val segmentStartDateTime = reminderAtMillisToDateTime(segmentStart)
-    val segmentEndDateTime = reminderAtMillisToDateTime(segmentEnd)
+    val segmentStartDateTime = Instant.ofEpochMilli(segmentStart).atZone(zoneId).toLocalDateTime()
+    val segmentEndDateTime = Instant.ofEpochMilli(segmentEnd).atZone(zoneId).toLocalDateTime()
     val startMinutes = segmentStartDateTime.hour * 60 + segmentStartDateTime.minute
     val durationMinutes = Duration.between(segmentStartDateTime, segmentEndDateTime).toMinutes()
         .coerceAtLeast(5)
@@ -2812,8 +2858,8 @@ private fun TodoItem.toSegmentForDay(day: LocalDate): TimedEventSegment? {
     )
 }
 
-private fun millisToDate(epochMillis: Long): LocalDate {
-    return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+private fun millisToDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): LocalDate {
+    return Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
 }
 
 private fun formatDateTimeRange(item: TodoItem): String {
@@ -2828,8 +2874,9 @@ private fun formatDateTimeRange(item: TodoItem): String {
 }
 
 private fun formatDateRange(item: TodoItem): String {
-    val start = item.startAtMillis?.let(::millisToDate) ?: return "未设置日期"
-    val endExclusive = item.endAtMillis?.let(::millisToDate)?.minusDays(1) ?: start
+    val zone = com.example.todoalarm.data.calendarZone(item.eventTimeZoneId)
+    val start = item.startAtMillis?.let { millisToDate(it, zone) } ?: return "未设置日期"
+    val endExclusive = item.endAtMillis?.let { millisToDate(it, zone) }?.minusDays(1) ?: start
     return if (start == endExclusive) start.toString() else "$start - $endExclusive"
 }
 
@@ -2839,15 +2886,15 @@ private fun calendarVisualAlpha(item: TodoItem): Float {
     return if (end < now) 0.45f else 1f
 }
 
-private fun timezoneShortLabel(): String {
-    val offset = ZoneId.systemDefault().rules.getOffset(Instant.now())
+private fun timezoneShortLabel(zone: ZoneId = ZoneId.systemDefault()): String {
+    val offset = zone.rules.getOffset(Instant.now())
     val totalMinutes = offset.totalSeconds / 60
     val sign = if (totalMinutes >= 0) "+" else "-"
     val absMinutes = kotlin.math.abs(totalMinutes)
     val hours = absMinutes / 60
     val minutes = absMinutes % 60
     val suffix = if (minutes == 0) "UTC$sign$hours" else "UTC$sign$hours:${minutes.toString().padStart(2, '0')}"
-    return "本地\n$suffix"
+    return "${zone.id.substringAfterLast('/')}\n$suffix"
 }
 
 private fun formatClockTime(dateTime: LocalDateTime): String {
@@ -2865,14 +2912,15 @@ private fun weekdayLabels(weekStartMode: WeekStartMode): List<String> {
     }
 }
 
-private fun buildEventsByDate(events: List<TodoItem>): Map<LocalDate, List<TodoItem>> {
+private fun buildEventsByDate(events: List<TodoItem>, displayZone: ZoneId = ZoneId.systemDefault()): Map<LocalDate, List<TodoItem>> {
     if (events.isEmpty()) return emptyMap()
     val bucket = linkedMapOf<LocalDate, MutableList<TodoItem>>()
     events.sortedBy { it.startAtMillis ?: it.dueAtMillis }.forEach { item ->
         val startMillis = item.startAtMillis ?: item.dueAtMillis
         val endMillis = item.endAtMillis ?: startMillis
-        var cursor = millisToDate(startMillis)
-        val inclusiveEnd = millisToDate(if (item.allDay) endMillis - 1 else endMillis)
+        val zone = if (item.allDay) com.example.todoalarm.data.calendarZone(item.eventTimeZoneId) else displayZone
+        var cursor = millisToDate(startMillis, zone)
+        val inclusiveEnd = millisToDate((endMillis - 1).coerceAtLeast(startMillis), zone)
         while (!cursor.isAfter(inclusiveEnd)) {
             bucket.getOrPut(cursor) { mutableListOf() }.add(item)
             cursor = cursor.plusDays(1)
@@ -2881,9 +2929,9 @@ private fun buildEventsByDate(events: List<TodoItem>): Map<LocalDate, List<TodoI
     return bucket
 }
 
-private fun timeRangeLabel(item: TodoItem): String {
-    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return "未设置时间"
-    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
+private fun timeRangeLabel(item: TodoItem, zone: ZoneId = ZoneId.systemDefault()): String {
+    val start = item.startAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDateTime() } ?: return "未设置时间"
+    val end = item.endAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDateTime() } ?: start
     return "${formatClockTime(start)} - ${formatClockTime(end)}"
 }
 

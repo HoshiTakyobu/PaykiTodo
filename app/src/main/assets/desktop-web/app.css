@@ -1666,7 +1666,7 @@ button.mini {
   .board-scroll { height: 72vh; min-height: 500px; }
 }
 
-/* Calendar workstation layout. Keep this final layer authoritative. */
+/* Calendar presentation overrides. Keep this final layer authoritative. */
 :root {
   color-scheme: light;
   --calendar-blue: #1456f0;

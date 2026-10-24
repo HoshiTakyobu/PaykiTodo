@@ -2,7 +2,13 @@
 
 ## Current Baseline
 
-- Completed re-audit: Android `1.16.26 / 391`, Windows `1.16.26.0`; local APKs, self-contained Windows output and Chinese MSI built and verified. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md) for the original-feedback matrix and exact limits.
+- Current local build: Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33`. Calendar and account updates are implemented and locally verified; see [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md).
+- Scope: calendar navigation and creation, independent calendars, recurrence intervals and valid-date policies, all-day reminder times, details/copy/reminder navigation, event/display timezones, calendar collaboration, login-server selection and compact account actions.
+- Preserve the existing single strong-reminder window and queue. Presentation changes must not introduce a separate notification-card system.
+- Current requirements: [calendar update contract](CALENDAR_UPDATE_CONTRACT.md). Validation: 216 Android units, 25 distinct emulator tests, 51 Windows regressions and one 14-stage isolated UIA flow, 21 server tests, signed APK and MSI lifecycle checks.
+- No production deployment or public release was made. Sharing requires a server with the new calendar interfaces; real production cross-device collaboration and OEM reminder behavior are not claimed as verified.
+
+- Last completed build: Android `1.16.26 / 391`, Windows `1.16.26.0`; local APKs, self-contained Windows output and Chinese MSI built and verified. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md) for the original-feedback matrix and exact limits.
 
 - Repository: `https://github.com/HoshiTakyobu/PaykiTodo`
 - Branch: `main`
@@ -10,24 +16,24 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App source version: `1.16.26 / versionCode 391` (locally built and verified; not published)
-- Room database version: `32`
-- Latest testing audit: 193 Android unit tests, Lint (0 errors / 131 warnings), 13 distinct emulator tests, 38 Windows regressions plus one 14-stage isolated UIA flow, cross-client archive roundtrip and MSI install/upgrade/repair/uninstall/data-preservation checks. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md).
+- App source version: `1.17.0 / versionCode 392` (locally built and verified; not published)
+- Room database version: `33`
+- Latest testing audit: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md); Android Lint 0 errors / 133 warnings. Historical test counts below retain their original version labels.
 
 ## Published Build
 
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.26-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.26-release.apk`
-- Current Windows installer: `desktop/installer-output/PaykiTodo-1.16.26-windows-x64.msi` (76.3 MiB, Windows 10 1809+ / Windows 11 x64, per-user, includes .NET). See [installation instructions](../../desktop/installer/README.md).
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.26.0`; portable use requires the whole directory)
-- Debug APK SHA-256: `F900A621D49E309CF147B54D7BC98AC71B0D9545FA2059E6504BAE755CD955B0`
-- Signed Release APK SHA-256: `EA8677DE114EE169F140C7D24CB3386A42BE8ECE6298CA1377B6B89294521BCA`
-- Windows EXE SHA-256: `157E5BF4EE10EACF53EB9BAE7A232FB212C5CFFABB202E01862E38DE529CAF52`
-- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `9D639D33477B8362433AAE39E803AED9EE6F83ABE4732AF9BF2316995640CEEC` (the EXE apphost alone does not identify UI code)
-- Windows MSI SHA-256: `88B1AA47084A7E342BD115F88F59ABFA70EBCC332834A28F014F9E826056E7F6`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.0-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.17.0-release.apk`
+- Current Windows installer: `desktop/installer-output/PaykiTodo-1.17.0-windows-x64.msi` (76.4 MiB, Windows 10 1809+ / Windows 11 x64, per-user, includes .NET). See [installation instructions](../../desktop/installer/README.md).
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.17.0.0`; portable use requires the whole directory)
+- Debug APK SHA-256: `4F25DC81982D3D6C157E9B83B29D12B1DF2D29C753D469FE19D2A10C40D079FE`
+- Signed Release APK SHA-256: `F5821C5366ECF49FDD3342CF64F674FE4A72CECD01E5EA4B3F27A9CD63FA1963`
+- Windows EXE SHA-256: `6E6407F84BFC85C628E7B0ADABA8055EF8FABDDC915E13DCC042F466AD2D53E2`
+- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `E9F4BF3C10D184B38B968472886C8D8100C3B42697909030BF3A872201BE6301` (matches MSI payload; the EXE apphost alone does not identify UI code)
+- Windows MSI SHA-256: `B303F84BF304A48D59A4FDD0330CE0DBAB4387CF10733E3ECEA34A80928C6676`
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -57,20 +63,15 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 ## v1.16.26 Validation Scope (not published)
 
 - Windows循环编辑/取消/删除增加当前、之后、全部作用域，修正跨午夜锚点、月末/闰年补齐，并支持每月第几个星期及农历重复。全天边界/提醒、多时段统一提交与日历颜色联动在跨端迁移包往返中验证。
-- 日历修正独立翻月、窄窗口3天翻页、侧栏滚动与临近草稿的紧凑编辑器；增加拖动改期/调长及15分钟吸附。Windows规划新增本机OCR，Android完成后的纪念询问立即更新。
 - 193 Android单测、13个设备用例、38 Windows回归和1条14阶段UIA流程通过。MSI安装、模拟旧版升级、路径记忆、修复、安装后EXE、卸载及正式用户资料不变通过；具体条件和初次失败见验收记录。
 - 最终Debug安装到既有Pixel_8，正常进入登录页、无启动崩溃；人机验证加载失败，本轮未再次登录真实账号。原639个文件全部保留，613个字节一致，业务数据库逐表一致，另3个运行文件保留；应用/测试包停止，模拟器运行。
-- 第三方观察及运行状态仅保留在私有恢复副本中；公开记录仅保留 PaykiTodo 的需求、实现与验收。
-- 未推送、发布或部署。MSI未作商业代码签名；实际办公室策略、物理鼠标完整拖动链路和手机OEM提醒需实际环境验证，结论限于本产品实现与实际验证。
 
 ## v1.16.25 Validation Scope (not published)
 
 - Android `1.16.25 / versionCode 390`，Windows `1.16.25.0`，Room `32`，开始基线 `6f3800f`。
 - 193 Android 单测；Lint 0 errors / 131 warnings；13个不同模拟器用例经针对性复验通过；26 Windows 回归（含实际 EXE）及1条14阶段隔离 UIA 流程通过。
-- 第三方观察及运行状态仅保留在私有恢复副本中；公开记录仅保留 PaykiTodo 的需求、实现与验收。
 - Windows 生成迁移包→Android 独立 Room 数据库导入、修改→导出→Windows 读取，核对日历归属、名称与已完成纪念状态。手机及桌面新数据字段进入现有整份快照链路。
 - 新版 Debug 安装在既有 `emulator-5554 / Pixel_8`（Android14），冷启动及登录页渲染正常；当次人机验证显示加载失败，未进行真实账号登录或绕过门禁，应用与测试包最后均停止，模拟器保持运行。
-- Windows 使用独立桌面和独立资料，未接管用户键鼠或剪贴板。未推送、发布、建标签或部署服务器。
 
 See [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md) for reference inspection, new controls, scroll-fix regression, data preservation and boundaries.
 

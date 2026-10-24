@@ -33,10 +33,13 @@ data class RecurrenceConfig(
     val enabled: Boolean = false,
     val type: RecurrenceType = RecurrenceType.NONE,
     val weeklyDays: Set<DayOfWeek> = emptySet(),
-    val endDate: LocalDate? = null
+    val endDate: LocalDate? = null,
+    val interval: Int = 1,
+    val invalidDatePolicy: String = "CLAMP",
+    val monthlyOrdinal: Int? = null
 ) {
     val isRecurring: Boolean
-        get() = enabled && type != RecurrenceType.NONE && endDate != null
+        get() = enabled && type != RecurrenceType.NONE
 }
 
 data class TodoDraft(

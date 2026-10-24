@@ -49,6 +49,10 @@ If the inherited summary disagrees with the repository, explicitly discard the s
 14. Thread `019d4e16-8f61-78e3-9028-1dccf67f1661` has a history of duplicate rollout files. On 2026-08-31, the active `17-19-59` rollout was backed up and given a structured `1.15.18 / versionCode 360` compacted repair baseline because the running process would not retain a sibling-rollout pointer. On resume, verify the last compacted marker and the current repository; never trust an earlier `1.15.11` summary in that file. See `docs/archive/historical/SESSION_STATE_REPAIR_2026-08-31.md` if forensic details are needed.
 15. The current remote-sync relay is encrypted snapshot transport only. Never describe it as account login, bidirectional sync, writable Windows storage, or an administrator backend until those paths are implemented and tested; keep `docs/current/CLOUD_SYNC_AND_ADMIN_DESIGN.md` aligned with the actual rollout state.
 
+## Public Source Material Boundary
+
+Keep third-party reference observations, comparative notes, extracted program resources and reference-analysis tools outside this project tree and its tracked history. Do not add an in-tree reference folder, submodule, junction or compatibility link. Public source, comments, release notes and current docs should describe PaykiTodo's own requirements, behavior, data contracts and verified outcomes. User-supplied third-party reference materials belong in a separately managed workspace directory, with no automatic push to the product remote.
+
 ## GitHub Public Repository Standards
 
 Keep the repository presentable as a public Android project, not just as a local debug folder.

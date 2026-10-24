@@ -56,7 +56,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.core.view.WindowCompat
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
@@ -68,7 +70,10 @@ import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -78,6 +83,7 @@ class ReminderActivity : ComponentActivity() {
     private var todoItem by mutableStateOf<TodoItem?>(null)
     private var taskGroup by mutableStateOf<ResolvedTaskGroup?>(null)
     private var triggeredAtMillis by mutableStateOf<Long?>(null)
+    private var loadJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +106,12 @@ class ReminderActivity : ComponentActivity() {
         })
 
         loadTodo()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(app.repository.observeCalendars(), app.settingsStore.settingsFlow) { _, _ -> Unit }
+                    .collect { loadTodo() }
+            }
+        }
 
         setContent {
             val settings = app.settingsStore.settingsFlow.collectAsStateWithLifecycle().value
@@ -129,40 +141,49 @@ class ReminderActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        todoItem = null
+        taskGroup = null
+        triggeredAtMillis = null
         loadTodo()
     }
 
     override fun onResume() {
         super.onResume()
-        todoItem?.let {
-            ActiveReminderStore.refreshActive(this, it.id)
-            ActiveReminderStore.markReminderSurfaceShown(this, it.id)
-            ReminderChainLogger.log(
-                context = this,
-                todoId = it.id,
-                source = "ReminderActivity",
-                stage = ReminderChainStage.REMINDER_ACTIVITY_RESUME,
-                status = ReminderChainStatus.OK,
-                reminderAtMillis = it.reminderAtMillis
-            )
-        }
+        loadTodo(markResumed = true)
     }
 
-    private fun loadTodo() {
+    private fun loadTodo(markResumed: Boolean = false) {
+        loadJob?.cancel()
         val todoId = intent.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L)
         if (todoId <= 0L) {
+            todoItem = null
+            taskGroup = null
             finish()
             return
         }
-        lifecycleScope.launch {
-            if (!app.settingsStore.hasLocalAccountAccess()) { finish(); return@launch }
-            val item = app.repository.getTodo(todoId)
-            if (item == null || item.isHistory) {
-                app.alarmScheduler.cancel(todoId)
-                ReminderForegroundService.dismiss(this@ReminderActivity, todoId)
-                finish()
+        loadJob = lifecycleScope.launch {
+            if (!app.settingsStore.hasLocalAccountAccess()) {
+                dismissUnavailableReminder(todoId)
                 return@launch
             }
+            val item = app.repository.getTodo(todoId)
+            if (item == null || item.isHistory) {
+                dismissUnavailableReminder(todoId)
+                return@launch
+            }
+            val group = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
+            if (item.calendarId.startsWith("shared:")) {
+                val calendar = app.database.todoDao().getCalendars().firstOrNull { it.id == item.calendarId }
+                if (calendar == null || !app.calendarCollaboration.canReadCachedCalendar(calendar)) {
+                    dismissUnavailableReminder(todoId)
+                    return@launch
+                }
+            }
+            if (!app.settingsStore.hasLocalAccountAccess()) {
+                dismissUnavailableReminder(todoId)
+                return@launch
+            }
+            if (isFinishing || intent.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L) != todoId) return@launch
 
             ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
             ActiveReminderStore.refreshActive(this@ReminderActivity, todoId)
@@ -171,8 +192,28 @@ class ReminderActivity : ComponentActivity() {
                 .takeIf { it > 0L }
                 ?: ActiveReminderStore.getTriggeredAtMillis(this@ReminderActivity, todoId)
             todoItem = item
-            taskGroup = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
+            taskGroup = group
+            if (markResumed) {
+                ActiveReminderStore.markReminderSurfaceShown(this@ReminderActivity, item.id)
+                ReminderChainLogger.log(
+                    context = this@ReminderActivity,
+                    todoId = item.id,
+                    source = "ReminderActivity",
+                    stage = ReminderChainStage.REMINDER_ACTIVITY_RESUME,
+                    status = ReminderChainStatus.OK,
+                    reminderAtMillis = item.reminderAtMillis
+                )
+            }
         }
+    }
+
+    private fun dismissUnavailableReminder(todoId: Long) {
+        todoItem = null
+        taskGroup = null
+        triggeredAtMillis = null
+        app.alarmScheduler.cancel(todoId)
+        ReminderForegroundService.dismiss(this, todoId)
+        finish()
     }
 
     private fun completeTodo() {
@@ -567,9 +608,10 @@ private fun reminderSecondaryTimeLabel(item: TodoItem?): String {
 
 private fun reminderEventTimeLabel(item: TodoItem): String {
     if (item.allDay) {
-        val start = item.startAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate()
+        val eventZone = com.example.todoalarm.data.calendarZone(item.eventTimeZoneId)
+        val start = item.startAtMillis?.let { java.time.Instant.ofEpochMilli(it).atZone(eventZone).toLocalDate() }
             ?: return "全天"
-        val endExclusive = item.endAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate()?.minusDays(1)
+        val endExclusive = item.endAtMillis?.let { java.time.Instant.ofEpochMilli(it).atZone(eventZone).toLocalDate().minusDays(1) }
             ?: start
         return if (start == endExclusive) {
             "全天\n$start"

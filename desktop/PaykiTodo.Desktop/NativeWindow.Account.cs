@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using static PaykiTodo.Desktop.NativeUi;
 using CheckBox = System.Windows.Controls.CheckBox;
+using ComboBox = System.Windows.Controls.ComboBox;
 using TextBox = System.Windows.Controls.TextBox;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 
@@ -15,7 +16,7 @@ internal sealed partial class NativeWindow
     private UIElement LoginPage()
     {
         var rememberedStore = new RememberedLoginStore(profileDirectory); var remembered = rememberedStore.Load();
-        var server = Input(ReadServerPreference()); var username = Input(remembered.Username);
+        var serverUrl = ReadServerPreference(); var username = Input(remembered.Username);
         var password = new PasswordBox { Padding = new Thickness(10), Margin = new Thickness(0, 4, 0, 16), MinHeight = 42 };
         var agreed = new CheckBox { Content = "我已阅读并同意用户协议与隐私政策" };
         password.Password = remembered.Password;
@@ -26,7 +27,8 @@ internal sealed partial class NativeWindow
         rememberPassword.Unchecked += (_, _) => rememberedStore.ForgetPassword();
         var error = Text("", 13, B("#AF3A32"));
         var form = Column(BrandHeading("欢迎回来", "在电脑上，接着安排你的一天。"),
-            Text("云服务器", 13), server, Text("账号", 13), username, Text("密码", 13), password, agreed,
+            Action("选择登录服务器", () => ChooseLoginServer(url => serverUrl = url)),
+            Text("账号", 13), username, Text("密码", 13), password, agreed,
             Row(rememberAccount, rememberPassword), Text("密码由当前 Windows 用户加密保存，不进入备份或云同步。", 12, Muted),
             Action("查看隐私政策", () => ShowPrivacy()), error);
         async void Login(bool register)
@@ -35,7 +37,7 @@ internal sealed partial class NativeWindow
             if (agreed.IsChecked != true) { error.Text = "请先阅读并同意用户协议与隐私政策"; return; }
             form.IsEnabled = false;
             try {
-                var url = CloudAccountSync.NormalizeServerUrl(server.Text);
+                var url = CloudAccountSync.NormalizeServerUrl(serverUrl);
                 var verification = await NativeVerification.GetTokenAsync(this, url, profileDirectory);
                 if (verification.Canceled) return;
                 await workspace.LoginAsync(url, username.Text, password.Password, register, verification.Token);
@@ -56,12 +58,41 @@ internal sealed partial class NativeWindow
         var folder = profileDirectory;
         try {
             var native = Path.Combine(folder, "native-server.txt"); if (File.Exists(native)) return File.ReadAllText(native).Trim();
+            if (workspace.Account != null) return workspace.Account.ServerUrl;
             var packaged = Path.Combine(AppContext.BaseDirectory, "client-config.json");
             if (File.Exists(packaged)) return JsonDocument.Parse(File.ReadAllText(packaged)).RootElement.GetProperty("serverUrl").GetString() ?? "";
             var legacy = Path.Combine(folder, "desktop-preferences.json");
             if (File.Exists(legacy)) return JsonDocument.Parse(File.ReadAllText(legacy)).RootElement.GetProperty("ServerUrl").GetString() ?? "";
         } catch { }
         return "";
+    }
+    private void ChooseLoginServer(Action<string>? selected = null)
+    {
+        var dialog = Dialog(this, "登录服务器", 550, 420);
+        var input = Input(ReadServerPreference());
+        System.Windows.Automation.AutomationProperties.SetName(input, "服务器地址");
+        var historyFile = Path.Combine(profileDirectory, "login-servers.json");
+        var saved = new List<string>();
+        try { if (File.Exists(historyFile)) saved = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(historyFile)) ?? new(); } catch { }
+        if (!string.IsNullOrWhiteSpace(input.Text) && !saved.Contains(input.Text)) saved.Insert(0, input.Text);
+        var history = new ComboBox { ItemsSource = saved, SelectedItem = input.Text };
+        System.Windows.Automation.AutomationProperties.SetName(history, "已保存的服务器");
+        history.SelectionChanged += (_, _) => { if (history.SelectedItem is string url) input.Text = url; };
+        var error = Text("", 13, B("#AF3A32"));
+        dialog.Content = DialogLayout(Column(BrandHeading("登录服务器", "服务器地址更换后，可在这里选择或填写新地址，再重新登录。"),
+            Text("已保存的服务器", 13), history, Text("服务器地址", 13), input,
+            Text("选择服务器不会自动迁移账号或上传本机资料。", 12, Muted), error),
+            Action("取消", () => dialog.Close()), Action("完成", () => {
+                try {
+                    var url = CloudAccountSync.NormalizeServerUrl(input.Text);
+                    Directory.CreateDirectory(profileDirectory);
+                    File.WriteAllText(Path.Combine(profileDirectory, "native-server.txt"), url);
+                    saved.RemoveAll(value => string.Equals(value, url, StringComparison.OrdinalIgnoreCase)); saved.Insert(0, url);
+                    File.WriteAllText(historyFile, JsonSerializer.Serialize(saved.Take(8).ToList()));
+                    selected?.Invoke(url); dialog.Close();
+                } catch (Exception failure) { error.Text = DesktopWorkspace.FriendlyError(failure); }
+            }, true));
+        dialog.ShowDialog();
     }
     private void ShowPrivacy()
     {
@@ -83,6 +114,7 @@ internal sealed partial class NativeWindow
         body.Children.Add(Card(Column(identity,
             Text("本机修改自动同步，每 15 秒检查云端；登录过期后仍可离线编辑和提醒。", 14, Muted),
             new Border { Height = 1, Background = Outline, Margin = new Thickness(0, 12, 0, 16) },
+            SettingRow("登录服务器", ReadServerPreference(), Action("管理服务器", () => ChooseLoginServer())),
             Row(Action("账号和设备", ShowAccountDetails), Action("立即同步", async () => await workspace.SyncAsync(), true), Action("重新登录", () => { reauthenticating = true; Render(); }), Action("退出登录", async () => {
                 if (Confirm("退出当前账号？本地数据会保留，重新登录后可继续使用。")) await workspace.LogoutAsync();
             })))));
@@ -130,7 +162,7 @@ internal sealed partial class NativeWindow
                 if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) { workspace.Notify("请输入手机显示的完整 http 或 https 地址"); return; }
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             }))));
-        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.26", 14, Muted),
+        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 " + typeof(NativeWindow).Assembly.GetName().Version?.ToString(3), 14, Muted),
             Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
         var categories = new[] { "账号与同步", "常规", "数据与备份", "分组管理", "AI 与规划", "连接手机", "关于" };
         var shell = new Grid { Margin = new Thickness(18, 0, 18, 18) };

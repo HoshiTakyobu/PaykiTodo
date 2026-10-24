@@ -112,6 +112,7 @@ import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.DataHealthCleanResult
 import com.example.todoalarm.data.DataHealthReport
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
@@ -483,7 +484,7 @@ internal fun DashboardBody(
     onNavigateCalendar: () -> Unit = {},
     onPreviewCalendarEvent: (TodoItem) -> Unit = {},
     onQuickCreateCalendarEvent: (LocalDateTime, LocalDateTime) -> Unit,
-    onMoveCalendarEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
+    onMoveCalendarEvent: (TodoItem, LocalDateTime, LocalDateTime, RecurrenceScope) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onToggleQuickChecklistGroup: (QuickChecklistGroup) -> Unit,
     onToggleQuickChecklistTask: (TodoItem) -> Unit,

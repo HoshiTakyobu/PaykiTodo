@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,7 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.CalendarEventTimeSlot
 import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.RecurrenceConfig
+import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.RecurrencePreviewResult
 import com.example.todoalarm.data.RecurrenceType
@@ -64,6 +66,10 @@ import com.example.todoalarm.data.buildWeeklyMultiSlotEventDrafts
 import com.example.todoalarm.data.previewCalendarRecurrence
 import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.data.toEpochMillis
+import com.example.todoalarm.data.calendarZone
+import com.example.todoalarm.data.calendarStartDateTime
+import com.example.todoalarm.data.calendarEndDateTime
+import com.example.todoalarm.data.decodeReminderOffsets
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
@@ -94,11 +100,17 @@ internal fun CalendarEventEditorDialog(
     onDismiss: () -> Unit,
     onConfirm: (CalendarEventDraft) -> Unit,
     onConfirmMultiple: ((List<CalendarEventDraft>) -> Unit)? = null,
-    onConfirmMultiSlotBundleShared: ((CalendarEventDraft) -> Unit)? = null
+    onConfirmMultiSlotBundleShared: ((CalendarEventDraft) -> Unit)? = null,
+    editingScope: RecurrenceScope = RecurrenceScope.CURRENT,
+    onChooseRecurrenceScope: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val now = remember { LocalDateTime.now().withSecond(0).withNano(0) }
+    val workspace = LocalWorkspacePreferences.current
+    val now = remember { LocalDateTime.now(calendarZone(workspace.settings.calendarDisplayTimeZoneId)).withSecond(0).withNano(0) }
     val seedDraft = remember(initialEvent?.id, initialDraft) { if (initialEvent == null) initialDraft else null }
+    val singleInstanceContext = initialEvent?.isRecurring == true && editingScope == RecurrenceScope.CURRENT
+    val defaultTimedClock = now.withMinute(0).plusMinutes(if (now.minute < 30) 30 else 60).toLocalTime()
+    val writableCalendars = workspace.calendars.filter { !it.id.startsWith("shared:") || it.sharedRole.uppercase() in setOf("OWNER", "EDITOR") }
     val sortedGroups = remember(groups) { groups.sortedWith(compareBy<TaskGroup> { it.sortOrder }.thenBy { it.id }) }
     val defaultGroupId = remember(sortedGroups) {
         sortedGroups.firstOrNull { it.name == "例行" }?.id ?: sortedGroups.firstOrNull()?.id ?: 0L
@@ -119,26 +131,45 @@ internal fun CalendarEventEditorDialog(
         mutableStateOf(initialSelectedGroupId)
     }
     var allDay by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.allDay ?: (seedDraft?.allDay == true)) }
+    var eventTimeZoneId by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.eventTimeZoneId ?: seedDraft?.eventTimeZoneId ?: workspace.settings.calendarDisplayTimeZoneId)
+    }
     var startAt by remember(initialEvent?.id) {
-        mutableStateOf(initialEvent?.startAtMillis?.let(::reminderAtMillisToDateTime) ?: seedDraft?.startAt ?: now.plusHours(2))
+        mutableStateOf(initialEvent?.calendarStartDateTime() ?: seedDraft?.startAt ?: now.withMinute(0).plusMinutes(if (now.minute < 30) 30 else 60))
     }
     var endAt by remember(initialEvent?.id) {
-        mutableStateOf(initialEvent?.endAtMillis?.let(::reminderAtMillisToDateTime) ?: seedDraft?.endAt ?: now.plusHours(3))
+        mutableStateOf(initialEvent?.calendarEndDateTime()?.let { if (initialEvent.allDay) it.minusDays(1) else it }
+            ?: seedDraft?.endAt ?: startAt.plusMinutes(workspace.settings.calendarDefaultDurationMinutes.toLong()))
     }
+    var rememberedTimedStart by remember { mutableStateOf(if (allDay) LocalDateTime.of(startAt.toLocalDate(), defaultTimedClock) else startAt) }
+    var rememberedTimedEnd by remember { mutableStateOf(if (allDay) LocalDateTime.of(endAt.toLocalDate(), defaultTimedClock).plusMinutes(workspace.settings.calendarDefaultDurationMinutes.toLong()) else endAt) }
+    var eventBusyStatus by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.eventBusyStatus ?: seedDraft?.eventBusyStatus ?: if (allDay) "FREE" else "BUSY") }
+    var eventVisibility by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.eventVisibility ?: seedDraft?.eventVisibility ?: "DEFAULT") }
+    var timedBusyStatus by remember { mutableStateOf(if (allDay) "BUSY" else eventBusyStatus) }
+    var allDayBusyStatus by remember { mutableStateOf(if (allDay) eventBusyStatus else "FREE") }
     var accentColorHex by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: PaykiColorPresets.DefaultEvent)
     }
-    val initialReminderEnabled = initialEvent?.reminderEnabled == true || seedDraft?.normalizedAllReminderOffsetsMinutes?.isNotEmpty() == true
+    val initialReminderEnabled = initialEvent?.reminderEnabled ?: seedDraft?.let {
+        it.normalizedAllReminderOffsetsMinutes.isNotEmpty() || (it.allDay && it.allDayReminderRulesJson !in listOf("", "[]"))
+    } ?: workspace.settings.calendarTimedDefaultRemindersCsv.isNotBlank()
     var reminderEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialReminderEnabled)
     }
     var reminderInput by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
-            (initialEvent?.configuredReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
-                ?: seedDraft?.normalizedReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
-                ?: listOf(15)).joinToString(",")
+            (initialEvent?.configuredReminderOffsetsMinutes
+                ?: seedDraft?.normalizedReminderOffsetsMinutes
+                ?: decodeReminderOffsets(workspace.settings.calendarTimedDefaultRemindersCsv)).joinToString(",")
         )
     }
+    var allDayRulesJson by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.let { it.allDayReminderRulesJson.ifBlank { calendarLegacyAllDayRules(it.configuredReminderOffsetsMinutes) } }
+            ?: seedDraft?.let { it.allDayReminderRulesJson.ifBlank { if (it.allDay) calendarLegacyAllDayRules(it.normalizedReminderOffsetsMinutes) else workspace.settings.calendarAllDayDefaultRemindersJson } }
+            ?: workspace.settings.calendarAllDayDefaultRemindersJson)
+    }
+    var timedReminderEnabled by remember { mutableStateOf(if (allDay) workspace.settings.calendarTimedDefaultRemindersCsv.isNotBlank() else reminderEnabled) }
+    var allDayReminderEnabled by remember { mutableStateOf(if (allDay) reminderEnabled else allDayRulesJson != "[]") }
     var checkInReminderInput by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
             (initialEvent?.configuredCheckInReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
@@ -150,8 +181,7 @@ internal fun CalendarEventEditorDialog(
     var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.vibrateEnabled ?: seedDraft?.vibrateEnabled ?: defaultVibrateEnabled) }
     val reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
-    val workspace = LocalWorkspacePreferences.current
-    var selectedCalendarId by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.calendarId ?: seedDraft?.calendarId ?: "default") }
+    var selectedCalendarId by remember(initialEvent?.id, seedDraft) { mutableStateOf((initialEvent?.calendarId ?: seedDraft?.calendarId ?: "default").takeIf { id -> writableCalendars.any { it.id == id } } ?: "default") }
     var countdownPastMode by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.countdownPastMode ?: seedDraft?.countdownPastMode ?: "AUTO") }
     var countdownEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.countdownEnabled == true || seedDraft?.countdownEnabled == true)
@@ -159,7 +189,7 @@ internal fun CalendarEventEditorDialog(
     var checkInEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.checkInEnabled == true || seedDraft?.checkInEnabled == true)
     }
-    var recurringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.isRecurring == true || seedDraft?.recurrence?.enabled == true) }
+    var recurringEnabled by remember(initialEvent?.id, seedDraft, editingScope) { mutableStateOf(!singleInstanceContext && (initialEvent?.isRecurring == true || seedDraft?.recurrence?.enabled == true)) }
     var recurrenceType by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.recurrenceTypeEnum ?: seedDraft?.recurrence?.type ?: RecurrenceType.DAILY)
     }
@@ -177,6 +207,12 @@ internal fun CalendarEventEditorDialog(
     var recurrenceEndDate by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.recurrenceEndDate ?: seedDraft?.recurrence?.endDate ?: startAt.toLocalDate().plusDays(90))
     }
+    var recurrenceNeverEnds by remember(initialEvent?.id, seedDraft) { mutableStateOf(
+        if (initialEvent?.isRecurring == true) initialEvent.recurrenceEndDate == null else seedDraft?.recurrence?.endDate == null)
+    }
+    var recurrenceInterval by remember(initialEvent?.id, seedDraft) { mutableStateOf((initialEvent?.recurrenceInterval ?: seedDraft?.recurrence?.interval ?: 1).toString()) }
+    var recurrenceInvalidDatePolicy by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.recurrenceInvalidDatePolicy ?: seedDraft?.recurrence?.invalidDatePolicy?.takeIf { seedDraft?.recurrence?.enabled == true } ?: "SKIP") }
+    var monthlyOrdinal by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.recurrenceMonthlyOrdinal ?: seedDraft?.recurrence?.monthlyOrdinal ?: ((startAt.dayOfMonth - 1) / 7 + 1)) }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showRecurrencePicker by remember { mutableStateOf(false) }
     var showGroupPicker by remember { mutableStateOf(false) }
@@ -271,14 +307,16 @@ internal fun CalendarEventEditorDialog(
     val eventEndValid = if (allDay) !endAt.toLocalDate().isBefore(startAt.toLocalDate()) else endAt.isAfter(startAt)
     val confirmEnabled = title.isNotBlank() &&
         (if (courseModeActive) courseSlotsValid else eventEndValid) &&
-        (!reminderEnabled || (effectiveReminderValidation.isValid && effectiveCheckInReminderValidation.isValid))
+        (!recurringEnabled || recurrenceInterval.toIntOrNull() in 1..10000) &&
+        (!recurringEnabled || recurrenceNeverEnds || !recurrenceEndDate.isBefore(startAt.toLocalDate())) &&
+        (!reminderEnabled || ((allDay || effectiveReminderValidation.isValid) && effectiveCheckInReminderValidation.isValid))
     EditorBottomSheet(
         title = if (initialEvent == null) "新增日程" else "编辑日程",
         confirmLabel = "完成",
         confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,
         onConfirm = {
-            val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
+            val normalizedOffsets = if (!allDay && reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
             val normalizedCheckInOffsets = if (
                 reminderEnabled && checkInEnabled && checkInReminderValidation.isValid
             ) {
@@ -294,6 +332,11 @@ internal fun CalendarEventEditorDialog(
                 startAt = startAt,
                 endAt = endAt,
                 allDay = allDay,
+                eventTimeZoneId = eventTimeZoneId,
+                allDayReminderRulesJson = if (allDay) { if (reminderEnabled) allDayRulesJson else "[]" } else "",
+                eventBusyStatus = eventBusyStatus,
+                eventVisibility = eventVisibility,
+                eventParticipantsJson = initialEvent?.eventParticipantsJson ?: seedDraft?.eventParticipantsJson ?: "[]",
                 accentColorHex = accentColorHex,
                 reminderMinutesBefore = normalizedOffsets.minOrNull(),
                 reminderOffsetsMinutes = normalizedOffsets,
@@ -309,7 +352,10 @@ internal fun CalendarEventEditorDialog(
                     enabled = recurringEnabled,
                     type = recurrenceType,
                     weeklyDays = weeklyDays,
-                    endDate = recurrenceEndDate
+                    endDate = if (recurrenceNeverEnds && !courseModeActive) null else recurrenceEndDate,
+                    interval = recurrenceInterval.toIntOrNull() ?: 1,
+                    invalidDatePolicy = recurrenceInvalidDatePolicy,
+                    monthlyOrdinal = monthlyOrdinal
                 ),
                 multiSlotBundleId = initialEvent?.multiSlotBundleId ?: seedDraft?.multiSlotBundleId,
                 groupId = selectedGroupId,
@@ -372,7 +418,7 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 EditorBlock(title = "日历") {
-                    PreferenceChoice("所属日历", selectedCalendarId, workspace.calendars.map { it.id to it.name }) { id ->
+                    PreferenceChoice("所属日历", selectedCalendarId, writableCalendars.map { it.id to it.name }) { id ->
                         selectedCalendarId = id
                         workspace.calendars.firstOrNull { it.id == id }?.let { accentColorHex = it.colorHex }
                     }
@@ -402,9 +448,22 @@ internal fun CalendarEventEditorDialog(
                         Text("全天日程", fontWeight = FontWeight.SemiBold)
                         Switch(
                             checked = allDay,
-                            onCheckedChange = {
-                                allDay = it
-                                if (it) courseMultiSlotEnabled = false
+                            modifier = Modifier.testTag("calendar-editor-all-day"),
+                            onCheckedChange = { target ->
+                                if (target) {
+                                    rememberedTimedStart = startAt; rememberedTimedEnd = endAt
+                                    timedReminderEnabled = reminderEnabled; timedBusyStatus = eventBusyStatus
+                                    startAt = startAt.toLocalDate().atStartOfDay(); endAt = endAt.toLocalDate().atStartOfDay()
+                                    reminderEnabled = allDayReminderEnabled; eventBusyStatus = allDayBusyStatus
+                                    courseMultiSlotEnabled = false
+                                } else {
+                                    allDayReminderEnabled = reminderEnabled; allDayBusyStatus = eventBusyStatus
+                                    startAt = LocalDateTime.of(startAt.toLocalDate(), rememberedTimedStart.toLocalTime())
+                                    endAt = LocalDateTime.of(endAt.toLocalDate(), rememberedTimedEnd.toLocalTime())
+                                    if (!endAt.isAfter(startAt)) endAt = startAt.plusMinutes(workspace.settings.calendarDefaultDurationMinutes.toLong())
+                                    reminderEnabled = timedReminderEnabled; eventBusyStatus = timedBusyStatus
+                                }
+                                allDay = target
                             }
                         )
                     }
@@ -698,7 +757,7 @@ internal fun CalendarEventEditorDialog(
                             Text("提醒", fontWeight = FontWeight.SemiBold)
                             Text(
                                 if (allDay) {
-                                    "全天日程按当天 09:00 作为基准；开启后同时进行全屏提醒和通知栏提醒。"
+                                    "按所选日期和钟点提醒；开启后沿用全屏提醒和通知栏提醒。"
                                 } else {
                                     "按开始时间提前提醒；开启后同时进行全屏提醒和通知栏提醒。"
                                 },
@@ -713,7 +772,7 @@ internal fun CalendarEventEditorDialog(
                     }
 
                     if (reminderEnabled) {
-                        ReminderOffsetSelector(
+                        if (allDay) AllDayReminderRulesEditor(allDayRulesJson) { allDayRulesJson = it } else ReminderOffsetSelector(
                             label = "普通提醒",
                             rawInput = reminderInput,
                             validation = effectiveReminderValidation,
@@ -766,7 +825,10 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 EditorBlock(title = "重复") {
-                    if (courseModeActive) {
+                    if (singleInstanceContext) {
+                        Text("仅修改当前日程，循环规则和其他日期保持不变。", style = MaterialTheme.typography.bodyMedium)
+                        if (onChooseRecurrenceScope != null) TextButton(onClick = onChooseRecurrenceScope) { Text("选择循环修改范围") }
+                    } else if (courseModeActive) {
                         Surface(
                             shape = RoundedCornerShape(18.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
@@ -833,7 +895,7 @@ internal fun CalendarEventEditorDialog(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "循环到 $recurrenceEndDate 为止",
+                                        text = if (recurrenceNeverEnds) "每隔 $recurrenceInterval 次 · 永不截止" else "每隔 $recurrenceInterval 次 · 循环到 $recurrenceEndDate",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -845,14 +907,25 @@ internal fun CalendarEventEditorDialog(
                                 value = recurrenceSummaryLabel(recurrenceType, startAt, weeklyDays),
                                 onClick = { showRecurrencePicker = true }
                             )
-                            if (recurrenceType == RecurrenceType.MONTHLY_DAY && startAt.dayOfMonth > 28) {
-                                Text(
-                                    text = "（若某个月不存在 ${startAt.dayOfMonth} 日，则自动落到该月最后一天）",
-                                    color = Color(0xFFC62828),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                            OutlinedTextField(
+                                value = recurrenceInterval,
+                                onValueChange = { recurrenceInterval = it.filter(Char::isDigit).take(5) },
+                                label = { Text("重复间隔（1–10000）") },
+                                singleLine = true,
+                                isError = recurrenceInterval.toIntOrNull() !in 1..10000,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            if (recurrenceType == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
+                                PreferenceChoice("每月星期位置", monthlyOrdinal.toString(), (1..5).map { it.toString() to "第${it}个" } + listOf("-1" to "最后一个")) { monthlyOrdinal = it.toInt() }
                             }
-                            OutlinedButton(
+                            if (recurrenceType == RecurrenceType.MONTHLY_DAY && startAt.dayOfMonth > 28) {
+                                PreferenceChoice("不存在的日期", recurrenceInvalidDatePolicy, listOf("SKIP" to "跳过该月", "CLAMP" to "使用月末")) { recurrenceInvalidDatePolicy = it }
+                            }
+                            if (recurrenceType == RecurrenceType.YEARLY_DATE && startAt.monthValue == 2 && startAt.dayOfMonth == 29) {
+                                PreferenceChoice("非闰年", recurrenceInvalidDatePolicy, listOf("SKIP" to "跳过该年", "CLAMP" to "使用2月末")) { recurrenceInvalidDatePolicy = it }
+                            }
+                            PreferenceChoice("截止", if (recurrenceNeverEnds) "NEVER" else "DATE", listOf("NEVER" to "永不截止", "DATE" to "指定日期")) { recurrenceNeverEnds = it == "NEVER" }
+                            if (!recurrenceNeverEnds) OutlinedButton(
                                 onClick = { showDatePicker(context, recurrenceEndDate) { recurrenceEndDate = it } },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -876,6 +949,10 @@ internal fun CalendarEventEditorDialog(
                                             startAt = startAt,
                                             endAt = endAt,
                                             allDay = allDay,
+                                            eventTimeZoneId = eventTimeZoneId,
+                                            allDayReminderRulesJson = if (allDay) { if (reminderEnabled) allDayRulesJson else "[]" } else "",
+                                            eventBusyStatus = eventBusyStatus,
+                                            eventVisibility = eventVisibility,
                                             accentColorHex = accentColorHex,
                                             reminderMinutesBefore = normalizedOffsets.minOrNull(),
                                             reminderOffsetsMinutes = normalizedOffsets,
@@ -891,7 +968,10 @@ internal fun CalendarEventEditorDialog(
                                                 enabled = true,
                                                 type = recurrenceType,
                                                 weeklyDays = weeklyDays,
-                                                endDate = recurrenceEndDate
+                                                endDate = if (recurrenceNeverEnds) null else recurrenceEndDate,
+                                                interval = recurrenceInterval.toIntOrNull() ?: 1,
+                                                invalidDatePolicy = recurrenceInvalidDatePolicy,
+                                                monthlyOrdinal = monthlyOrdinal
                                             ),
                                             groupId = selectedGroupId,
                                             groupName = sortedGroups.firstOrNull { it.id == selectedGroupId }?.name.orEmpty()
@@ -906,6 +986,12 @@ internal fun CalendarEventEditorDialog(
                     }
                 }
 
+                EditorBlock(title = "时区与可见范围") {
+                    CalendarTimeZoneChoice("日程时区", eventTimeZoneId) { eventTimeZoneId = it }
+                    PreferenceChoice("忙闲", eventBusyStatus, listOf("BUSY" to "忙碌", "FREE" to "空闲")) { eventBusyStatus = it }
+                    PreferenceChoice("可见范围", eventVisibility, listOf("DEFAULT" to "沿用日历设置", "PRIVATE" to "私密", "PUBLIC" to "公开")) { eventVisibility = it }
+                    Text("个人日历的内容只在你的账号内同步；共享日历的成员访问由服务器权限控制。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 EditorBlock(title = "日程颜色") {
                     Row(
                         modifier = Modifier

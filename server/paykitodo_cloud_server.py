@@ -29,6 +29,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
+try:
+    import calendar_collaboration
+except ModuleNotFoundError:
+    from server import calendar_collaboration
+
 
 MAX_JSON_BYTES = 128 * 1024
 MAX_SNAPSHOT_BYTES = 32 * 1024 * 1024
@@ -219,6 +224,7 @@ class CloudDatabase:
             if "session_expires_at" not in session_columns:
                 connection.execute("ALTER TABLE sessions ADD COLUMN session_expires_at INTEGER")
                 connection.execute("UPDATE sessions SET session_expires_at=refresh_expires_at WHERE session_expires_at IS NULL")
+            calendar_collaboration.initialize_schema(connection)
 
 
 DB = CloudDatabase(DB_PATH)
@@ -253,6 +259,9 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:  # noqa: N802
         self.dispatch("DELETE")
+
+    def do_PATCH(self) -> None:  # noqa: N802
+        self.dispatch("PATCH")
 
     def dispatch(self, method: str) -> None:
         try:
@@ -289,6 +298,8 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 self.download_snapshot()
             elif path == "/v2/sync/snapshot" and method == "PUT":
                 self.upload_snapshot()
+            elif path == "/v3/calendars" or path.startswith("/v3/calendars/") or path == "/v3/calendar-invitations" or path.startswith("/v3/calendar-invitations/"):
+                calendar_collaboration.handle_request(self, method, path, DB, RATE_LIMITER, now_seconds, token_hash)
             elif path == "/admin" and method == "GET":
                 self.admin_page()
             elif path == "/admin/login" and method == "POST":
@@ -303,6 +314,8 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "接口不存在")
         except ApiError as error:
             self.send_json(error.status, {"error": error.code, "message": error.message})
+        except calendar_collaboration.CalendarError as error:
+            self.send_json(error.status, {"error": error.code, "message": error.message, **error.details})
         except (BrokenPipeError, ConnectionResetError):
             return
         except Exception as error:  # Keep internal details out of public responses.

@@ -58,9 +58,9 @@ internal sealed partial class NativeWindow : Window
         };
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && calendarDraft != null) { ClearCalendarDraft(); e.Handled = true; } };
         this.workspace.Changed += OnWorkspaceChanged;
-        timer.Tick += async (_, _) => { await this.workspace.SyncAsync(); ReviewCountdowns(); }; timer.Start();
+        timer.Tick += async (_, _) => { await this.workspace.SyncAsync(); try { await this.workspace.SyncSharedCalendarsAsync(); } catch (Exception error) { this.workspace.Notify(DesktopWorkspace.FriendlyError(error)); } ReviewCountdowns(); }; timer.Start();
         Closed += (_, _) => { timer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
-        Loaded += async (_, _) => { if (workspace == null) reminders = new DesktopReminders(this, this.workspace); await this.workspace.SyncAsync(); };
+        Loaded += async (_, _) => { if (workspace == null) reminders = new DesktopReminders(this, this.workspace, OpenItemDetails); await this.workspace.SyncAsync(); };
         Render();
     }
 
@@ -159,16 +159,18 @@ internal sealed partial class NativeWindow : Window
     }
     private void Change(Action<DesktopSnapshotDocument> action)
     {
-        try { workspace.Edit(action); } catch (Exception error) { workspace.Notify(DesktopWorkspace.FriendlyError(error)); }
+        try { workspace.Edit(action); _ = SyncSharedChanges(); } catch (Exception error) { workspace.Notify(DesktopWorkspace.FriendlyError(error)); }
     }
+    private async Task SyncSharedChanges() { try { await workspace.SyncSharedCalendarsAsync(); } catch (Exception error) { workspace.Notify(DesktopWorkspace.FriendlyError(error)); } }
     private void EditItem(bool isEvent, long? id = null, DateTime? seed = null, System.Windows.Point? anchorScreen = null)
     {
         if (workspace.Document == null) return;
         var existing = id.HasValue ? workspace.Document.EditFor(id.Value) : null;
         var scope = existing?.RecurrenceType is not (null or "NONE") ? NativeEditors.ChooseRecurrenceScope(this, "编辑循环事项") : RecurrenceScope.Current;
         if (scope == null) return;
-        var calendars = workspace.Document.Calendars.OrderBy(c => (workspace.Document.Settings["hiddenCalendarIds"] as System.Text.Json.Nodes.JsonArray)?.Any(v => v?.GetValue<string>() == c.Id) == true).ToList();
-        var edit = NativeEditors.Item(this, isEvent, workspace.Document.Groups, existing, seed ?? selectedDay, calendars, scope.Value, anchorScreen);
+        if (existing != null && !workspace.Document.SharedWritable(existing.CalendarId)) { workspace.Notify("你只有此共享日历的查看权限。"); return; }
+        var calendars = workspace.Document.Calendars.Where(c => workspace.Document.SharedWritable(c.Id)).OrderBy(c => (workspace.Document.Settings["hiddenCalendarIds"] as System.Text.Json.Nodes.JsonArray)?.Any(v => v?.GetValue<string>() == c.Id) == true).ToList();
+        var edit = NativeEditors.Item(this, isEvent, workspace.Document.Groups, existing, seed ?? selectedDay, calendars, scope.Value, anchorScreen, workspace.Document);
         if (edit != null) Change(document => document.SaveItem(edit, id, scope.Value));
     }
     private void CreateChecklist()
@@ -176,14 +178,42 @@ internal sealed partial class NativeWindow : Window
         var draft = NativeEditors.Checklist(this);
         if (draft != null) Change(document => document.CreateQuickChecklist(draft));
     }
+    internal void OpenItemDetails(long id)
+    {
+        Show(); WindowState = WindowState.Normal; Activate();
+        var item = workspace.Document?.Items.FirstOrDefault(value => value.Id == id);
+        if (item == null) { workspace.Notify("这条事项已删除或当前不可用。"); return; }
+        if (workspace.Document!.SharedCalendar(item.CalendarId)?["sharedRole"]?.GetValue<string>() == "revoked") { workspace.Notify("此日历的访问权限已撤销。"); return; }
+        reauthenticating = false;
+        if (item.IsEvent) {
+            selectedDay = CalendarLocal(item, item.StartAtMillis).Date; miniMonth = selectedDay;
+            if (workspace.Document!.Settings["hiddenCalendarIds"] is System.Text.Json.Nodes.JsonArray hidden && hidden.Any(value => value?.GetValue<string>() == item.CalendarId))
+                Change(document => {
+                    if (document.Settings["hiddenCalendarIds"] is System.Text.Json.Nodes.JsonArray values)
+                        foreach (var value in values.Where(value => value?.GetValue<string>() == item.CalendarId).ToList()) values.Remove(value);
+                });
+        }
+        Navigate(item.IsEvent ? "日历" : "待办"); Preview(item);
+    }
+    private void CopyItem(long id)
+    {
+        if (workspace.Document?.EditFor(id) is not { } source) return;
+        var draft = workspace.Document.CopyDraft(id);
+        var edit = NativeEditors.Item(this, source.IsEvent, workspace.Document.Groups, draft,
+            DesktopCalendarTime.Wall(source.StartAtMillis ?? source.DueAtMillis ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), source.EventTimeZoneId), workspace.Document.Calendars, preferences: workspace.Document);
+        if (edit != null) Change(document => document.SaveItem(edit));
+    }
     private bool Confirm(string text) => Confirmation(this, text);
-    private static string TimeLabel(DesktopItem item) => item.IsEvent
-        ? item.AllDay ? Local(item.StartAtMillis).ToString("yyyy-MM-dd") + (Local(item.EndAtMillis).AddTicks(-1).Date > Local(item.StartAtMillis).Date ? " – " + Local(item.EndAtMillis).AddTicks(-1).ToString("yyyy-MM-dd") : "") + " 全天"
-        : Local(item.StartAtMillis).ToString("MM-dd HH:mm") + " – " + Local(item.EndAtMillis).ToString(Local(item.EndAtMillis).Date == Local(item.StartAtMillis).Date ? "HH:mm" : "MM-dd HH:mm")
+    private string TimeLabel(DesktopItem item) => item.IsEvent
+        ? item.AllDay ? CalendarLocal(item, item.StartAtMillis).ToString("yyyy-MM-dd") + (CalendarLocal(item, item.EndAtMillis).AddTicks(-1).Date > CalendarLocal(item, item.StartAtMillis).Date ? " – " + CalendarLocal(item, item.EndAtMillis).AddTicks(-1).ToString("yyyy-MM-dd") : "") + " 全天"
+        : CalendarLocal(item, item.StartAtMillis).ToString("MM-dd HH:mm") + " – " + CalendarLocal(item, item.EndAtMillis).ToString(CalendarLocal(item, item.EndAtMillis).Date == CalendarLocal(item, item.StartAtMillis).Date ? "HH:mm" : "MM-dd HH:mm")
         : item.DueAtMillis == long.MaxValue ? "今天想做的事" : "DDL  " + Local(item.DueAtMillis).ToString("yyyy-MM-dd HH:mm");
     private static DateTime Local(long? value) => value is null or long.MaxValue ? DateTime.Today : DateTimeOffset.FromUnixTimeMilliseconds(value.Value).LocalDateTime;
     private IEnumerable<DesktopItem> Active => renderedItems.Where(item => !item.Canceled && !item.Completed);
-    private IEnumerable<DesktopItem> EventsOn(DateTime date) => Active.Where(item => item.IsEvent && Local(item.StartAtMillis) < date.Date.AddDays(1) && Local(item.EndAtMillis) > date.Date);
+    private DateTime CalendarNow => DesktopCalendarTime.Wall(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), workspace.Document?.CalendarDisplayTimeZoneId);
+    private DateTime CalendarLocal(DesktopItem item, long? millis) => millis is null or long.MaxValue ? CalendarNow.Date
+        : DesktopCalendarTime.Wall(millis.Value, item.AllDay ? item.EventTimeZoneId : workspace.Document?.CalendarDisplayTimeZoneId);
+    private IEnumerable<DesktopItem> EventsOn(DateTime date) => Active.Where(item => item.IsEvent && CalendarLocal(item, item.StartAtMillis) < date.Date.AddDays(1) && CalendarLocal(item, item.EndAtMillis) > date.Date);
     private sealed class NativeCommand(Action action) : System.Windows.Input.ICommand
     {
         public event EventHandler? CanExecuteChanged { add { } remove { } }

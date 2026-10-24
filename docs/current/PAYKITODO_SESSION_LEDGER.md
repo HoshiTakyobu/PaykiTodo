@@ -12,7 +12,11 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.16.26 / versionCode 391` round re-audits the original calendar/UI feedback and supplies a Chinese per-user Windows MSI. It fixes recurrence scopes and date anchors, all-day/cross-day/multi-slot handling, calendar color propagation and responsive editing, adds Windows local OCR, and removes delayed Android memorial prompts. Room remains32. Verified:193 Android units,13 device tests,38 Windows regressions plus one14-stage isolated UIA flow, cross-client archives and installer install/upgrade/repair/uninstall with user data preserved. The emulator enters the login page; human verification failed to load, so no new real-account login is claimed. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md). No push, release or deployment; office environment, physical pointer workflows and OEM behavior remain verification limits.
+The local `1.17.0 / versionCode 392` update implements the calendar and account requirements in [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Both clients preserve the strong-reminder queue and add timezone/calendar/recurrence/all-day/copy/collaboration controls, complete current item detail navigation, login-server selection and compact account actions. Room is33. New APK/EXE/MSI and UI evidence exist; 216 Android units, 25 distinct emulator tests, 51 Windows regressions plus one 14-stage UIA flow, 21 server tests and MSI lifecycle checks passed. See [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). No push, public release or production deployment.
+
+### Previous 1.16.26 implementation
+
+The local `1.16.26 / versionCode 391` round delivered calendar scope/dragging improvements and the Chinese Windows MSI. Historical evidence and limits remain in [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md).
 
 ### Previous 1.16.25 implementation
 
@@ -87,7 +91,6 @@ These areas were implemented and then repeatedly revised based on user feedback,
 
 The original session shows repeated user focus on:
 
-- calendar polish and completion level
 - removing redundant calendar header controls
 - better themed wallpapers for light and dark contexts
 - clearer text contrast in dashboard, settings, and launch screens

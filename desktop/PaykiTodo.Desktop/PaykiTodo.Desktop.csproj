@@ -9,9 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PaykiTodo</AssemblyName>
     <RootNamespace>PaykiTodo.Desktop</RootNamespace>
-    <Version>1.16.26</Version>
-    <AssemblyVersion>1.16.26.0</AssemblyVersion>
-    <FileVersion>1.16.26.0</FileVersion>
+    <Version>1.17.0</Version>
+    <AssemblyVersion>1.17.0.0</AssemblyVersion>
+    <FileVersion>1.17.0.0</FileVersion>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\PaykiTodo.ico</ApplicationIcon>

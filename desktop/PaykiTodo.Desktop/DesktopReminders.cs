@@ -35,14 +35,13 @@ internal sealed partial class DesktopSnapshotDocument
     {
         var result = new List<DesktopReminder>();
         foreach (var item in Items.Where(item => !item.Completed && !item.Canceled)) {
+            if (SharedCalendar(item.CalendarId)?["sharedRole"]?.GetValue<string>()?.Equals("revoked", StringComparison.OrdinalIgnoreCase) == true) continue;
             var raw = FindTask(item.Id)!;
             if (raw["reminderEnabled"]?.GetValue<bool>() != true) continue;
-            var offsets = (raw["reminderOffsetsCsv"]?.GetValue<string>() ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(value => int.TryParse(value, out var offset) ? offset : -1).Where(value => value >= 0).Distinct().ToList();
-            var anchor = item.IsEvent ? item.StartAtMillis ?? item.DueAtMillis : item.DueAtMillis;
-            if (item.IsEvent && item.AllDay) anchor = MillisAt(LocalTime(anchor).Date.AddHours(9));
-            var triggers = offsets.Count > 0 && anchor != long.MaxValue ? offsets.Select(offset => anchor - offset * 60000L).Order().ToList()
-                : raw["reminderAtMillis"]?.GetValue<long?>() is { } single ? new List<long> { single } : new List<long>();
+            var edit = DesktopItemEdit.FromJson(raw);
+            var computed = DesktopCalendarTime.Triggers(edit);
+            var explicitAllDay = item.IsEvent && item.AllDay && !string.IsNullOrWhiteSpace(edit.AllDayReminderRulesJson);
+            var triggers = computed.Count > 0 ? computed.ToList() : !explicitAllDay && raw["reminderAtMillis"]?.GetValue<long?>() is { } single ? new List<long> { single } : new List<long>();
             foreach (var trigger in triggers.Where(trigger => trigger > after && trigger <= until))
                 result.Add(new DesktopReminder(item.Id, trigger, trigger == triggers.Last()));
         }
@@ -68,9 +67,10 @@ internal sealed class DesktopReminders : IDisposable
     private long checkedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     private Window? alert;
     private long? notifiedItem;
-    public DesktopReminders(Window owner, DesktopWorkspace workspace)
+    private readonly Action<long>? openDetails;
+    public DesktopReminders(Window owner, DesktopWorkspace workspace, Action<long>? openDetails = null)
     {
-        this.owner = owner; this.workspace = workspace;
+        this.owner = owner; this.workspace = workspace; this.openDetails = openDetails;
         workspace.LoginRequired += OnLoginRequired;
         workspace.Changed += OnWorkspaceChanged;
         OnWorkspaceChanged();
@@ -79,9 +79,9 @@ internal sealed class DesktopReminders : IDisposable
         tray = new System.Windows.Forms.NotifyIcon { Icon = trayIcon, Text = "PaykiTodo", Visible = true };
         tray.DoubleClick += (_, _) => { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); };
         tray.BalloonTipClicked += (_, _) => {
-            if (workspace.SessionExpired) { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); return; }
             var item = workspace.Document?.Items.FirstOrDefault(item => item.Id == notifiedItem);
-            if (item != null && !item.Completed && !item.Canceled) { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); }
+            if (notifiedItem is { } id && openDetails != null) { openDetails(id); return; }
+            if (item != null) { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); }
         };
         var menu = new System.Windows.Forms.ContextMenuStrip();
         menu.Items.Add("打开 PaykiTodo", null, (_, _) => { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); });
@@ -89,7 +89,12 @@ internal sealed class DesktopReminders : IDisposable
         timer.Tick += (_, _) => Tick(); timer.Start();
     }
     private void OnLoginRequired() => owner.Dispatcher.Invoke(() => tray.ShowBalloonTip(10000, "PaykiTodo 登录已过期", "打开账号重新登录。本机数据和离线提醒保留。", System.Windows.Forms.ToolTipIcon.Info));
-    private void OnWorkspaceChanged() => owner.Dispatcher.Invoke(() => schedule.Update(workspace.Document, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+    private void OnWorkspaceChanged() => owner.Dispatcher.Invoke(() => {
+        schedule.Update(workspace.Document, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        if (alert == null || notifiedItem is not { } id) return;
+        var item = workspace.Document?.Items.FirstOrDefault(value => value.Id == id);
+        if (item == null || item.Completed || item.Canceled || workspace.Document?.SharedCalendar(item.CalendarId)?["sharedRole"]?.GetValue<string>()?.Equals("revoked", StringComparison.OrdinalIgnoreCase) == true) alert.Close();
+    });
     private void Tick()
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -110,6 +115,7 @@ internal sealed class DesktopReminders : IDisposable
         var heading = Text(item.Title, 26, bold: true); heading.TextAlignment = TextAlignment.Center;
         var body = Column(BrandHeading(item.IsEvent ? "日程提醒" : "待办提醒"), clock, heading, Text(item.Notes, 15, Muted));
         var actions = new System.Windows.Controls.WrapPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        if (openDetails != null) actions.Children.Add(Action("查看详情", () => { window.Close(); openDetails(item.Id); }, item.IsEvent));
         if (!item.IsEvent) actions.Children.Add(Action("我已完成", () => { workspace.Edit(document => document.Complete(item.Id)); window.Close(); }, true));
         if (!item.IsEvent && current.IsFinal) actions.Children.Add(Action("延后 10 分钟", () => {
             workspace.Edit(document => document.Snooze(item.Id, DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeMilliseconds())); window.Close();

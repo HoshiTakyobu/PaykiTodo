@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,10 +15,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +46,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.AppSettings
@@ -51,7 +61,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
+@OptIn(ExperimentalLayoutApi::class)
+internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit, refreshProfileOnOpen: Boolean = true) {
     val app = LocalContext.current.applicationContext as TodoApplication
     val coordinator = app.remoteSyncCoordinator
     val scope = rememberCoroutineScope()
@@ -68,6 +79,8 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
     var keepLocal by remember { mutableStateOf(false) }
     var confirmSafetyRestore by remember { mutableStateOf(false) }
     var success by remember { mutableStateOf<String?>(null) }
+    var serverDialogVisible by remember { mutableStateOf(false) }
+    val loginServerUrl = settings.remoteSyncServerUrl.ifBlank { com.example.todoalarm.BuildConfig.PAYKITODO_CLOUD_BASE_URL }.trimEnd('/')
     fun runAction(action: suspend () -> Unit) {
         if (busy) return
         busy = true
@@ -85,7 +98,9 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
             }
         }
     }
-    LaunchedEffect(Unit) { if (app.settingsStore.hasValidRemoteSession()) runAction { coordinator.refreshAccountProfile() } }
+    LaunchedEffect(refreshProfileOnOpen) {
+        if (refreshProfileOnOpen && app.settingsStore.hasValidRemoteSession()) runAction { coordinator.refreshAccountProfile() }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AccountInfoRow("账号", settings.remoteSyncUsername)
@@ -100,6 +115,7 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
             showDevices = true
             runAction { devices = coordinator.accountDevices() }
         }
+        AccountInfoRow("登录服务器", loginServerUrl) { serverDialogVisible = true }
         HorizontalDivider()
         Text(
             when {
@@ -119,16 +135,36 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
         success?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         if (!app.settingsStore.hasValidRemoteSession()) {
-            OutlinedButton(onClick = { loginVisible = true }, modifier = Modifier.fillMaxWidth()) { Text("重新登录") }
+            FilledTonalButton(onClick = { loginVisible = true }, enabled = !busy) { Text("重新登录") }
         } else {
-            OutlinedButton(enabled = !busy, onClick = { runAction { coordinator.syncNow() } }, modifier = Modifier.fillMaxWidth()) { Text("立即同步") }
+            FilledTonalButton(enabled = !busy, onClick = { runAction { coordinator.syncNow() } }) {
+                Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("立即同步", modifier = Modifier.padding(start = 6.dp))
+            }
             Text("云同步在联网且数据更改后自动进行，不需要开启连接电脑。", style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(enabled = !busy, onClick = { keepLocal = false; runAction { review = coordinator.inspectCloud() } }, modifier = Modifier.fillMaxWidth()) { Text("检查云端并恢复") }
-            OutlinedButton(enabled = !busy, onClick = { keepLocal = true; runAction { review = coordinator.inspectCloud() } }, modifier = Modifier.fillMaxWidth()) { Text("保留本机上传") }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedButton(enabled = !busy, onClick = { keepLocal = false; runAction { review = coordinator.inspectCloud() } }) {
+                    Icon(Icons.Rounded.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("检查云端", modifier = Modifier.padding(start = 6.dp))
+                }
+                OutlinedButton(enabled = !busy, onClick = { keepLocal = true; runAction { review = coordinator.inspectCloud() } }) {
+                    Icon(Icons.Rounded.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("保留本机上传", modifier = Modifier.padding(start = 6.dp))
+                }
+            }
         }
-        OutlinedButton(enabled = !busy, onClick = { confirmSafetyRestore = true }, modifier = Modifier.fillMaxWidth()) { Text("恢复最近的操作前副本") }
         Text("替换前会保留双方副本；若检查后又有修改，需重新检查。", style = MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick = { confirmLogout = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("退出账号") }
+        HorizontalDivider()
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(enabled = !busy, onClick = { confirmSafetyRestore = true }) {
+                Icon(Icons.Rounded.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("恢复操作前副本", modifier = Modifier.padding(start = 6.dp))
+            }
+            TextButton(onClick = { confirmLogout = true }, enabled = !busy) {
+                Icon(Icons.Rounded.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                Text("退出账号", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(start = 6.dp))
+            }
+        }
     }
 
     if (loginVisible) {
@@ -137,11 +173,19 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
                 onLogin = { username, password, token -> coordinator.login(username, password, token).also { if (it.succeeded) loginVisible = false } },
                 onRegister = { username, name, password, token -> coordinator.register(username, name, password, token) },
                 onRecover = coordinator::recoverPassword, onRecoveryCode = {},
-                turnstileEnabled = !com.example.todoalarm.BuildConfig.PAYKITODO_CLOUD_BASE_URL.endsWith(".invalid"),
-                turnstileChallengeUrl = com.example.todoalarm.BuildConfig.PAYKITODO_CLOUD_BASE_URL.trimEnd('/') + "/v2/auth/challenge"
+                turnstileEnabled = !loginServerUrl.endsWith(".invalid"),
+                turnstileChallengeUrl = loginServerUrl + "/v2/auth/challenge",
+                loginServerUrl = loginServerUrl,
+                onSelectLoginServer = coordinator::selectLoginServer,
             )
         }
     }
+    if (serverDialogVisible) LoginServerDialog(
+        currentServerUrl = loginServerUrl,
+        defaultServerUrl = com.example.todoalarm.BuildConfig.PAYKITODO_CLOUD_BASE_URL,
+        onDismiss = { serverDialogVisible = false },
+        onSelect = coordinator::selectLoginServer,
+    )
     review?.let { checked ->
         val summary = checked.snapshot.remoteSummary()
         AlertDialog(onDismissRequest = { if (!busy) review = null },
@@ -260,7 +304,8 @@ private fun AccountInfoRow(title: String, value: String, onClick: (() -> Unit)? 
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(title, style = MaterialTheme.typography.bodyMedium)
-        Text(value, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (onClick != null) Icon(Icons.AutoMirrored.Rounded.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(14.dp))
     }
 }

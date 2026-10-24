@@ -2,7 +2,7 @@ namespace PaykiTodo.Desktop;
 
 // The native UI and cloud transport share this local-first workspace. A network
 // response must never replace edits made while that request was in flight.
-internal sealed class DesktopWorkspace
+internal sealed partial class DesktopWorkspace
 {
     private readonly DesktopSecureStore store;
     private readonly SemaphoreSlim syncGate = new(1, 1);
@@ -245,6 +245,7 @@ internal sealed class DesktopWorkspace
             if (!keepLocal) {
                 var document = DesktopSnapshotDocument.FromArchiveBytes(review.Remote.Document.ToArchiveBytes());
                 document.PreserveLocalApiKeys(Document);
+                document.PreserveSharedData(Document);
                 Account = Account with { Revision = revision, Dirty = false, VerifiedDataFingerprint = document.DataFingerprint() }; Document = document; editVersion++;
                 store.Save(Account, Document); Notify("已恢复云端副本；双方操作前副本已保留。");
             } else {

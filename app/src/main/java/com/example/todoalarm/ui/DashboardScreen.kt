@@ -706,9 +706,10 @@ fun DashboardScreen(
                             startAt = startAt,
                             endAt = endAt,
                             allDay = false,
+                            eventTimeZoneId = uiState.settings.calendarDisplayTimeZoneId,
                             accentColorHex = PaykiColorPresets.DefaultEvent,
-                            reminderMinutesBefore = 15,
-                            reminderOffsetsMinutes = listOf(15),
+                            reminderMinutesBefore = com.example.todoalarm.data.decodeReminderOffsets(uiState.settings.calendarTimedDefaultRemindersCsv).firstOrNull(),
+                            reminderOffsetsMinutes = com.example.todoalarm.data.decodeReminderOffsets(uiState.settings.calendarTimedDefaultRemindersCsv),
                             ringEnabled = defaultReminderRing,
                             vibrateEnabled = defaultReminderVibrate,
                             reminderDeliveryMode = uiState.settings.defaultCalendarReminderMode,
@@ -717,14 +718,17 @@ fun DashboardScreen(
                         editScope = RecurrenceScope.CURRENT
                         editorVisible = true
                     },
-                    onMoveCalendarEvent = { item, startAt, endAt ->
+                    onMoveCalendarEvent = { item, startAt, endAt, targetScope ->
                         scope.launch {
                             val recurrence = if (item.isRecurring) {
                                 RecurrenceConfig(
                                     enabled = true,
                                     type = item.recurrenceTypeEnum,
                                     weeklyDays = storageStringToWeekdays(item.recurrenceWeekdays),
-                                    endDate = item.recurrenceEndDate
+                                    endDate = item.recurrenceEndDate,
+                                    interval = item.recurrenceInterval,
+                                    invalidDatePolicy = item.recurrenceInvalidDatePolicy,
+                                    monthlyOrdinal = item.recurrenceMonthlyOrdinal
                                 )
                             } else {
                                 RecurrenceConfig()
@@ -733,9 +737,13 @@ fun DashboardScreen(
                                 title = item.title,
                                 notes = item.notes,
                                 location = item.location,
-                                startAt = startAt,
-                                endAt = endAt,
+                                startAt = startAt.atZone(com.example.todoalarm.data.calendarZone(uiState.settings.calendarDisplayTimeZoneId)).withZoneSameInstant(com.example.todoalarm.data.calendarZone(item.eventTimeZoneId)).toLocalDateTime(),
+                                endAt = endAt.atZone(com.example.todoalarm.data.calendarZone(uiState.settings.calendarDisplayTimeZoneId)).withZoneSameInstant(com.example.todoalarm.data.calendarZone(item.eventTimeZoneId)).toLocalDateTime(),
                                 allDay = item.allDay,
+                                eventTimeZoneId = item.eventTimeZoneId,
+                                allDayReminderRulesJson = item.allDayReminderRulesJson,
+                                eventBusyStatus = item.eventBusyStatus,
+                                eventVisibility = item.eventVisibility,
                                 accentColorHex = item.accentColorHex ?: PaykiColorPresets.DefaultEvent,
                                 reminderMinutesBefore = item.configuredReminderOffsetsMinutes.minOrNull(),
                                 reminderOffsetsMinutes = item.configuredReminderOffsetsMinutes,
@@ -750,11 +758,10 @@ fun DashboardScreen(
                                 recurrence = recurrence,
                                 groupId = item.groupId
                             )
-                            val targetScope = if (item.isRecurring) RecurrenceScope.CURRENT_AND_FUTURE else RecurrenceScope.CURRENT
                             val message = onUpdateCalendarEvent(item, draft, targetScope)
                             Toast.makeText(
                                 context,
-                                message ?: if (item.isRecurring) "已调整本次及后续日程" else "日程已移动",
+                                message ?: "日程已移动",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -1078,6 +1085,14 @@ fun DashboardScreen(
             groups = uiState.groups,
             defaultRingEnabled = editingItem?.ringEnabled ?: defaultReminderRing,
             defaultVibrateEnabled = editingItem?.vibrateEnabled ?: defaultReminderVibrate,
+            editingScope = editScope,
+            onChooseRecurrenceScope = editingItem?.takeIf { it.isRecurring }?.let { item -> {
+                editorVisible = false
+                editingItem = null
+                calendarDraftSeed = null
+                scopeDialogTarget = item
+                scopeDialogMode = ScopeDialogMode.EDIT_EVENT
+            } },
             onDismiss = {
                 editorVisible = false
                 editingItem = null
@@ -1332,18 +1347,8 @@ private data class RecurrenceScopeOptionUi(
 
 internal fun TodoItem.toCalendarCopyDraft(): CalendarEventDraft {
     check(isEvent) { "Only calendar events can be copied" }
-    val startAt = reminderAtMillisToDateTime(startAtMillis ?: dueAtMillis)
-    val endAt = reminderAtMillisToDateTime(endAtMillis ?: startAtMillis ?: dueAtMillis)
-    val recurrence = if (isRecurring) {
-        RecurrenceConfig(
-            enabled = true,
-            type = recurrenceTypeEnum,
-            weeklyDays = storageStringToWeekdays(recurrenceWeekdays),
-            endDate = recurrenceEndDate
-        )
-    } else {
-        RecurrenceConfig()
-    }
+    val startAt = com.example.todoalarm.data.calendarZone(eventTimeZoneId).let { zone -> java.time.Instant.ofEpochMilli(startAtMillis ?: dueAtMillis).atZone(zone).toLocalDateTime() }
+    val endAt = com.example.todoalarm.data.calendarZone(eventTimeZoneId).let { zone -> java.time.Instant.ofEpochMilli(endAtMillis ?: startAtMillis ?: dueAtMillis).atZone(zone).toLocalDateTime() }.let { if (allDay) it.minusDays(1) else it }
     return CalendarEventDraft(
         title = title,
         notes = notes,
@@ -1351,6 +1356,10 @@ internal fun TodoItem.toCalendarCopyDraft(): CalendarEventDraft {
         startAt = startAt,
         endAt = endAt,
         allDay = allDay,
+        eventTimeZoneId = eventTimeZoneId,
+        allDayReminderRulesJson = allDayReminderRulesJson,
+        eventBusyStatus = eventBusyStatus,
+        eventVisibility = eventVisibility,
         accentColorHex = accentColorHex ?: PaykiColorPresets.DefaultEvent,
         reminderMinutesBefore = configuredReminderOffsetsMinutes.firstOrNull(),
         reminderOffsetsMinutes = configuredReminderOffsetsMinutes,
@@ -1362,7 +1371,7 @@ internal fun TodoItem.toCalendarCopyDraft(): CalendarEventDraft {
         countdownPastMode = countdownPastMode,
         checkInEnabled = checkInEnabled,
         checkInReminderOffsetsMinutes = configuredCheckInReminderOffsetsMinutes,
-        recurrence = recurrence,
+        recurrence = RecurrenceConfig(),
         multiSlotBundleId = null,
         groupId = groupId
     )

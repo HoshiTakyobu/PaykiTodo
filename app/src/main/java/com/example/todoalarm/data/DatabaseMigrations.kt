@@ -499,6 +499,29 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_32_33 = object : Migration(32, 33) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            for (table in listOf("todo_items", "recurring_task_templates")) {
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `eventTimeZoneId` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `allDayReminderRulesJson` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `eventBusyStatus` TEXT NOT NULL DEFAULT 'BUSY'")
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `eventVisibility` TEXT NOT NULL DEFAULT 'DEFAULT'")
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `eventParticipantsJson` TEXT NOT NULL DEFAULT '[]'")
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `recurrenceInterval` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `recurrenceInvalidDatePolicy` TEXT NOT NULL DEFAULT 'CLAMP'")
+            }
+            db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `recurrenceNeverEnds` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `sharedEventId` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `planner_calendars` ADD COLUMN `description` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `planner_calendars` ADD COLUMN `ownerAccount` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE `planner_calendars` ADD COLUMN `shareMode` TEXT NOT NULL DEFAULT 'PRIVATE'")
+            db.execSQL("ALTER TABLE `planner_calendars` ADD COLUMN `membersJson` TEXT NOT NULL DEFAULT '[]'")
+            db.execSQL("ALTER TABLE `planner_calendars` ADD COLUMN `sharedRole` TEXT NOT NULL DEFAULT 'OWNER'")
+            db.execSQL("ALTER TABLE `planner_calendars` ADD COLUMN `sharedRevision` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE `planner_calendars` ADD COLUMN `sharedServerUrl` TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
     private fun createActivityRecordsTable(db: SupportSQLiteDatabase) {
         db.execSQL(
             """

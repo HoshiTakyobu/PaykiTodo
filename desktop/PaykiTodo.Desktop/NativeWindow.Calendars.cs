@@ -11,7 +11,8 @@ namespace PaykiTodo.Desktop;
 internal sealed partial class NativeWindow
 {
     private static ControlTemplate? calendarToggleTemplate;
-    private bool CalendarVisible(DesktopItem item) => (workspace.Document!.Settings["hiddenCalendarIds"] as JsonArray)?.Any(value => value?.GetValue<string>() == item.CalendarId) != true;
+    private bool CalendarVisible(DesktopItem item) => workspace.Document!.SharedCalendar(item.CalendarId)?["sharedRole"]?.GetValue<string>() != "revoked" &&
+        (workspace.Document.Settings["hiddenCalendarIds"] as JsonArray)?.Any(value => value?.GetValue<string>() == item.CalendarId) != true;
 
     private UIElement CalendarList()
     {
@@ -20,7 +21,7 @@ internal sealed partial class NativeWindow
             var hidden = (workspace.Document.Settings["hiddenCalendarIds"] as JsonArray)?.Any(value => value?.GetValue<string>() == calendar.Id) == true;
             var fill = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(calendar.ColorHex);
             var tick = .2126 * fill.R + .7152 * fill.G + .0722 * fill.B > 180 ? "#182033" : "White";
-            var toggle = new CheckBox { Content = calendar.Name, IsChecked = !hidden, Foreground = Ink, BorderBrush = B(calendar.ColorHex), Background = B(calendar.ColorHex), Tag = tick, Margin = new Thickness(0, 7, 0, 7) };
+            var toggle = new CheckBox { Content = calendar.Name, IsChecked = !hidden, Foreground = Ink, BorderBrush = B(calendar.ColorHex), Background = B(calendar.ColorHex), Tag = tick, Margin = new Thickness(0, 7, 0, 7), ToolTip = calendar.Description };
             toggle.Template = calendarToggleTemplate ??= (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
                 <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="CheckBox">
                   <StackPanel Orientation="Horizontal">
@@ -41,33 +42,42 @@ internal sealed partial class NativeWindow
             });
             toggle.Checked += (_, _) => ChangeVisibility(); toggle.Unchecked += (_, _) => ChangeVisibility();
             var menu = new ContextMenu(); var edit = new MenuItem { Header = "编辑日历" }; edit.Click += (_, _) => EditCalendar(calendar); menu.Items.Add(edit);
-            if (calendar.Id != "default") { var remove = new MenuItem { Header = "删除日历" }; remove.Click += (_, _) => {
-                if (Confirm("删除此日历？其中的日程和循环规则将移至常规日历，不会删除事项。")) Change(document => document.DeleteCalendar(calendar.Id));
+            var up = new MenuItem { Header = "向上移动" }; up.Click += (_, _) => Change(document => document.MoveCalendar(calendar.Id, -1)); menu.Items.Add(up);
+            var down = new MenuItem { Header = "向下移动" }; down.Click += (_, _) => Change(document => document.MoveCalendar(calendar.Id, 1)); menu.Items.Add(down);
+            if (calendar.Id != "default") { var remove = new MenuItem { Header = DesktopSnapshotDocument.IsSharedCalendar(calendar.Id) ? "移除本机显示" : "删除日历" }; remove.Click += (_, _) => {
+                if (Confirm(DesktopSnapshotDocument.IsSharedCalendar(calendar.Id) ? "移除此共享日历的本机显示与缓存？服务器日历和成员访问不受影响。" : "删除此日历？其中的日程和循环规则将移至常规日历，不会删除事项。")) Change(document => document.DeleteCalendar(calendar.Id));
             }; menu.Items.Add(remove); }
             toggle.ContextMenu = menu;
-            list.Children.Add(toggle);
+            var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); row.Children.Add(toggle);
+            var more = CalendarAction("⋯", () => { menu.PlacementTarget = toggle; menu.IsOpen = true; }); more.Width = 28; more.Padding = new Thickness(0); more.BorderThickness = new Thickness(0); more.Background = null;
+            System.Windows.Automation.AutomationProperties.SetName(more, "管理日历：" + calendar.Name);
+            Grid.SetColumn(more, 1); row.Children.Add(more); list.Children.Add(row);
         }
         list.Children.Add(CalendarAction("管理日历", () => {
             var dialog = Dialog(this, "管理日历", 500, 520); var entries = Column(BrandHeading("管理日历"));
-            foreach (var calendar in workspace.Document.Calendars) entries.Children.Add(Action(calendar.Name + "  ·  编辑", () => { dialog.Close(); EditCalendar(calendar); }));
+            foreach (var calendar in workspace.Document.Calendars) entries.Children.Add(SettingRow(calendar.Name, calendar.Description, Action("编辑", () => { dialog.Close(); EditCalendar(calendar); })));
             dialog.Content = DialogLayout(entries, Action("新增日历", () => { dialog.Close(); EditCalendar(null); }, true), Action("关闭", () => dialog.Close())); dialog.ShowDialog();
         }));
+        list.Children.Add(CalendarAction("共享与邀请", ShowSharedCalendars));
         return list;
     }
 
     private void EditCalendar(DesktopCalendar? calendar)
     {
-        var dialog = Dialog(this, calendar == null ? "新增日历" : "编辑日历", 500, 420);
+        if (calendar != null && DesktopSnapshotDocument.IsSharedCalendar(calendar.Id)) { EditSharedCalendarMetadata(calendar); return; }
+        var dialog = Dialog(this, calendar == null ? "新增日历" : "编辑日历", 550, 520);
         var name = Input(calendar?.Name ?? ""); System.Windows.Automation.AutomationProperties.SetName(name, "日历名称");
         var colors = new[] { "#3370FF", "#16A369", "#DB5298", "#BD6B17", "#7955CC", "#D94646" };
         var color = new ComboBox { ItemsSource = colors.Append(calendar?.ColorHex ?? colors[0]).Distinct().ToList(), SelectedItem = calendar?.ColorHex ?? colors[0] };
         System.Windows.Automation.AutomationProperties.SetName(color, "日历颜色");
         var preview = Text("课程安排 · 09:00–09:30", 16, B(color.SelectedItem.ToString()!));
         color.SelectionChanged += (_, _) => preview.Foreground = B(color.SelectedItem.ToString()!);
-        var body = Column(BrandHeading(dialog.Title), Text("名称"), name, Text("颜色"), color, preview);
+        var description = Input(calendar?.Description ?? "", true); description.MinHeight = 70;
+        var body = Column(BrandHeading(dialog.Title), Text("名称"), name, Text("说明"), description, Text("颜色"), color, preview);
         var save = Action("完成", () => {
             if (string.IsNullOrWhiteSpace(name.Text)) return;
-            Change(document => document.SaveCalendar(calendar?.Id, name.Text, color.SelectedItem.ToString()!)); dialog.Close();
+            Change(document => document.SaveCalendar(calendar?.Id, name.Text, color.SelectedItem.ToString()!, description.Text,
+                calendar?.OwnerAccount ?? workspace.Account?.Username ?? "")); dialog.Close();
         }, true);
         var cancel = Action("取消", () => dialog.Close()); cancel.IsCancel = true;
         dialog.Content = DialogLayout(body, cancel, save); dialog.ShowDialog();

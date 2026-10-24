@@ -52,6 +52,11 @@ data class AppSettings(
     val desktopFontFamily: String? = null,
     val countdownPastDays: Int = 7,
     val hiddenCalendarIds: Set<String> = emptySet(),
+    val calendarDefaultDurationMinutes: Int = 30,
+    val calendarTimedDefaultRemindersCsv: String = "15",
+    val calendarAllDayDefaultRemindersJson: String = "[{\"daysBefore\":0,\"minuteOfDay\":480}]",
+    val calendarDisplayTimeZoneId: String = "",
+    val calendarAuxiliaryTimeZoneId: String = "",
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val weekStartMode: WeekStartMode = WeekStartMode.MONDAY,
     val defaultSnoozeMinutes: Int = 10,
@@ -74,6 +79,7 @@ data class AppSettings(
     val autoBackupEnabled: Boolean = false,
     val remoteSyncEnabled: Boolean = false,
     val remoteSyncServerUrl: String = "",
+    val remoteSyncAccountServerUrl: String = "",
     val remoteSyncDeviceId: String = "",
     val remoteSyncSecret: String = "",
     val remoteSyncUsername: String = "",
@@ -273,6 +279,32 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun selectRemoteServer(serverUrl: String) {
+        val current = currentSettings()
+        securePreferences.edit().remove(KEY_REMOTE_SYNC_ACCESS_TOKEN).remove(KEY_REMOTE_SYNC_REFRESH_TOKEN).commit()
+        preferences.edit()
+            .putString("remote_sync_account_server_url", current.remoteSyncAccountServerUrl.ifBlank { current.remoteSyncServerUrl })
+            .putString(KEY_REMOTE_SYNC_SERVER_URL, serverUrl)
+            .putLong(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT, 0)
+            .putLong(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT, 0)
+            .commit()
+        refresh()
+    }
+
+    fun updateCalendarPreferences(durationMinutes: Int, timedRemindersCsv: String, allDayRemindersJson: String, displayTimeZoneId: String, auxiliaryTimeZoneId: String) {
+        require(durationMinutes in 1..1440) { "默认时长必须为1至1440分钟" }
+        decodeAllDayReminderRules(allDayRemindersJson)
+        calendarZone(displayTimeZoneId); calendarZone(auxiliaryTimeZoneId)
+        preferences.edit()
+            .putInt("calendarDefaultDurationMinutes", durationMinutes)
+            .putString("calendarTimedDefaultRemindersCsv", encodeReminderOffsets(decodeReminderOffsets(timedRemindersCsv)))
+            .putString("calendarAllDayDefaultRemindersJson", allDayRemindersJson)
+            .putString("calendarDisplayTimeZoneId", displayTimeZoneId)
+            .putString("calendarAuxiliaryTimeZoneId", auxiliaryTimeZoneId)
+            .apply()
+        refresh()
+    }
+
     fun remoteSyncDeviceId(): String {
         val existing = preferences.getString(KEY_REMOTE_SYNC_DEVICE_ID, null).orEmpty()
         if (existing.isNotBlank()) return existing
@@ -305,6 +337,7 @@ class AppSettingsStore(context: Context) {
             .putBoolean("local_account_locked", false)
             .putString(KEY_REMOTE_SYNC_SERVER_URL, serverUrl.trim().trimEnd('/'))
             .putString(KEY_REMOTE_SYNC_USERNAME, username.trim().lowercase())
+            .putString("remote_sync_account_server_url", serverUrl.trim().trimEnd('/'))
             .putString(KEY_REMOTE_SYNC_DEVICE_ID, deviceId)
             .putLong(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT, accessExpiresAt)
             .putLong(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT, refreshExpiresAt)
@@ -603,6 +636,11 @@ class AppSettingsStore(context: Context) {
             .putString("desktop_font_family", settings.desktopFontFamily)
             .putInt("countdown_past_days", settings.countdownPastDays.coerceIn(0, 365))
             .putStringSet("hidden_calendar_ids", settings.hiddenCalendarIds)
+            .putInt("calendarDefaultDurationMinutes", settings.calendarDefaultDurationMinutes)
+            .putString("calendarTimedDefaultRemindersCsv", settings.calendarTimedDefaultRemindersCsv)
+            .putString("calendarAllDayDefaultRemindersJson", settings.calendarAllDayDefaultRemindersJson)
+            .putString("calendarDisplayTimeZoneId", settings.calendarDisplayTimeZoneId)
+            .putString("calendarAuxiliaryTimeZoneId", settings.calendarAuxiliaryTimeZoneId)
             .putString(KEY_WEEK_START_MODE, settings.weekStartMode.name)
             .putInt(KEY_DEFAULT_SNOOZE, settings.defaultSnoozeMinutes)
             .putBoolean(KEY_DEFAULT_RING, settings.defaultRingEnabled)
@@ -706,6 +744,11 @@ class AppSettingsStore(context: Context) {
             desktopFontFamily = preferences.getString("desktop_font_family", null),
             countdownPastDays = preferences.getInt("countdown_past_days", 7).coerceIn(0, 365),
             hiddenCalendarIds = preferences.getStringSet("hidden_calendar_ids", emptySet())?.toSet() ?: emptySet(),
+            calendarDefaultDurationMinutes = preferences.getInt("calendarDefaultDurationMinutes", 30),
+            calendarTimedDefaultRemindersCsv = preferences.getString("calendarTimedDefaultRemindersCsv", "15").orEmpty(),
+            calendarAllDayDefaultRemindersJson = preferences.getString("calendarAllDayDefaultRemindersJson", "[{\"daysBefore\":0,\"minuteOfDay\":480}]").orEmpty(),
+            calendarDisplayTimeZoneId = preferences.getString("calendarDisplayTimeZoneId", "").orEmpty(),
+            calendarAuxiliaryTimeZoneId = preferences.getString("calendarAuxiliaryTimeZoneId", "").orEmpty(),
             themeMode = ThemeMode.entries.firstOrNull { it.name == themeName } ?: ThemeMode.SYSTEM,
             weekStartMode = WeekStartMode.entries.firstOrNull { it.name == weekStartName } ?: WeekStartMode.MONDAY,
             defaultSnoozeMinutes = preferences.getInt(KEY_DEFAULT_SNOOZE, 10).coerceIn(5, 60),
@@ -730,6 +773,7 @@ class AppSettingsStore(context: Context) {
             autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false),
             remoteSyncEnabled = preferences.getBoolean(KEY_REMOTE_SYNC_ENABLED, false),
             remoteSyncServerUrl = preferences.getString(KEY_REMOTE_SYNC_SERVER_URL, "").orEmpty(),
+            remoteSyncAccountServerUrl = preferences.getString("remote_sync_account_server_url", preferences.getString(KEY_REMOTE_SYNC_SERVER_URL, "")).orEmpty(),
             remoteSyncDeviceId = preferences.getString(KEY_REMOTE_SYNC_DEVICE_ID, "").orEmpty(),
             remoteSyncSecret = securePreferences.getString(KEY_REMOTE_SYNC_SECRET, null)
                 ?: preferences.getString(KEY_REMOTE_SYNC_SECRET, "").orEmpty(),

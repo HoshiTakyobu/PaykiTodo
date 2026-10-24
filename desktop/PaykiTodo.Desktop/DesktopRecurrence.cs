@@ -25,7 +25,7 @@ internal sealed partial class DesktopSnapshotDocument
             return first;
         } catch { root = before; throw; }
     }
-    private static readonly string[] RecurrenceFields = { "recurrenceType", "recurrenceWeekdays", "recurrenceEndEpochDay", "recurrenceAnchorDueAtMillis", "recurringSeriesId", "recurrenceMonthlyOrdinal", "recurrenceMonthlyWeekday", "recurrenceMonthlyDay", "recurrenceYearlyMonth", "recurrenceYearlyDay" };
+    private static readonly string[] RecurrenceFields = { "recurrenceType", "recurrenceWeekdays", "recurrenceEndEpochDay", "recurrenceAnchorDueAtMillis", "recurringSeriesId", "recurrenceMonthlyOrdinal", "recurrenceMonthlyWeekday", "recurrenceMonthlyDay", "recurrenceYearlyMonth", "recurrenceYearlyDay", "recurrenceInterval", "recurrenceInvalidDatePolicy" };
     private static readonly ChineseLunisolarCalendar Lunar = new();
     private static DateTime LocalTime(long millis) => DateTimeOffset.FromUnixTimeMilliseconds(millis).LocalDateTime;
     private static long MillisAt(DateTime date) => new DateTimeOffset(date).ToUnixTimeMilliseconds();
@@ -46,17 +46,17 @@ internal sealed partial class DesktopSnapshotDocument
         }
         return anchor;
     }
-    private long InstanceDay(JsonObject item) => EpochDay(LocalTime(Anchor(item)));
+    private long InstanceDay(JsonObject item) => EpochDay(DesktopCalendarTime.Wall(Anchor(item), item["eventTimeZoneId"]?.GetValue<string>()));
 
     internal static DesktopItemEdit NormalizeItemEdit(DesktopItemEdit edit)
     {
         if (!edit.IsEvent || !edit.AllDay || edit.StartAtMillis == null || edit.EndAtMillis == null) return edit;
-        var start = LocalTime(edit.StartAtMillis.Value).Date;
-        var end = LocalTime(edit.EndAtMillis.Value);
+        var start = DesktopCalendarTime.Wall(edit.StartAtMillis.Value, edit.EventTimeZoneId).Date;
+        var end = DesktopCalendarTime.Wall(edit.EndAtMillis.Value, edit.EventTimeZoneId);
         // Storage uses an exclusive midnight end, matching Android overlap queries.
         end = end.TimeOfDay == TimeSpan.Zero ? end.Date : end.Date.AddDays(1);
         if (end <= start) end = start.AddDays(1);
-        return edit with { StartAtMillis = MillisAt(start), EndAtMillis = MillisAt(end) };
+        return edit with { StartAtMillis = DesktopCalendarTime.Millis(start, edit.EventTimeZoneId), EndAtMillis = DesktopCalendarTime.Millis(end, edit.EventTimeZoneId) };
     }
 
     private long SaveRecurringItem(DesktopItemEdit edit, JsonObject original, RecurrenceScope scope)
@@ -75,11 +75,13 @@ internal sealed partial class DesktopSnapshotDocument
             item["canceled"]?.GetValue<bool>() != true && (edit.IsEvent || item["completed"]?.GetValue<bool>() != true) &&
             (scope == RecurrenceScope.All || InstanceDay(item) >= split)).OrderBy(InstanceDay).ToList();
         if (targets.Count == 0) return id;
-        var editedAt = LocalTime((edit.IsEvent ? edit.StartAtMillis : edit.DueAtMillis) ?? Anchor(original));
+        var prior = DesktopItemEdit.FromJson(original);
+        if (edit.IsEvent && IsContentOnlyEdit(edit, prior)) return SaveSeriesContent(edit, original, targets, scope, split, series);
+        var editedAt = DesktopCalendarTime.Wall((edit.IsEvent ? edit.StartAtMillis : edit.DueAtMillis) ?? Anchor(original), edit.IsEvent ? edit.EventTimeZoneId : "");
         if (scope == RecurrenceScope.All && EpochDay(editedAt) == split)
             edit = ShiftEdit(edit, DayFromEpoch(targets.Min(InstanceDay)) + editedAt.TimeOfDay);
         ValidateItemEdit(edit);
-        var firstAt = LocalTime((edit.IsEvent ? edit.StartAtMillis : edit.DueAtMillis) ?? Anchor(original));
+        var firstAt = DesktopCalendarTime.Wall((edit.IsEvent ? edit.StartAtMillis : edit.DueAtMillis) ?? Anchor(original), edit.IsEvent ? edit.EventTimeZoneId : "");
         var oldTemplate = Templates.OfType<JsonObject>().FirstOrDefault(t => t["seriesId"]?.GetValue<string>() == series);
         var targetSeries = scope == RecurrenceScope.All ? series : Guid.NewGuid().ToString();
         var prototype = (JsonObject)original.DeepClone();
@@ -87,7 +89,7 @@ internal sealed partial class DesktopSnapshotDocument
         try {
             if (oldTemplate != null) {
                 if (scope == RecurrenceScope.All) Templates.Remove(oldTemplate);
-                else oldTemplate["endEpochDay"] = Math.Min(oldTemplate["endEpochDay"]?.GetValue<long>() ?? split - 1, split - 1);
+                else { oldTemplate["endEpochDay"] = Math.Min(oldTemplate["endEpochDay"]?.GetValue<long>() ?? split - 1, split - 1); oldTemplate["recurrenceNeverEnds"] = false; }
             }
             if (scope == RecurrenceScope.CurrentAndFuture) TruncateInstanceRules(series, split);
             prototype["recurringSeriesId"] = edit.RecurrenceType == "NONE" ? null : targetSeries;
@@ -117,11 +119,46 @@ internal sealed partial class DesktopSnapshotDocument
             return resultId;
         } catch { root = previousRoot; throw; }
     }
+    private static bool IsContentOnlyEdit(DesktopItemEdit edit, DesktopItemEdit prior) =>
+        edit.StartAtMillis == prior.StartAtMillis && edit.EndAtMillis == prior.EndAtMillis && edit.AllDay == prior.AllDay &&
+        edit.EventTimeZoneId == prior.EventTimeZoneId && edit.RecurrenceType == prior.RecurrenceType &&
+        edit.RecurrenceWeekdays == prior.RecurrenceWeekdays && edit.RecurrenceEndEpochDay == prior.RecurrenceEndEpochDay &&
+        edit.RecurrenceInterval == prior.RecurrenceInterval && edit.RecurrenceInvalidDatePolicy == prior.RecurrenceInvalidDatePolicy &&
+        edit.RecurrenceMonthlyOrdinal == prior.RecurrenceMonthlyOrdinal && edit.RecurrenceMonthlyWeekday == prior.RecurrenceMonthlyWeekday;
+    private long SaveSeriesContent(DesktopItemEdit edit, JsonObject original, List<JsonObject> targets, RecurrenceScope scope, long split, string series)
+    {
+        var template = Templates.OfType<JsonObject>().FirstOrDefault(value => value["seriesId"]?.GetValue<string>() == series);
+        if (template == null) return SaveItemCore(edit, original["id"]!.GetValue<long>());
+        var candidate = DayFromEpoch(scope == RecurrenceScope.All ? template["startEpochDay"]!.GetValue<long>() : split)
+            .AddHours(template["dueHour"]?.GetValue<int>() ?? 0).AddMinutes(template["dueMinute"]?.GetValue<int>() ?? 0);
+        var duration = template["eventDurationMinutes"]?.GetValue<int>() ?? 60;
+        var anchorEdit = edit with { StartAtMillis = DesktopCalendarTime.Millis(candidate, edit.EventTimeZoneId),
+            EndAtMillis = DesktopCalendarTime.Millis(candidate, edit.EventTimeZoneId) + duration * 60000L };
+        var targetSeries = scope == RecurrenceScope.All ? series : Guid.NewGuid().ToString();
+        if (scope == RecurrenceScope.CurrentAndFuture) {
+            template["endEpochDay"] = split - 1; template["recurrenceNeverEnds"] = false; TruncateInstanceRules(series, split);
+            foreach (var skip in root["recurringInstanceSkips"]!.AsArray().OfType<JsonObject>().Where(value => value["seriesId"]?.GetValue<string>() == series && value["instanceEpochDay"]?.GetValue<long>() >= split))
+                skip["seriesId"] = targetSeries;
+        }
+        var prototype = (JsonObject)original.DeepClone(); prototype["recurringSeriesId"] = targetSeries;
+        SyncRecurringTemplate(prototype, anchorEdit, anchorEdit.EndAtMillis!.Value, null, targetSeries);
+        var updatedTemplate = Templates.OfType<JsonObject>().First(value => value["seriesId"]?.GetValue<string>() == targetSeries);
+        foreach (var target in targets) {
+            var anchor = Anchor(target);
+            var at = DesktopItemEdit.FromJson(target);
+            SaveItemCore(edit with { StartAtMillis = at.StartAtMillis, EndAtMillis = at.EndAtMillis }, target["id"]!.GetValue<long>(), false);
+            ApplyTemplateFields(target, updatedTemplate);
+            target["recurringSeriesId"] = targetSeries; target["recurrenceAnchorDueAtMillis"] = anchor;
+        }
+        return original["id"]!.GetValue<long>();
+    }
     private static DesktopItemEdit ShiftEdit(DesktopItemEdit edit, DateTime at)
     {
         if (!edit.IsEvent) return edit.DueAtMillis == null && edit.RecurrenceType == "NONE" ? edit : edit with { DueAtMillis = MillisAt(at) };
-        var duration = LocalTime(edit.EndAtMillis!.Value) - LocalTime(edit.StartAtMillis!.Value);
-        return edit with { StartAtMillis = MillisAt(at), EndAtMillis = MillisAt(at + duration) };
+        var duration = edit.EndAtMillis!.Value - edit.StartAtMillis!.Value;
+        var start = DesktopCalendarTime.Millis(at, edit.EventTimeZoneId);
+        return edit with { StartAtMillis = start, EndAtMillis = edit.AllDay
+            ? DesktopCalendarTime.Millis(at.AddDays(Math.Max(1, (int)Math.Round(duration / 86400000.0))), edit.EventTimeZoneId) : start + duration };
     }
     public void Delete(long id, RecurrenceScope scope) => RemoveSeriesRange(id, scope, false);
     public void Cancel(long id, RecurrenceScope scope) => RemoveSeriesRange(id, scope, true);
@@ -133,7 +170,7 @@ internal sealed partial class DesktopSnapshotDocument
         var split = InstanceDay(original);
         foreach (var template in Templates.OfType<JsonObject>().Where(t => t["seriesId"]?.GetValue<string>() == series).ToList()) {
             if (scope == RecurrenceScope.All) Templates.Remove(template);
-            else template["endEpochDay"] = Math.Min(template["endEpochDay"]?.GetValue<long>() ?? split - 1, split - 1);
+            else { template["endEpochDay"] = Math.Min(template["endEpochDay"]?.GetValue<long>() ?? split - 1, split - 1); template["recurrenceNeverEnds"] = false; }
         }
         if (scope == RecurrenceScope.CurrentAndFuture) TruncateInstanceRules(series, split);
         foreach (var item in Tasks.OfType<JsonObject>().Where(t => t["recurringSeriesId"]?.GetValue<string>() == series &&
@@ -164,16 +201,20 @@ internal sealed partial class DesktopSnapshotDocument
                 var item = existing.FirstOrDefault()?.DeepClone().AsObject() ?? new JsonObject();
                 ApplyTemplateFields(item, template); ResetOccurrence(item);
                 var time = date.AddHours(template["dueHour"]?.GetValue<int>() ?? 0).AddMinutes(template["dueMinute"]?.GetValue<int>() ?? 0);
-                var millis = MillisAt(time);
+                var zoneId = template["eventTimeZoneId"]?.GetValue<string>() ?? "";
+                if (DesktopCalendarTime.Zone(zoneId).IsInvalidTime(DateTime.SpecifyKind(time, DateTimeKind.Unspecified))) continue;
+                var millis = DesktopCalendarTime.Millis(time, zoneId);
                 var isEvent = template["itemType"]?.GetValue<string>() == "EVENT";
                 item["id"] = nextId++; item["recurringSeriesId"] = series;
                 item["startAtMillis"] = isEvent ? millis : null;
-                item["endAtMillis"] = isEvent ? MillisAt(time.AddMinutes(template["eventDurationMinutes"]?.GetValue<int?>() ?? 60)) : null;
+                var duration = template["eventDurationMinutes"]?.GetValue<int?>() ?? 60;
+                item["endAtMillis"] = isEvent ? item["allDay"]?.GetValue<bool>() == true
+                    ? DesktopCalendarTime.Millis(time.AddDays(Math.Max(1, (int)Math.Round(duration / 1440.0))), zoneId)
+                    : millis + duration * 60000L : null;
                 item["dueAtMillis"] = isEvent ? item["endAtMillis"]!.DeepClone() : JsonValue.Create(millis);
                 item["recurrenceAnchorDueAtMillis"] = millis;
-                var offsets = DesktopItemEdit.FromJson(item).ReminderOffsets;
-                var reminderAnchor = isEvent && item["allDay"]?.GetValue<bool>() == true ? MillisAt(time.Date.AddHours(9)) : millis;
-                item["reminderAtMillis"] = offsets.Count > 0 && item["reminderEnabled"]?.GetValue<bool>() == true ? reminderAnchor - offsets.Max() * 60000L : null;
+                var reminders = DesktopCalendarTime.Triggers(DesktopItemEdit.FromJson(item));
+                item["reminderAtMillis"] = reminders.Count > 0 ? reminders[0] : null;
                 Tasks.Add(item); occupied.Add(day); changed = true;
             }
         }
@@ -181,10 +222,11 @@ internal sealed partial class DesktopSnapshotDocument
     }
     private static void ApplyTemplateFields(JsonObject item, JsonObject template)
     {
-        foreach (var key in new[] { "itemType", "title", "notes", "location", "accentColorHex", "countdownEnabled", "calendarId", "countdownPastMode", "hiddenFromBoard", "checkInEnabled", "checkInReminderOffsetsCsv", "multiSlotBundleId", "allDay", "groupId", "reminderOffsetsCsv", "reminderOffsetMinutes", "reminderDeliveryMode", "ringEnabled", "vibrateEnabled", "alarmMode" }.Concat(RecurrenceFields.Where(key => key != "recurrenceAnchorDueAtMillis" && key != "recurringSeriesId"))) item[key] = template[key]?.DeepClone();
-        item["recurrenceEndEpochDay"] = template["endEpochDay"]?.DeepClone();
+        foreach (var key in new[] { "itemType", "title", "notes", "location", "accentColorHex", "countdownEnabled", "calendarId", "countdownPastMode", "hiddenFromBoard", "checkInEnabled", "checkInReminderOffsetsCsv", "multiSlotBundleId", "allDay", "groupId", "reminderOffsetsCsv", "reminderOffsetMinutes", "reminderDeliveryMode", "ringEnabled", "vibrateEnabled", "alarmMode", "eventTimeZoneId", "allDayReminderRulesJson", "eventBusyStatus", "eventVisibility" }.Concat(RecurrenceFields.Where(key => key != "recurrenceAnchorDueAtMillis" && key != "recurringSeriesId"))) item[key] = template[key]?.DeepClone();
+        item["recurrenceEndEpochDay"] = template["recurrenceNeverEnds"]?.GetValue<bool>() == true ? null : template["endEpochDay"]?.DeepClone();
         // Android templates express enablement through configured reminder offsets.
-        item["reminderEnabled"] = template["reminderEnabled"]?.GetValue<bool>() ?? !string.IsNullOrWhiteSpace(template["reminderOffsetsCsv"]?.GetValue<string>());
+        item["reminderEnabled"] = template["reminderEnabled"]?.GetValue<bool>() ?? (!string.IsNullOrWhiteSpace(template["reminderOffsetsCsv"]?.GetValue<string>()) ||
+            !string.IsNullOrWhiteSpace(template["allDayReminderRulesJson"]?.GetValue<string>()) && template["allDayReminderRulesJson"]?.GetValue<string>() != "[]");
     }
     private static void ResetOccurrence(JsonObject item)
     {
@@ -196,20 +238,27 @@ internal sealed partial class DesktopSnapshotDocument
     private static IEnumerable<DateTime> RecurringDates(JsonObject template, DateTime from, DateTime to)
     {
         var first = template["startEpochDay"]?.GetValue<long>() ?? EpochDay(from);
-        var last = template["endEpochDay"]?.GetValue<long>() ?? first;
+        var last = template["recurrenceNeverEnds"]?.GetValue<bool>() == true ? EpochDay(to) : template["endEpochDay"]?.GetValue<long>() ?? EpochDay(to);
         var anchor = DayFromEpoch(first);
         var kind = template["recurrenceType"]?.GetValue<string>() ?? "NONE";
         var weekdays = (template["recurrenceWeekdays"]?.GetValue<string>() ?? "").Split(',').ToHashSet();
+        var interval = Math.Max(1, template["recurrenceInterval"]?.GetValue<int>() ?? 1);
+        var skipInvalid = template["recurrenceInvalidDatePolicy"]?.GetValue<string>() == "SKIP";
         for (var date = from.Date > anchor ? from.Date : anchor; date <= to && EpochDay(date) <= last; date = date.AddDays(1)) {
             var weekday = ((int)date.DayOfWeek + 6) % 7 + 1;
+            var days = (date - anchor).Days;
+            var weeks = (days + ((int)anchor.DayOfWeek + 6) % 7) / 7;
+            var months = (date.Year - anchor.Year) * 12 + date.Month - anchor.Month;
+            var monthDay = template["recurrenceMonthlyDay"]?.GetValue<int?>() ?? anchor.Day;
+            var yearDay = template["recurrenceYearlyDay"]?.GetValue<int?>() ?? anchor.Day;
             var matches = kind switch {
-                "DAILY" => true,
-                "WEEKLY" => weekdays.Contains(weekday.ToString()),
-                "MONTHLY_DAY" or "MONTHLY" => date.Day == Math.Min(template["recurrenceMonthlyDay"]?.GetValue<int?>() ?? anchor.Day, DateTime.DaysInMonth(date.Year, date.Month)),
-                "MONTHLY_NTH_WEEKDAY" => weekday == template["recurrenceMonthlyWeekday"]?.GetValue<int?>() &&
+                "DAILY" => days % interval == 0,
+                "WEEKLY" => weeks % interval == 0 && weekdays.Contains(weekday.ToString()),
+                "MONTHLY_DAY" or "MONTHLY" => months % interval == 0 && date.Day == (skipInvalid ? monthDay : Math.Min(monthDay, DateTime.DaysInMonth(date.Year, date.Month))),
+                "MONTHLY_NTH_WEEKDAY" => months % interval == 0 && weekday == template["recurrenceMonthlyWeekday"]?.GetValue<int?>() &&
                     (template["recurrenceMonthlyOrdinal"]?.GetValue<int?>() == -1 ? date.AddDays(7).Month != date.Month : (date.Day - 1) / 7 + 1 == template["recurrenceMonthlyOrdinal"]?.GetValue<int?>()),
-                "YEARLY_DATE" or "YEARLY" => date.Month == (template["recurrenceYearlyMonth"]?.GetValue<int?>() ?? anchor.Month) && date.Day == Math.Min(template["recurrenceYearlyDay"]?.GetValue<int?>() ?? anchor.Day, DateTime.DaysInMonth(date.Year, date.Month)),
-                "YEARLY_LUNAR_DATE" => MatchesLunar(date, anchor),
+                "YEARLY_DATE" or "YEARLY" => (date.Year - anchor.Year) % interval == 0 && date.Month == (template["recurrenceYearlyMonth"]?.GetValue<int?>() ?? anchor.Month) && date.Day == (skipInvalid ? yearDay : Math.Min(yearDay, DateTime.DaysInMonth(date.Year, date.Month))),
+                "YEARLY_LUNAR_DATE" => (date.Year - anchor.Year) % interval == 0 && MatchesLunar(date, anchor),
                 _ => false
             };
             if (matches) yield return date;

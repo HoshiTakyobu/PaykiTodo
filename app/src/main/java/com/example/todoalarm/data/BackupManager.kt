@@ -107,7 +107,7 @@ internal fun BackupSnapshot.toJson(): JSONObject {
         put("activityRecords", JSONArray(activityRecords.map { it.toJson() }))
         put("quickChecklistGroups", JSONArray(quickChecklistGroups.map { it.toJson() }))
         put("calendars", JSONArray(calendars.map { calendar -> JSONObject().apply {
-            put("id", calendar.id); put("name", calendar.name); put("colorHex", calendar.colorHex); put("sortOrder", calendar.sortOrder)
+            put("id", calendar.id); put("name", calendar.name); put("colorHex", calendar.colorHex); put("sortOrder", calendar.sortOrder); put("description", calendar.description); put("ownerAccount", calendar.ownerAccount); put("shareMode", calendar.shareMode); put("membersJson", calendar.membersJson); put("sharedRole", calendar.sharedRole); put("sharedRevision", calendar.sharedRevision); put("sharedServerUrl", calendar.sharedServerUrl)
         } }))
     }
 }
@@ -119,6 +119,12 @@ private fun AppSettings.toJson(): JSONObject {
         put("desktopFontFamily", desktopFontFamily)
         put("countdownPastDays", countdownPastDays)
         put("hiddenCalendarIds", JSONArray(hiddenCalendarIds.toList()))
+        put("calendarDefaultDurationMinutes", calendarDefaultDurationMinutes)
+        put("calendarTimedDefaultRemindersCsv", calendarTimedDefaultRemindersCsv)
+        put("calendarAllDayDefaultRemindersJson", calendarAllDayDefaultRemindersJson)
+        put("calendarDisplayTimeZoneId", calendarDisplayTimeZoneId)
+        put("calendarAuxiliaryTimeZoneId", calendarAuxiliaryTimeZoneId)
+
         put("weekStartMode", weekStartMode.name)
         put("defaultSnoozeMinutes", defaultSnoozeMinutes)
         put("defaultRingEnabled", defaultRingEnabled)
@@ -192,6 +198,13 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("checkInReminderOffsetsCsv", checkInReminderOffsetsCsv)
         put("multiSlotBundleId", multiSlotBundleId)
         put("allDay", allDay)
+        put("eventTimeZoneId", eventTimeZoneId)
+        put("allDayReminderRulesJson", allDayReminderRulesJson)
+        put("eventBusyStatus", eventBusyStatus)
+        put("eventVisibility", eventVisibility)
+        put("eventParticipantsJson", eventParticipantsJson)
+        put("recurrenceInvalidDatePolicy", recurrenceInvalidDatePolicy)
+        put("recurrenceInterval", recurrenceInterval)
         put("groupId", groupId)
         put("dueHour", dueHour)
         put("dueMinute", dueMinute)
@@ -211,6 +224,7 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("recurrenceYearlyDay", recurrenceYearlyDay)
         put("startEpochDay", startEpochDay)
         put("endEpochDay", endEpochDay)
+        put("recurrenceNeverEnds", recurrenceNeverEnds)
         put("createdAtMillis", createdAtMillis)
     }
 }
@@ -225,6 +239,14 @@ private fun TodoItem.toJson(): JSONObject {
         put("startAtMillis", startAtMillis)
         put("endAtMillis", endAtMillis)
         put("allDay", allDay)
+        put("eventTimeZoneId", eventTimeZoneId)
+        put("allDayReminderRulesJson", allDayReminderRulesJson)
+        put("eventBusyStatus", eventBusyStatus)
+        put("eventVisibility", eventVisibility)
+        put("eventParticipantsJson", eventParticipantsJson)
+        put("sharedEventId", sharedEventId)
+        put("recurrenceInvalidDatePolicy", recurrenceInvalidDatePolicy)
+        put("recurrenceInterval", recurrenceInterval)
         put("location", location)
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
@@ -438,7 +460,10 @@ internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         calendars = json.optJSONArray("calendars")?.let { entries -> (0 until entries.length()).mapNotNull { i ->
             entries.optJSONObject(i)?.let { entry -> PlannerCalendar(
                 id = entry.optString("id", DEFAULT_CALENDAR_ID), name = entry.optString("name", "常规日历"),
-                colorHex = entry.optString("colorHex", "#3370FF"), sortOrder = entry.optInt("sortOrder", i)
+                colorHex = entry.optString("colorHex", "#3370FF"), sortOrder = entry.optInt("sortOrder", i),
+                description = entry.optString("description", ""), ownerAccount = entry.optString("ownerAccount", ""),
+                shareMode = entry.optString("shareMode", "PRIVATE"), membersJson = entry.optString("membersJson", "[]"),
+                sharedRole = entry.optString("sharedRole", "OWNER"), sharedRevision = entry.optLong("sharedRevision", 0), sharedServerUrl = entry.optString("sharedServerUrl", "")
             ) }
         } } ?: listOf(PlannerCalendar()),
         settings = json.optJSONObject("settings").toSettings()
@@ -486,6 +511,13 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     checkInReminderOffsetsCsv = item.optString("checkInReminderOffsetsCsv", ""),
                     multiSlotBundleId = item.optStringOrNull("multiSlotBundleId"),
                     allDay = item.optBoolean("allDay", false),
+                    eventTimeZoneId = item.optString("eventTimeZoneId", ""),
+                    allDayReminderRulesJson = item.optString("allDayReminderRulesJson", ""),
+                    eventBusyStatus = item.optString("eventBusyStatus", "BUSY"),
+                    eventVisibility = item.optString("eventVisibility", "DEFAULT"),
+                    eventParticipantsJson = item.optString("eventParticipantsJson", "[]"),
+                    recurrenceInvalidDatePolicy = item.optString("recurrenceInvalidDatePolicy", "CLAMP"),
+                    recurrenceInterval = item.optInt("recurrenceInterval", 1),
                     groupId = item.optLong("groupId", 0L),
                     dueHour = item.optInt("dueHour"),
                     dueMinute = item.optInt("dueMinute"),
@@ -505,6 +537,7 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     recurrenceYearlyDay = item.optIntOrNull("recurrenceYearlyDay"),
                     startEpochDay = item.optLong("startEpochDay"),
                     endEpochDay = item.optLong("endEpochDay"),
+                    recurrenceNeverEnds = item.optBoolean("recurrenceNeverEnds", false),
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
                 )
             )
@@ -527,6 +560,14 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     startAtMillis = item.optLongOrNull("startAtMillis"),
                     endAtMillis = item.optLongOrNull("endAtMillis"),
                     allDay = item.optBoolean("allDay", false),
+                    eventTimeZoneId = item.optString("eventTimeZoneId", ""),
+                    allDayReminderRulesJson = item.optString("allDayReminderRulesJson", ""),
+                    eventBusyStatus = item.optString("eventBusyStatus", "BUSY"),
+                    eventVisibility = item.optString("eventVisibility", "DEFAULT"),
+                    eventParticipantsJson = item.optString("eventParticipantsJson", "[]"),
+                    sharedEventId = item.optString("sharedEventId", ""),
+                    recurrenceInvalidDatePolicy = item.optString("recurrenceInvalidDatePolicy", "CLAMP"),
+                    recurrenceInterval = item.optInt("recurrenceInterval", 1),
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
@@ -837,6 +878,12 @@ private fun JSONObject?.toSettings(): AppSettings {
         desktopFontFamily = optStringOrNull("desktopFontFamily"),
         countdownPastDays = optInt("countdownPastDays", 7).coerceIn(0, 365),
         hiddenCalendarIds = optJSONArray("hiddenCalendarIds")?.let { array -> (0 until array.length()).map { array.optString(it) }.toSet() } ?: emptySet(),
+        calendarDefaultDurationMinutes = optInt("calendarDefaultDurationMinutes", 30),
+        calendarTimedDefaultRemindersCsv = optString("calendarTimedDefaultRemindersCsv", "15"),
+        calendarAllDayDefaultRemindersJson = optString("calendarAllDayDefaultRemindersJson", "[{\"daysBefore\":0,\"minuteOfDay\":480}]"),
+        calendarDisplayTimeZoneId = optString("calendarDisplayTimeZoneId", ""),
+        calendarAuxiliaryTimeZoneId = optString("calendarAuxiliaryTimeZoneId", ""),
+
         themeMode = ThemeMode.entries.firstOrNull { it.name == optString("themeMode") } ?: ThemeMode.SYSTEM,
         weekStartMode = WeekStartMode.entries.firstOrNull { it.name == optString("weekStartMode") } ?: WeekStartMode.MONDAY,
         defaultSnoozeMinutes = optInt("defaultSnoozeMinutes", 10),

@@ -2,15 +2,29 @@ using System.Text.Json.Nodes;
 
 namespace PaykiTodo.Desktop;
 
-internal sealed record DesktopCalendar(string Id, string Name, string ColorHex);
+internal sealed record DesktopCalendar(string Id, string Name, string ColorHex)
+{
+    public string Description { get; init; } = "";
+    public string OwnerAccount { get; init; } = "";
+    public string ShareMode { get; init; } = "PRIVATE";
+    public string MembersJson { get; init; } = "[]";
+    public string SharedRole { get; init; } = "";
+    public long SharedRevision { get; init; }
+    public string SharedServerUrl { get; init; } = "";
+}
 
 internal sealed partial class DesktopSnapshotDocument
 {
     public IReadOnlyList<DesktopCalendar> Calendars => root["calendars"]!.AsArray().OfType<JsonObject>()
         .OrderBy(value => value["sortOrder"]?.GetValue<int>() ?? 0)
-        .Select(value => new DesktopCalendar(value["id"]!.GetValue<string>(), value["name"]?.GetValue<string>() ?? "日历", value["colorHex"]?.GetValue<string>() ?? "#3370FF")).ToList();
+        .Select(value => new DesktopCalendar(value["id"]!.GetValue<string>(), value["name"]?.GetValue<string>() ?? "日历", value["colorHex"]?.GetValue<string>() ?? "#3370FF") {
+            Description = value["description"]?.GetValue<string>() ?? "", OwnerAccount = value["ownerAccount"]?.GetValue<string>() ?? "",
+            ShareMode = value["shareMode"]?.GetValue<string>() ?? "PRIVATE", MembersJson = value["membersJson"]?.GetValue<string>() ?? "[]",
+            SharedRole = value["sharedRole"]?.GetValue<string>() ?? "", SharedRevision = value["sharedRevision"]?.GetValue<long>() ?? 0,
+            SharedServerUrl = value["sharedServerUrl"]?.GetValue<string>() ?? ""
+        }).ToList();
 
-    public string SaveCalendar(string? id, string name, string color)
+    public string SaveCalendar(string? id, string name, string color, string? description = null, string? ownerAccount = null, string? shareMode = null, string? membersJson = null)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("请填写日历名称");
         if (!System.Text.RegularExpressions.Regex.IsMatch(color, "^#[0-9a-fA-F]{6}$")) throw new InvalidOperationException("请选择有效颜色");
@@ -19,6 +33,10 @@ internal sealed partial class DesktopSnapshotDocument
         var previousColor = calendar?["colorHex"]?.GetValue<string>();
         if (calendar == null) { calendar = new JsonObject { ["id"] = id ?? Guid.NewGuid().ToString(), ["sortOrder"] = calendars.Count }; calendars.Add(calendar); }
         calendar["name"] = name.Trim(); calendar["colorHex"] = color;
+        if (description != null) calendar["description"] = description.Trim(); else calendar["description"] ??= "";
+        if (ownerAccount != null) calendar["ownerAccount"] = ownerAccount; else calendar["ownerAccount"] ??= "";
+        if (shareMode != null) calendar["shareMode"] = shareMode; else calendar["shareMode"] ??= "PRIVATE";
+        if (membersJson != null) calendar["membersJson"] = membersJson; else calendar["membersJson"] ??= "[]";
         if (previousColor != null && !previousColor.Equals(color, StringComparison.OrdinalIgnoreCase)) {
             void Recolor(JsonObject entry) {
                 if (entry["calendarId"]?.GetValue<string>() == id && (entry["accentColorHex"] == null || string.Equals(entry["accentColorHex"]?.GetValue<string>(), previousColor, StringComparison.OrdinalIgnoreCase))) entry["accentColorHex"] = color;
@@ -32,10 +50,25 @@ internal sealed partial class DesktopSnapshotDocument
         }
         return calendar["id"]!.GetValue<string>();
     }
+    public void MoveCalendar(string id, int direction)
+    {
+        var sorted = root["calendars"]!.AsArray().OfType<JsonObject>().OrderBy(value => value["sortOrder"]?.GetValue<int>() ?? 0).ToList();
+        var index = sorted.FindIndex(value => value["id"]?.GetValue<string>() == id); var target = index + Math.Sign(direction);
+        if (index < 0 || target < 0 || target >= sorted.Count) return;
+        (sorted[index], sorted[target]) = (sorted[target], sorted[index]);
+        for (var i = 0; i < sorted.Count; i++) sorted[i]["sortOrder"] = i;
+    }
 
     public void DeleteCalendar(string id)
     {
         if (id == "default") throw new InvalidOperationException("常规日历需要保留");
+        if (IsSharedCalendar(id)) {
+            foreach (var item in Tasks.OfType<JsonObject>().Where(value => value["calendarId"]?.GetValue<string>() == id).ToList()) Tasks.Remove(item);
+            foreach (var template in Templates.OfType<JsonObject>().Where(value => value["calendarId"]?.GetValue<string>() == id).ToList()) Templates.Remove(template);
+            var cached = SharedCalendar(id); if (cached != null) root["calendars"]!.AsArray().Remove(cached);
+            if (Settings["hiddenCalendarIds"] is JsonArray ids) foreach (var value in ids.Where(value => value?.GetValue<string>() == id).ToList()) ids.Remove(value);
+            return;
+        }
         foreach (var item in Tasks.OfType<JsonObject>().Concat(root["templates"]!.AsArray().OfType<JsonObject>()))
             if (item["calendarId"]?.GetValue<string>() == id) item["calendarId"] = "default";
         RemapScheduleCalendars(calendarId => calendarId == id ? "default" : calendarId);

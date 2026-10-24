@@ -4,10 +4,9 @@
 
 - Android `1.16.25 / versionCode 390`，Windows `1.16.25.0`，Room `32`，开始基线 `6f3800f`。
 - 193 Android 单测；Lint 0 errors / 131 warnings；13个不同模拟器用例经针对性复验通过；26 Windows 回归（含实际 EXE）及1条14阶段隔离 UIA 流程通过。
-- 第三方观察及运行状态仅保留在私有恢复副本中；公开记录仅保留 PaykiTodo 的需求、实现与验收。
 - Windows 生成迁移包→Android 独立 Room 数据库导入、修改→导出→Windows 读取，核对日历归属、名称与已完成纪念状态。手机及桌面新数据字段进入现有整份快照链路。
 - 新版 Debug 安装在既有 `emulator-5554 / Pixel_8`（Android14），冷启动与登录页渲染正常；当次外部人机验证显示加载失败，未进行真实账号登录验收，也未绕过账号门禁。应用与测试包最后均停止，模拟器保持运行。
-- Windows 使用独立桌面和独立资料，未接管用户键鼠或剪贴板。未推送、发布、建标签或部署服务器。
+- Windows 使用独立桌面/独立资料；未接管用户键鼠、剪贴板。未推送、发布、建标签或部署服务器。
 
 ## 实现范围
 
@@ -36,7 +35,7 @@ Windows 今日待办左色条8px，DDL 使用闹钟符号及粗体；值得期�
 | 构建 | Debug、AndroidTest、签名Release、自包含Windows构建成功；Release v2签名验证通过，1位签名者 |
 | 安装/启动 | emulator-5554显示390/1.16.25，aapt应用标签为PaykiTodo；MainActivity冷启动正常 |
 
-重点截图：`windows-feedback/windows-calendar-ownership.png`、`windows-backup-settings.png`、`windows-recurring-expanded.png`、`windows-countdown-choice.png`、`android-backup.png`、`android-final-startup.png`。Windows 性能改动采用渲染数据缓存、局部时钟刷新与滚动保留；性能结论限于实际测量。
+重点截图：`windows-feedback/windows-calendar-ownership.png`、`windows-backup-settings.png`、`windows-recurring-expanded.png`、`windows-countdown-choice.png`、`android-backup.png`、`android-final-startup.png`。Windows性能改动依据可见行为，采用渲染数据缓存、局部时钟刷新与滚动保留；此记录未证明所有输入路径或其他设备的性能。
 
 ## 验证中发现并修复
 

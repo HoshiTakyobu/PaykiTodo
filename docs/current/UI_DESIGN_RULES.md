@@ -87,7 +87,7 @@ Desktop Web is a user-facing companion workspace, not an internal admin console.
 
 ## 9. Explicit reference images are binding
 
-When the user supplies concrete UI reference screenshots and asks for reproduction, do not reinterpret the request as a generic style direction such as "modern" or "similar colors".
+When the user supplies concrete UI reference screenshots and asks for reproduction, do not reinterpret the request as a vague styling preference.
 
 - Match the visible geometry first: viewport scale, top-bar height, sidebar width, content boundaries, grid density, dialog position, dialog proportions, and internal split lines.
 - Use browser screenshots at the same effective output size as the reference whenever possible. For the `1.15.14` Desktop Web Calendar references, verification used `1638x989` CSS pixels with `deviceScaleFactor = 1.25`, producing `2048x1236` output.
@@ -111,4 +111,4 @@ When the user supplies concrete UI reference screenshots and asks for reproducti
 - Native Windows event editing uses a compact form near the draft with a fixed blue completion action. Mini-month arrows browse independently of the main calendar; changing a selected date navigates the main view. Responsive week navigation advances by the actual visible day count.
 - Recurring event edits, cancellation and deletion explicitly choose current, current-and-future or all. A one-occurrence move keeps its original series anchor. Drag/resize uses 15-minute snapping, previews the candidate and supports Esc cancellation; saving uses the same scope rules as form editing.
 - Countdown AUTO retains the last7 local calendar days by default; KEEP survives completion and the cutoff, HIDE suppresses presentation. Ask recently completed/ended AUTO items whether to keep the memorial. Do not resurrect task active status to show a memorial.
-- Settings follows the inspected shiguang reference: category navigation, title/summary/control rows and light dividers. Mobile backup emphasizes directory/export/restore and collapses maintenance tools.
+- Settings uses compact categories: category navigation, title/summary/control rows and light dividers. Mobile backup emphasizes directory/export/restore and collapses maintenance tools.

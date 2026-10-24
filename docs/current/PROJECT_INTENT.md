@@ -33,6 +33,7 @@ Current long-term direction includes:
 3. Better local backup / restore / diagnostics / explainability
 4. Desktop assistance through both the phone-hosted LAN browser and an independent Windows client with its own local copy of the same account data
 5. Optional account-backed multi-device sync that preserves local-first operation and remains usable when the server expires
+6. Calendar-level sharing and participant workflows with explicit permissions, while personal calendars remain locally usable
 
 ## Computer Client Boundary
 
@@ -48,7 +49,7 @@ Current long-term direction includes:
 These are not current primary goals:
 
 - cloud-only operation that makes the server the sole source of user data
-- team collaboration
+- broad team-workspace productization beyond calendar-level sharing
 - complex account and administrator systems before the local / LAN product is stable
 - web-first productization
 - feature breadth for its own sake

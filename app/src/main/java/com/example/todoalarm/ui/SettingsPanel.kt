@@ -336,6 +336,7 @@ fun SettingsPanel(
 
         SettingsSection.CALENDAR -> SettingsSectionDialog("日历与提醒", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                CalendarDefaultsButton()
                 Text("默认延后时长", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 OutlinedButton(onClick = { showSnoozeDialog = true }) { Text("当前：${normalizeSnooze(defaultSnooze)} 分钟") }
 

@@ -24,7 +24,12 @@ data class CalendarEventDraft(
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val multiSlotBundleId: String? = null,
     val groupId: Long = 0,
-    val groupName: String = ""
+    val groupName: String = "",
+    val eventTimeZoneId: String = "",
+    val allDayReminderRulesJson: String = "",
+    val eventBusyStatus: String = "BUSY",
+    val eventVisibility: String = "DEFAULT",
+    val eventParticipantsJson: String = "[]"
 ) {
     val normalizedReminderOffsetsMinutes: List<Int>
         get() = normalizeReminderOffsets(reminderOffsetsMinutes, reminderMinutesBefore)

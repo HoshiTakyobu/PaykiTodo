@@ -21,7 +21,7 @@ import androidx.room.RoomDatabase
         QuickChecklistGroup::class,
         PlannerCalendar::class
     ],
-    version = 32,
+    version = 33,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

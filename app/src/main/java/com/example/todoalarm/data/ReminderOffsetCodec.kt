@@ -27,9 +27,11 @@ internal fun decodeReminderOffsets(csv: String?, fallback: Int? = null): List<In
 }
 
 internal fun CalendarEventDraft.reminderTriggerTimesMillis(): List<Long> {
-    val anchorMillis = reminderAnchorAt.toEpochMillis()
-    return normalizedAllReminderOffsetsMinutes
-        .map { anchorMillis - it * 60_000L }
+    val anchorMillis = calendarEpochMillis(reminderAnchorAt, eventTimeZoneId)
+    val primary = if (allDay && allDayReminderRulesJson.isNotBlank())
+        allDayReminderTimes(startAt.toLocalDate(), eventTimeZoneId, allDayReminderRulesJson)
+    else normalizedReminderOffsetsMinutes.map { anchorMillis - it * 60_000L }
+    return (primary + normalizedCheckInReminderOffsetsMinutes.map { anchorMillis - it * 60_000L })
         .distinct()
         .sorted()
 }
@@ -47,6 +49,11 @@ internal fun TodoItem.reminderTriggerTimesMillis(): List<Long> {
         return listOfNotNull(reminderAtMillis)
     }
     val anchorMillis = eventReminderAnchorMillis()
+    if (allDay && allDayReminderRulesJson.isNotBlank()) {
+        val date = Instant.ofEpochMilli(startAtMillis ?: dueAtMillis).atZone(calendarZone(eventTimeZoneId)).toLocalDate()
+        return (allDayReminderTimes(date, eventTimeZoneId, allDayReminderRulesJson) +
+            configuredCheckInReminderOffsetsMinutes.takeIf { checkInEnabled }.orEmpty().map { anchorMillis - it * 60_000L }).distinct().sorted()
+    }
     val offsets = normalizeReminderOffsets(
         configuredReminderOffsetsMinutes +
             configuredCheckInReminderOffsetsMinutes.takeIf { checkInEnabled }.orEmpty()
@@ -60,6 +67,6 @@ internal fun TodoItem.reminderTriggerTimesMillis(): List<Long> {
 internal fun TodoItem.eventReminderAnchorMillis(): Long {
     val baseMillis = startAtMillis ?: dueAtMillis
     if (!allDay) return baseMillis
-    val date = Instant.ofEpochMilli(baseMillis).atZone(ZoneId.systemDefault()).toLocalDate()
-    return java.time.LocalDateTime.of(date, LocalTime.of(9, 0)).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val date = Instant.ofEpochMilli(baseMillis).atZone(calendarZone(eventTimeZoneId)).toLocalDate()
+    return calendarEpochMillis(java.time.LocalDateTime.of(date, LocalTime.of(9, 0)), eventTimeZoneId)
 }

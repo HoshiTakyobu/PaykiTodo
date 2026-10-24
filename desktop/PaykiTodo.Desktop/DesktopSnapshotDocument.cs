@@ -193,6 +193,12 @@ internal sealed partial class DesktopSnapshotDocument
 
     private long SaveItemCore(DesktopItemEdit edit, long? existingId = null, bool syncTemplate = true)
     {
+        var targetCalendar = Calendars.FirstOrDefault(calendar => calendar.Id == edit.CalendarId) ?? Calendars.First(calendar => calendar.Id == "default");
+        var previousParticipants = existingId is { } priorId && FindTask(priorId)?["calendarId"]?.GetValue<string>() == targetCalendar.Id
+            ? FindTask(priorId)?["eventParticipantsJson"]?.GetValue<string>() ?? "[]" : "[]";
+        var participants = edit.IsEvent ? DesktopEventParticipants.Reconcile(targetCalendar, edit.EventParticipantsJson, previousParticipants) : "[]";
+        var previousCalendarId = existingId is { } originalId ? FindTask(originalId)?["calendarId"]?.GetValue<string>() : null;
+        if (previousCalendarId != null && previousCalendarId != edit.CalendarId) MarkSharedDirty(previousCalendarId);
         MarkSharedDirty(edit.CalendarId);
         JsonObject item;
         if (existingId.HasValue)
@@ -222,6 +228,7 @@ internal sealed partial class DesktopSnapshotDocument
         item["allDayReminderRulesJson"] = edit.AllDayReminderRulesJson;
         item["eventBusyStatus"] = edit.EventBusyStatus;
         item["eventVisibility"] = edit.EventVisibility;
+        item["eventParticipantsJson"] = participants;
         item["location"] = edit.Location.Trim();
         item["accentColorHex"] = edit.AccentColor;
         item["countdownEnabled"] = edit.CountdownEnabled;
@@ -543,6 +550,10 @@ internal sealed partial class DesktopSnapshotDocument
         template["allDayReminderRulesJson"] = edit.AllDayReminderRulesJson;
         template["eventBusyStatus"] = edit.EventBusyStatus;
         template["eventVisibility"] = edit.EventVisibility;
+        var calendar = Calendars.FirstOrDefault(value => value.Id == edit.CalendarId);
+        template["eventParticipantsJson"] = calendar == null || !IsSharedCalendar(calendar.Id) ? "[]" :
+            DesktopEventParticipants.Select(DesktopEventParticipants.Reconcile(calendar, edit.EventParticipantsJson,
+                item["eventParticipantsJson"]?.GetValue<string>() ?? "[]"), "[]");
         template["groupId"] = edit.GroupId;
         template["dueHour"] = anchor.Hour;
         template["dueMinute"] = anchor.Minute;
@@ -690,6 +701,7 @@ internal sealed record DesktopItemEdit(
     public string EventBusyStatus { get; init; } = "BUSY";
     public string EventVisibility { get; init; } = "DEFAULT";
     public int RecurrenceInterval { get; init; } = 1;
+    public string EventParticipantsJson { get; init; } = "[]";
     public string RecurrenceInvalidDatePolicy { get; init; } = "CLAMP";
     public int? RecurrenceMonthlyOrdinal { get; init; }
     public int? RecurrenceMonthlyWeekday { get; init; }
@@ -730,6 +742,7 @@ internal sealed record DesktopItemEdit(
             AllDayReminderRulesJson = item["allDayReminderRulesJson"]?.GetValue<string>() ?? "",
             EventBusyStatus = item["eventBusyStatus"]?.GetValue<string>() ?? "BUSY",
             EventVisibility = item["eventVisibility"]?.GetValue<string>() ?? "DEFAULT",
+            EventParticipantsJson = item["eventParticipantsJson"]?.GetValue<string>() ?? "[]",
             RecurrenceInterval = item["recurrenceInterval"]?.GetValue<int>() ?? 1,
             RecurrenceInvalidDatePolicy = item["recurrenceInvalidDatePolicy"]?.GetValue<string>() ?? "CLAMP",
             RecurrenceMonthlyOrdinal = item["recurrenceMonthlyOrdinal"]?.GetValue<int?>(),

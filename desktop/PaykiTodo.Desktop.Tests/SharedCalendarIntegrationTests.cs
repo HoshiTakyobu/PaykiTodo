@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.Json.Nodes;
 using Xunit;
 
@@ -15,6 +16,45 @@ public sealed class SharedCalendarIntegrationTests
     {
         using var bytes = new MemoryStream(document.ToArchiveBytes(false, shared)); using var zip = new ZipArchive(bytes);
         using var read = new StreamReader(zip.GetEntry("backup.json")!.Open()); return JsonNode.Parse(read.ReadToEnd())!.AsObject();
+    }
+    [Fact] public async Task ResponsePreservesInFlightParticipantRemovalAndOnlyBacksUpConcurrentEdits()
+    {
+        var socket = new TcpListener(IPAddress.Loopback, 0); socket.Start(); var port = ((IPEndPoint)socket.LocalEndpoint).Port; socket.Stop();
+        var url = "http://127.0.0.1:" + port;
+        using var listener = new HttpListener(); listener.Prefixes.Add(url + "/"); listener.Start();
+        var folder = Path.Combine(Path.GetTempPath(), "PaykiTodo-tests", Guid.NewGuid().ToString("N"));
+        var store = new DesktopSecureStore(folder); var document = EventParticipantsTests.Fixture();
+        document.SharedCalendar(EventParticipantsTests.Calendar.Id)!["sharedServerUrl"] = url;
+        var expiry = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600;
+        store.Save(new CloudAccountState(url, "guest", "fixture-device", "fixture-access", "fixture-refresh", expiry, expiry, "fixture-secret", 0, false), document);
+        var workspace = new DesktopWorkspace(store);
+        async Task SendResponse(HttpListenerContext context, string response) {
+            Assert.Equal("POST", context.Request.HttpMethod);
+            Assert.Equal("/v3/calendars/fixture/events/wire-fixture/rsvp", context.Request.Url!.AbsolutePath);
+            var body = Encoding.UTF8.GetBytes(new JsonObject { ["response"] = response, ["revision"] = 2L }.ToJsonString());
+            context.Response.ContentType = "application/json"; context.Response.ContentLength64 = body.Length;
+            await context.Response.OutputStream.WriteAsync(body); context.Response.Close();
+        }
+        var sent = workspace.RespondToSharedEventAsync(EventParticipantsTests.Calendar.Id, "wire-fixture", "ACCEPTED");
+        var pending = await listener.GetContextAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        workspace.EditShared(data => data.SaveItem(data.EditFor(data.Items.Single().Id)! with { Title = "请求途中修改", Notes = "保留新的本机备注", EventParticipantsJson = "[\"extra\"]" }, data.Items.Single().Id));
+        Assert.DoesNotContain(DesktopEventParticipants.Read(workspace.Document!.Items.Single().EventParticipantsJson), value => value.Username == "guest");
+        await SendResponse(pending, "ACCEPTED"); await sent;
+        var safety = DesktopSnapshotDocument.FromArchiveBytes(store.LatestSafetyCopy());
+        Assert.Equal("请求途中修改", safety.Items.Single().Title); Assert.Equal("保留新的本机备注", safety.Items.Single().Notes);
+        Assert.Equal("extra", DesktopEventParticipants.Read(safety.Items.Single().EventParticipantsJson).Single().Username);
+        Assert.True(safety.SharedCalendar(EventParticipantsTests.Calendar.Id)!["sharedDirty"]!.GetValue<bool>());
+        Assert.Equal("ACCEPTED", DesktopEventParticipants.Read(workspace.Document.Items.Single().EventParticipantsJson).Single(value => value.Username == "guest").Response);
+        Assert.Equal("请求途中修改", workspace.Document.Items.Single().Title); Assert.Equal("保留新的本机备注", workspace.Document.Items.Single().Notes);
+        Assert.True(workspace.Document.SharedCalendar(EventParticipantsTests.Calendar.Id)!["sharedDirty"]!.GetValue<bool>());
+        Assert.Equal(1L, workspace.Document.SharedCalendar(EventParticipantsTests.Calendar.Id)!["sharedRevision"]!.GetValue<long>());
+        var copies = Directory.GetFiles(Path.Combine(folder, "safety-copies"), "*.bin", SearchOption.AllDirectories);
+        Assert.Single(copies);
+        var unchanged = workspace.RespondToSharedEventAsync(EventParticipantsTests.Calendar.Id, "wire-fixture", "DECLINED");
+        var ordinary = await listener.GetContextAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        await SendResponse(ordinary, "DECLINED"); await unchanged;
+        Assert.Equal(copies, Directory.GetFiles(Path.Combine(folder, "safety-copies"), "*.bin", SearchOption.AllDirectories));
+        Assert.Equal("DECLINED", DesktopEventParticipants.Read(workspace.Document.Items.Single().EventParticipantsJson).Single(value => value.Username == "guest").Response);
     }
     [Fact] public async Task ActualServerSharingProtectsViewerPermissionsConflictsAndPersonalSnapshots()
     {
@@ -61,10 +101,21 @@ public sealed class SharedCalendarIntegrationTests
             var viewerMeta = (await viewer.SharedRequestAsync(HttpMethod.Get, "/v3/calendars/" + id))["calendar"]!.AsObject();
             var viewerEvents = await viewer.SharedRequestAsync(HttpMethod.Get, "/v3/calendars/" + id + "/events");
             viewer.EditShared(data => data.ImportSharedCalendar(viewerMeta, viewerEvents, url));
+            await first.SyncSharedCalendarsAsync();
+            first.EditShared(data => data.SaveItem(data.EditFor(data.Items.Single().Id)! with { EventParticipantsJson = "[\"readonly_user\"]" }, data.Items.Single().Id));
+            await first.SyncSharedCalendarsAsync(); await viewer.SyncSharedCalendarsAsync();
+            Assert.Equal("NEEDS_ACTION", DesktopEventParticipants.Read(viewer.Document!.Items.Single().EventParticipantsJson).Single().Response);
             Assert.False(viewer.Document!.SharedWritable(local));
             Assert.Throws<InvalidOperationException>(() => viewer.EditShared(data => data.SaveItem(data.EditFor(data.Items.Single().Id)! with { Title = "不允许修改" }, data.Items.Single().Id)));
             await Assert.ThrowsAsync<InvalidOperationException>(() => viewer.SharedRequestAsync(HttpMethod.Put, "/v3/calendars/" + id + "/events", new JsonObject { ["expectedRevision"] = viewerEvents["revision"]!.DeepClone(), ["events"] = new JsonArray() }));
-            await viewer.SharedRequestAsync(HttpMethod.Post, "/v3/calendars/" + id + "/events/" + Uri.EscapeDataString(wireId) + "/rsvp", new JsonObject { ["response"] = "ACCEPTED" });
+            await viewer.RespondToSharedEventAsync(local, wireId, "ACCEPTED");
+            Assert.Equal("ACCEPTED", DesktopEventParticipants.Read(viewer.Document.Items.Single().EventParticipantsJson).Single().Response);
+            Assert.False(viewer.Document.SharedCalendar(local)!["sharedDirty"]!.GetValue<bool>());
+            await first.SyncSharedCalendarsAsync(); await viewer.SyncSharedCalendarsAsync();
+            Assert.Equal("ACCEPTED", DesktopEventParticipants.Read(first.Document!.Items.Single().EventParticipantsJson).Single().Response);
+            first.EditShared(data => data.SaveItem(data.EditFor(data.Items.Single().Id)! with { Notes = "回应后更新详情" }, data.Items.Single().Id));
+            await first.SyncSharedCalendarsAsync(); await viewer.SyncSharedCalendarsAsync();
+            Assert.Equal("ACCEPTED", DesktopEventParticipants.Read(viewer.Document.Items.Single().EventParticipantsJson).Single().Response);
             await first.SharedRequestAsync(HttpMethod.Delete, "/v3/calendars/" + id + "/members/readonly_user"); await viewer.SyncSharedCalendarsAsync();
             Assert.Equal("revoked", viewer.Document.SharedCalendar(local)!["sharedRole"]!.GetValue<string>());
             Assert.Empty(viewer.Document.RemindersBetween(long.MinValue, long.MaxValue));
@@ -75,6 +126,40 @@ public sealed class SharedCalendarIntegrationTests
             await viewer.SyncSharedCalendarsAsync();
             Assert.Equal("editor", viewer.Document.SharedCalendar(local)!["sharedRole"]!.GetValue<string>());
             Assert.False(viewer.Document.SharedCalendar(local)!["sharedDirty"]!.GetValue<bool>()); Assert.Equal("甲修改", viewer.Document.Items.Single().Title);
+            first.EditShared(data => data.SaveItem(data.EditFor(data.Items.Single().Id)! with { EventVisibility = "PRIVATE", Notes = "OWNER_PRIVATE_DETAIL", EventParticipantsJson = "[\"readonly_user\",\"sharing_owner\"]" }, data.Items.Single().Id));
+            await first.SyncSharedCalendarsAsync(); await viewer.SyncSharedCalendarsAsync();
+            Assert.Equal("OWNER_PRIVATE_DETAIL", viewer.Document.Items.Single().Notes);
+            viewer.EditShared(data => data.SaveItem(data.EditFor(data.Items.Single().Id)! with { Title = "UNUPLOADED_EDITOR_TITLE", Notes = "UNUPLOADED_EDITOR_DETAIL" }, data.Items.Single().Id));
+            var responseBaseRevision = viewer.Document.SharedCalendar(local)!["sharedRevision"]!.GetValue<long>();
+            await viewer.RespondToSharedEventAsync(local, wireId, "TENTATIVE");
+            void AssertPendingEditAndResponse(DesktopSnapshotDocument current) {
+                Assert.True(current.SharedCalendar(local)!["sharedDirty"]!.GetValue<bool>());
+                Assert.Equal(responseBaseRevision, current.SharedCalendar(local)!["sharedRevision"]!.GetValue<long>());
+                Assert.Equal("UNUPLOADED_EDITOR_TITLE", current.Items.Single().Title);
+                Assert.Equal("UNUPLOADED_EDITOR_DETAIL", current.Items.Single().Notes);
+                var selected = DesktopEventParticipants.Read(current.Items.Single().EventParticipantsJson);
+                Assert.Equal("TENTATIVE", selected.Single(value => value.Username == "readonly_user").Response);
+                Assert.Equal("NEEDS_ACTION", selected.Single(value => value.Username == "sharing_owner").Response);
+            }
+            AssertPendingEditAndResponse(viewer.Document);
+            var responseEvents = await viewer.SharedRequestAsync(HttpMethod.Get, "/v3/calendars/" + id + "/events");
+            Assert.True(responseEvents["revision"]!.GetValue<long>() > responseBaseRevision);
+            Assert.Equal("TENTATIVE", responseEvents["events"]!.AsArray().Single()!["participants"]!.AsArray().Single(value => value!["username"]!.GetValue<string>() == "readonly_user")!["response"]!.GetValue<string>());
+            await viewer.SyncSharedCalendarsAsync(waitForGate: true);
+            Assert.NotNull(viewer.Document.SharedCalendar(local)!["sharedConflictRevision"]);
+            AssertPendingEditAndResponse(viewer.Document);
+            var reopened = new DesktopSecureStore(Path.Combine(folder, "viewer")).Load()!.Value.Document;
+            Assert.NotNull(reopened.SharedCalendar(local)!["sharedConflictRevision"]);
+            AssertPendingEditAndResponse(reopened);
+            await first.SharedRequestAsync(HttpMethod.Delete, "/v3/calendars/" + id + "/members/readonly_user");
+            await first.SharedRequestAsync(HttpMethod.Post, "/v3/calendars/" + id + "/invitations", new JsonObject { ["username"] = "readonly_user", ["role"] = "viewer" });
+            invitation = (await viewer.SharedRequestAsync(HttpMethod.Get, "/v3/calendar-invitations"))["invitations"]!.AsArray().OfType<JsonObject>().Single(value => value["status"]!.GetValue<string>().Equals("pending", StringComparison.OrdinalIgnoreCase))["id"]!.GetValue<string>();
+            await viewer.SharedRequestAsync(HttpMethod.Post, "/v3/calendar-invitations/" + invitation + "/respond", new JsonObject { ["accept"] = true });
+            await viewer.SyncSharedCalendarsAsync();
+            Assert.Equal("viewer", viewer.Document.SharedCalendar(local)!["sharedRole"]!.GetValue<string>());
+            Assert.False(viewer.Document.SharedCalendar(local)!["sharedDirty"]!.GetValue<bool>());
+            Assert.Equal("忙碌", viewer.Document.Items.Single().Title); Assert.Empty(viewer.Document.Items.Single().Notes);
+            Assert.Equal("readonly_user", DesktopEventParticipants.Read(viewer.Document.Items.Single().EventParticipantsJson).Single().Username);
         } finally { if (!server.HasExited) { server.Kill(entireProcessTree: true); await server.WaitForExitAsync(); } }
     }
     [Fact] public void SharedCacheMergeAvoidsPersonalIdCollisionsAndRemovalNeverMigratesContent()

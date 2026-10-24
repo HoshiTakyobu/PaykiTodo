@@ -62,11 +62,13 @@ internal static class NativeEditors
         calendars ??= new[] { new DesktopCalendar("default", "常规日历", "#3370FF") };
         var calendar = new ComboBox { ItemsSource = calendars, DisplayMemberPath = "Name", SelectedItem = calendars.FirstOrDefault(c => c.Id == value?.CalendarId) ?? calendars[0] };
         System.Windows.Automation.AutomationProperties.SetName(calendar, "所属日历");
+        var participants = new NativeParticipantEditor(dialog, (DesktopCalendar)calendar.SelectedItem, value?.EventParticipantsJson ?? "[]");
         var colors = new[] { "#4CB782", "#3B82F6", "#EF6A67", "#E9A23B", "#8B5CF6", "#14B8A6" };
         var initialColor = value?.AccentColor ?? (isEvent ? ((DesktopCalendar)calendar.SelectedItem).ColorHex : colors[0]);
         var color = new ComboBox { ItemsSource = colors.Append(initialColor).Distinct().ToList(), SelectedItem = initialColor };
         calendar.SelectionChanged += (_, _) => {
             if (calendar.SelectedItem is not DesktopCalendar selected) return;
+            participants.SetCalendar(selected);
             color.ItemsSource = colors.Append(selected.ColorHex).Append(initialColor).Distinct().ToList(); color.SelectedItem = selected.ColorHex;
         };
         var pastModes = new[] { new Choice("按设置自动隐藏", "AUTO"), new Choice("一直保留纪念", "KEEP"), new Choice("不再展示", "HIDE") };
@@ -138,6 +140,7 @@ internal static class NativeEditors
             }
             allDay.Checked += (_, _) => UpdateAllDay(); allDay.Unchecked += (_, _) => UpdateAllDay(); UpdateAllDay();
             fields.Children.Add(LabeledField("时区", zone)); fields.Children.Add(LabeledField("日历", calendar)); fields.Children.Add(LabeledField("地点", location));
+            fields.Children.Add(participants.Control);
         }
         else {
             fields.Children.Add(hasDue); fields.Children.Add(due.Control);
@@ -209,6 +212,7 @@ internal static class NativeEditors
                         EventTimeZoneId = isEvent ? ((Choice)zone.SelectedItem).Value : "",
                         AllDayReminderRulesJson = !isEvent ? "" : allDay.IsChecked == true && value?.AllDay == true && string.IsNullOrWhiteSpace(value.AllDayReminderRulesJson) && rulesJson == initialAllDayRules ? "" : rulesJson,
                         EventBusyStatus = ((Choice)busy.SelectedItem).Value, EventVisibility = ((Choice)visibility.SelectedItem).Value,
+                        EventParticipantsJson = isEvent ? participants.Json : "[]",
                         RecurrenceInterval = (int)interval.SelectedItem, RecurrenceInvalidDatePolicy = ((Choice)policy.SelectedItem).Value,
                         RecurrenceMonthlyOrdinal = repeat == "MONTHLY_NTH_WEEKDAY" ? int.Parse(((Choice)ordinal.SelectedItem).Value) : null,
                         RecurrenceMonthlyWeekday = repeat == "MONTHLY_NTH_WEEKDAY" ? int.Parse(((Choice)ordinalWeekday.SelectedItem).Value) : null,

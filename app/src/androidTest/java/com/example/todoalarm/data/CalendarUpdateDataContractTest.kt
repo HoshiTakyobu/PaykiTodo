@@ -254,6 +254,33 @@ class CalendarUpdateDataContractTest {
         assertEquals(shared, local.tasks.single())
     }
 
+    @Test fun sharedRecurrenceKeepsOccurrenceResponsesAndNewInstancesHaveIndependentIdentity() = withRepository { db, repo, group ->
+        val calendarId = "shared:participants-fixture"
+        db.todoDao().insertCalendars(listOf(PlannerCalendar(id = calendarId, name = "共享", shareMode = "SHARED", sharedRole = "OWNER")))
+        val start = LocalDate.of(2030, 10, 24).atTime(10, 0)
+        val base = draft(start, group, calendarId).copy(eventParticipantsJson = "[{\"username\":\"alice\",\"response\":\"ACCEPTED\"}]",
+            recurrence = RecurrenceConfig(true, RecurrenceType.DAILY))
+        val created = repo.createCalendarEventFromDraft(base).sortedBy { it.startAtMillis }
+        assertEquals(created.size, created.map { it.sharedEventId }.toSet().size)
+        assertTrue(created.all { JSONObject(org.json.JSONArray(it.eventParticipantsJson).getJSONObject(0).toString()).getString("response") == "NEEDS_ACTION" })
+        val responded = created.first().copy(eventParticipantsJson = "[{\"username\":\"alice\",\"response\":\"ACCEPTED\"}]")
+        db.todoDao().update(responded)
+        repo.updateCalendarEventFromDraft(responded, base.copy(notes = "只修改详情",
+            eventParticipantsJson = "[{\"username\":\"alice\",\"response\":\"DECLINED\"}]"), RecurrenceScope.ALL)
+        assertEquals("ACCEPTED", org.json.JSONArray(repo.getTodo(responded.id)!!.eventParticipantsJson).getJSONObject(0).getString("response"))
+        val stale = repo.getTodo(created[1].id)!!
+        db.todoDao().update(stale.copy(eventParticipantsJson = "[{\"username\":\"alice\",\"response\":\"TENTATIVE\"}]"))
+        repo.updateCalendarEventFromDraft(stale, base.copy(startAt = stale.calendarStartDateTime(),
+            endAt = stale.calendarEndDateTime(), notes = "过期草稿仍保留当前回应"), RecurrenceScope.CURRENT)
+        assertEquals("TENTATIVE", org.json.JSONArray(repo.getTodo(stale.id)!!.eventParticipantsJson).getJSONObject(0).getString("response"))
+        repo.ensureRecurringInstancesAhead(start.toLocalDate().atTime(12, 0).toEpochMillis(), 45)
+        val all = repo.getAllTodos()
+        assertEquals(all.size, all.map { it.sharedEventId }.toSet().size)
+        assertTrue(all.filter { it.id != responded.id && it.id != stale.id }.all {
+            org.json.JSONArray(it.eventParticipantsJson).getJSONObject(0).getString("response") == "NEEDS_ACTION"
+        })
+    }
+
     private fun withRepository(block: suspend (AppDatabase, TodoRepository, Long) -> Unit) = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
         try {

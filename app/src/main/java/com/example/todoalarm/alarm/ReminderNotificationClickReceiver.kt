@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.sync.canReadCalendarItem
 import com.example.todoalarm.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +24,7 @@ class ReminderNotificationClickReceiver : BroadcastReceiver() {
             try {
                 val app = context.applicationContext as TodoApplication
                 val item = app.repository.getTodo(todoId)
-                if (!app.settingsStore.hasLocalAccountAccess() || !shouldOpenReminderNotification(item)) {
+                if (item == null || !shouldOpenReminderNotification(item) || !app.canReadCalendarItem(item)) {
                     context.getSystemService(android.app.NotificationManager::class.java)
                         ?.cancel(ReminderNotifier.notificationId(todoId))
                     return@launch

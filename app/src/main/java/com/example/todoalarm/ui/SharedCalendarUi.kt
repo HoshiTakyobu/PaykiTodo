@@ -10,6 +10,8 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.sync.CalendarInvitation
 import com.example.todoalarm.sync.SharedCalendarSummary
+import com.example.todoalarm.sync.canReadCalendarItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -129,29 +131,35 @@ internal fun SharedCalendarManager(onDismiss: () -> Unit) {
 }
 
 @Composable
-internal fun CalendarRsvpRow(item: TodoItem) {
+internal fun CalendarRsvpRow(item: TodoItem, onResponseUpdated: (String?) -> Unit = {}) {
     if (!item.calendarId.startsWith("shared:") || item.sharedEventId.isBlank()) return
     val app = LocalContext.current.applicationContext as TodoApplication
+    val settings by app.settingsStore.settingsFlow.collectAsStateWithLifecycle()
+    val calendar = LocalWorkspacePreferences.current.calendars.firstOrNull { it.id == item.calendarId }
+    if (calendar == null || !app.calendarCollaboration.canReadCachedCalendar(calendar)) return
+    val currentResponse = calendarParticipantResponseFor(item.eventParticipantsJson, settings.remoteSyncUsername) ?: return
     val scope = rememberCoroutineScope()
-    var response by remember(item.id, item.eventParticipantsJson) { mutableStateOf(runCatching {
-        val participants = org.json.JSONArray(item.eventParticipantsJson)
-        (0 until participants.length()).asSequence().map { participants.getJSONObject(it) }
-            .firstOrNull { it.optString("username") == app.settingsStore.currentSettings().remoteSyncUsername }?.optString("response") ?: "NEEDS_ACTION"
-    }.getOrDefault("NEEDS_ACTION")) }
+    var response by remember(item.id, item.eventParticipantsJson, settings.remoteSyncUsername) { mutableStateOf(currentResponse) }
     var error by remember(item.id) { mutableStateOf<String?>(null) }
     var busy by remember(item.id) { mutableStateOf(false) }
     Column {
-        PreferenceChoice(if (busy) "正在提交回应" else "我的回应", response, listOf("NEEDS_ACTION" to "尚未回应", "ACCEPTED" to "接受", "TENTATIVE" to "待定", "DECLINED" to "拒绝")) { selected ->
-            if (!busy && selected != "NEEDS_ACTION") {
+        CalendarParticipantResponseChoice(response, busy) { selected ->
+            if (!busy) {
                 busy = true
                 scope.launch {
-                    try { error = app.calendarCollaboration.rsvp(item.calendarId, item.sharedEventId, selected); if (error == null) response = selected }
+                    try {
+                        error = app.calendarCollaboration.rsvp(item.calendarId, item.sharedEventId, selected)
+                        val latest = app.repository.getTodo(item.id)
+                        if (latest != null && app.canReadCalendarItem(latest)) {
+                            calendarParticipantResponseFor(latest.eventParticipantsJson, app.settingsStore.currentSettings().remoteSyncUsername)?.let { response = it }
+                        }
+                        onResponseUpdated(error)
+                    }
                     catch (cancelled: CancellationException) { throw cancelled }
-                    catch (failure: Exception) { error = failure.message ?: "回应失败" }
+                    catch (failure: Exception) { error = failure.message ?: "回应失败"; onResponseUpdated(error) }
                     finally { busy = false }
                 }
             }
         }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }
 }

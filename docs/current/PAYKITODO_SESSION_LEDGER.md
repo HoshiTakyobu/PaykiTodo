@@ -12,7 +12,11 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.17.0 / versionCode 392` update implements the calendar and account requirements in [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Both clients preserve the strong-reminder queue and add timezone/calendar/recurrence/all-day/copy/collaboration controls, complete current item detail navigation, login-server selection and compact account actions. Room is33. New APK/EXE/MSI and UI evidence exist; 216 Android units, 25 distinct emulator tests, 51 Windows regressions plus one 14-stage UIA flow, 21 server tests and MSI lifecycle checks passed. See [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). No push, public release or production deployment.
+The local `1.17.1 / versionCode 393` round completes shared-event participant selection and organizer/participant/current-response details on both clients. Edits preserve response authority, new instances/copies have independent invitation state, RSVP retains pending/in-flight local edits and current confirmed response, and source guards/all-day dates are rechecked. Room remains 33. Built APK/EXE/MSI and22 actual-control preview images exist ; 222 Android units,30 distinct emulator tests,55 Windows regressions plus one 14-stage isolated UIA flow,21 server tests and MSI lifecycle/data-preservation checks passed. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). No push, release or production deployment.
+
+### Previous 1.17.0 calendar and account update
+
+The original calendar/timezone/recurrence/all-day/copy and domain-free login server/compact-account work was built and verified in 1.17.0/392. Its per-event participant UI gap was subsequently closed in 1.17.1. The original results remain in [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md).
 
 ### Previous 1.16.26 implementation
 

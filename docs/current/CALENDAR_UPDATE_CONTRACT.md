@@ -1,6 +1,6 @@
 # Calendar And Account Update Contract
 
-Version: Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33`. This document defines the implementation requirements; measured local outcomes and limitations are recorded in [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md).
+Current local implementation: Android `1.17.1 / versionCode 393`, Windows `1.17.1.0`, Room `33`. Participant controls, complete authorized details and current-response refresh are implemented and locally verified; see [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). The original calendar/account baseline remains in [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md).
 
 ## Calendar behavior
 
@@ -11,10 +11,10 @@ Version: Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33`. This
 | Multiple calendars | Names, colors, description, order and ownership are distinct from task groups; default color and explicit event override are separate; hiding does not stop reminders | Create/edit/move/hide/delete-to-default, template/recurrence/archive roundtrip |
 | Recurrence | Interval, weekday selection, ordinal/last weekday, optional cutoff and explicit valid-date policy; legacy records preserve previous semantics | Month31/leap-day/biweekly/cutoff/last-vs-fifth and current/future/all fixtures |
 | All-day and reminders | All-day dates use exclusive end; timed offsets and all-day days-before/local-time are different rules; defaults and per-mode draft state are independent | Conversion/cancel/reopen, arbitrary clock values, deduplication, actual scheduling |
-| Detail and copy | Detail resolves current record; copying takes the actual instance values and produces an independent nonrecurring draft | Moved instance, all-day, empty/multiple reminders, calendar/color and cancellation |
+| Detail and copy | Detail resolves the current accessible record; copying takes actual instance values and produces an independent nonrecurring draft without the original participant invitation or response | Moved instance, all-day, empty/multiple reminders, calendar/color, permission change and cancellation |
 | Reminder navigation | Keep single strong-reminder window and queue; opening a reminder navigates to complete current detail | Multiple due items, earlier dismissal/later offset, hidden calendar, current detail |
 | Timezones | Separate event timezone from display timezone; preserve event wall-clock anchor and absolute times; all-day uses dates | Zone conversions, DST boundaries, duration, recurrence and archive roundtrip |
-| Collaboration | Calendar permissions, organizer/participant roles and response state are explicit; personal data and shared transport respect access limits | Two identities, read/write/revoke, participant update and conflict tests before claiming working sharing |
+| Collaboration | Select event participants from accepted calendar members in a draft; existing responses belong to the participant and new occurrences start unanswered. Details show organizer (the calendar owner under the current server contract), participants and current-account response; PRIVATE viewers see only the server-authorized projection | Two identities, select/cancel/change-calendar, read/write/revoke, current response refresh, no forged RSVP, independent copy/occurrence and conflict tests before claiming working sharing |
 
 ## Account and layout
 

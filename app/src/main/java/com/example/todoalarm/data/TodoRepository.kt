@@ -2054,7 +2054,11 @@ class TodoRepository(
         draft: CalendarEventDraft,
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
-        val updated = database.withTransaction { updateCalendarEventFromDraftTransaction(original, draft, scope) }
+        val updated = database.withTransaction {
+            val current = todoDao.getById(original.id) ?: return@withTransaction emptyList<TodoItem>()
+            require(current.calendarId == original.calendarId) { "日程所属日历已变化，请重新打开日程" }
+            updateCalendarEventFromDraftTransaction(original.copy(eventParticipantsJson = current.eventParticipantsJson), draft, scope)
+        }
         notifyItemsChanged()
         return updated
     }
@@ -3603,7 +3607,7 @@ class TodoRepository(
                 reminderOffsetsCsv = encodeReminderOffsets(draft.normalizedReminderOffsetsMinutes),
                 allDayReminderRulesJson = draft.allDayReminderRulesJson,
                 eventBusyStatus = draft.eventBusyStatus, eventVisibility = draft.eventVisibility,
-            eventParticipantsJson = draft.eventParticipantsJson,
+            eventParticipantsJson = resetCalendarParticipantResponses(draft.eventParticipantsJson),
                 ringEnabled = draft.ringEnabled, vibrateEnabled = draft.vibrateEnabled,
                 startEpochDay = if (scope == RecurrenceScope.ALL) template.startEpochDay else splitDate.toEpochDay()
             ))
@@ -4002,7 +4006,7 @@ class TodoRepository(
             allDayReminderRulesJson = draft.allDayReminderRulesJson,
             eventBusyStatus = draft.eventBusyStatus,
             eventVisibility = draft.eventVisibility,
-            eventParticipantsJson = draft.eventParticipantsJson,
+            eventParticipantsJson = mergeCalendarParticipantResponses(draft.eventParticipantsJson, existing?.eventParticipantsJson ?: "[]"),
             sharedEventId = existing?.sharedEventId?.takeIf { it.isNotBlank() } ?: if (draft.calendarId.startsWith("shared:")) (seriesId?.let { "$it:$eventStartAtMillis" } ?: UUID.randomUUID().toString()) else "",
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
@@ -4158,7 +4162,7 @@ class TodoRepository(
             allDayReminderRulesJson = draft.allDayReminderRulesJson,
             eventBusyStatus = draft.eventBusyStatus,
             eventVisibility = draft.eventVisibility,
-            eventParticipantsJson = draft.eventParticipantsJson,
+            eventParticipantsJson = resetCalendarParticipantResponses(draft.eventParticipantsJson),
             groupId = draft.groupId,
             dueHour = draft.startAt.hour,
             dueMinute = draft.startAt.minute,

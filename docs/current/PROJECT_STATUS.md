@@ -2,39 +2,21 @@
 
 ## Current Baseline
 
-- Current local build: Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33`. Calendar and account updates are implemented and locally verified; see [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md).
-- Scope: calendar navigation and creation, independent calendars, recurrence intervals and valid-date policies, all-day reminder times, details/copy/reminder navigation, event/display timezones, calendar collaboration, login-server selection and compact account actions.
-- Preserve the existing single strong-reminder window and queue. Presentation changes must not introduce a separate notification-card system.
-- Current requirements: [calendar update contract](CALENDAR_UPDATE_CONTRACT.md). Validation: 216 Android units, 25 distinct emulator tests, 51 Windows regressions and one 14-stage isolated UIA flow, 21 server tests, signed APK and MSI lifecycle checks.
-- No production deployment or public release was made. Sharing requires a server with the new calendar interfaces; real production cross-device collaboration and OEM reminder behavior are not claimed as verified.
+- Current source and local build: Android `1.17.1 / versionCode 393`, Windows `1.17.1.0`, Room `33`. Shared-event participant selection, organizer/participant details, response authority and refresh, source guards and all-day notification dates are implemented and locally verified. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md).
+- Retain the calendar/account update from 1.17.0: calendar body/create-adjust/multiple calendars/recurrence/all-day reminders/current-instance copy/timezones, domain-free login server selection and compact account actions. Strong reminders keep one window and queue.
+- Validation: 222 Android units, 12 data and 18 distinct emulator UI tests, 55 Windows regressions plus one 14-stage isolated UIA flow, 21 server tests, signed APK and MSI lifecycle checks. Android Lint 0 errors / 133 warnings. Repeated targeted checks do not increase distinct counts.
+- No public release or production deployment. Sharing requires a server with `/v3` calendar interfaces; production cross-device collaboration and OEM/physical-input behavior are not claimed as verified.
+- Previous local baseline: `1.17.0 / 392`, Windows `1.17.0.0`, Room 33. Its original artifacts and test scope remain in [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md); per-event participant controls/details were completed in 1.17.1.
+- Repository: `https://github.com/HoshiTakyobu/PaykiTodo`; branch `main`; package `com.paykitodo.app`; Android 8.0+ / API 26+, compile/targetAPI 34; MIT license.
 
-- Previous completed build: Android `1.16.26 / 391`, Windows `1.16.26.0`; historical APKs, self-contained Windows output and Chinese MSI were built and verified. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md) for that round's original-feedback matrix and exact limits.
+## Published And Local Builds
 
-- Repository: `https://github.com/HoshiTakyobu/PaykiTodo`
-- Branch: `main`
-- Package: `com.paykitodo.app`
-- Supported Android: Android 8.0+ / API 26+
-- Compile and target SDK: Android 14 / API 34
-- License: MIT
-- App source version: `1.17.0 / versionCode 392` (locally built and verified; not published)
-- Room database version: `33`
-- Latest testing audit: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md); Android Lint 0 errors / 133 warnings. Historical test counts below retain their original version labels.
-
-## Published Build
-
-- GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
-- Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
-- Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.0-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.17.0-release.apk`
-- Current Windows installer: `desktop/installer-output/PaykiTodo-1.17.0-windows-x64.msi` (76.4 MiB, Windows 10 1809+ / Windows 11 x64, per-user, includes .NET). See [installation instructions](../../desktop/installer/README.md).
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.17.0.0`; portable use requires the whole directory)
-- Debug APK SHA-256: `4F25DC81982D3D6C157E9B83B29D12B1DF2D29C753D469FE19D2A10C40D079FE`
-- Signed Release APK SHA-256: `F5821C5366ECF49FDD3342CF64F674FE4A72CECD01E5EA4B3F27A9CD63FA1963`
-- Windows EXE SHA-256: `6E6407F84BFC85C628E7B0ADABA8055EF8FABDDC915E13DCC042F466AD2D53E2`
-- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `E9F4BF3C10D184B38B968472886C8D8100C3B42697909030BF3A872201BE6301` (matches MSI payload; the EXE apphost alone does not identify UI code)
-- Windows MSI SHA-256: `B303F84BF304A48D59A4FDD0330CE0DBAB4387CF10733E3ECEA34A80928C6676`
-- Release signing material remains local and ignored by Git.
+- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. Do not point public downloads at an uncreated 1.17.1 tag.
+- Current Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.1-debug.apk`; SHA-256 `B0B6735A4B4B76DF6FD67AB07A4BE6310747AB3A67A2FE584750B6190D5B87B1`.
+- Current signed Release APK: `app/build/outputs/apk/release/PaykiTodo-1.17.1-release.apk`; SHA-256 `A08DD3BC1934BC36C1413FCCF751AF902EA5DC7717079FB7746A4AC77F9F5BF9`.
+- Current Windows installer: `desktop/installer-output/PaykiTodo-1.17.1-windows-x64.msi`, 80,098,368 bytes, Windows 10 1809+/11 x64, per-user with .NET; SHA-256 `6DBC4E5DD47B17A172F10BEC556C5CC33CF1A5023601EBF8074C84C1750BB39C`. See [installation instructions](../../desktop/installer/README.md).
+- Windows portable entry: `desktop/dist/PaykiTodo.exe` / file version 1.17.1.0; keep the whole directory. EXE SHA-256 `84AA67E3E1D39DA9739C48A9E78E115C8D9B7A0B2498C7A47A1C9E51CF7342D0`; main DLL SHA-256 `5346953E532D42F122C1F167B69AA7BA4635902996EE8F9260BFFC43A94C8821`, identical to MSI payload.
+- Current 22-image preview: `G:\Workspace\Deliverables\PaykiTodo\1.17.1\界面预览.html`. Signing material, private settings and generated outputs remain outside Git.
 
 ## Product Positioning
 
@@ -109,7 +91,7 @@ See [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md) for reference inspection, new
 - Passed: 186 Android unit tests; Android Lint (0 errors, 128 warnings); Debug/AndroidTest/signed Release builds; 23 Pixel_8 instrumentation tests; 18 Windows tests; 12 server tests; LAN browser regression and JavaScript syntax; self-contained Windows publish and Release APK v2 signature verification.
 - A dedicated run disabled emulator Wi-Fi and mobile data, expired the synthetic account, pressed Home, scheduled a real AlarmManager reminder and observed its notification/dispatch claim. Fixture account preferences and synthetic tasks were restored afterward; network was re-enabled.
 - Validation details and remaining boundaries: [VALIDATION_1.16.21.md](VALIDATION_1.16.21.md). No push, tag, release or production-server change.
-- Follow-up: original23 Android and18 Windows regressions rerun; new3 Android local-server/login/conflict tests and1 visible12-stage WPF OS-input test pass. Actual phone and visible LAN steps are listed separately from test counts. Full platform parity, OEM behavior and every UI flow are not claimed.
+- Follow-up: original23 Android and 18 Windows regressions rerun; new3 Android local-server/login/conflict tests and1 visible12-stage WPF OS-input test pass. Actual phone and visible LAN steps are listed separately from test counts. Full platform parity, OEM behavior and every UI flow are not claimed.
 
 ## v1.16.20 Validation Scope (not published)
 

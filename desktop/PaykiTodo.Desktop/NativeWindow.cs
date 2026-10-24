@@ -170,8 +170,29 @@ internal sealed partial class NativeWindow : Window
         if (scope == null) return;
         if (existing != null && !workspace.Document.SharedWritable(existing.CalendarId)) { workspace.Notify("你只有此共享日历的查看权限。"); return; }
         var calendars = workspace.Document.Calendars.Where(c => workspace.Document.SharedWritable(c.Id)).OrderBy(c => (workspace.Document.Settings["hiddenCalendarIds"] as System.Text.Json.Nodes.JsonArray)?.Any(v => v?.GetValue<string>() == c.Id) == true).ToList();
-        var edit = NativeEditors.Item(this, isEvent, workspace.Document.Groups, existing, seed ?? selectedDay, calendars, scope.Value, anchorScreen, workspace.Document);
+        var edit = GuardItemEditor(calendars, id, () => NativeEditors.Item(this, isEvent, workspace.Document!.Groups, existing, seed ?? selectedDay, calendars, scope.Value, anchorScreen, workspace.Document));
         if (edit != null) Change(document => document.SaveItem(edit, id, scope.Value));
+    }
+    private DesktopItemEdit? GuardItemEditor(IReadOnlyList<DesktopCalendar> calendars, long? sourceId, Func<DesktopItemEdit?> open)
+    {
+        var generation = workspace.AccountGeneration;
+        bool Accessible() => generation == workspace.AccountGeneration && workspace.Document != null &&
+            (sourceId == null || CanReadItemDetails(workspace.Document.Items.FirstOrDefault(item => item.Id == sourceId))) &&
+            calendars.Where(c => DesktopSnapshotDocument.IsSharedCalendar(c.Id)).All(c => workspace.Document.Calendars.Any(current => current.Id == c.Id &&
+                current.ShareMode == "SHARED" && current.SharedRole.ToLowerInvariant() is "owner" or "editor" &&
+                string.Equals(current.SharedServerUrl, workspace.Account?.ServerUrl, StringComparison.OrdinalIgnoreCase)));
+        void CheckEditorAccess() {
+            if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(CheckEditorAccess); return; }
+            if (Accessible()) return;
+            foreach (var dialog in OwnedWindows.OfType<Window>().Where(value => value.Title is "新增日程" or "编辑日程" or "新增待办" or "编辑待办").ToArray()) {
+                foreach (var nested in dialog.OwnedWindows.OfType<Window>().ToArray()) { nested.Content = null; nested.Close(); }
+                dialog.Content = null; dialog.Close();
+            }
+        }
+        if (!Accessible()) return null;
+        workspace.Changed += CheckEditorAccess;
+        try { var edit = open(); return Accessible() ? edit : null; }
+        finally { workspace.Changed -= CheckEditorAccess; }
     }
     private void CreateChecklist()
     {
@@ -199,8 +220,9 @@ internal sealed partial class NativeWindow : Window
     {
         if (workspace.Document?.EditFor(id) is not { } source) return;
         var draft = workspace.Document.CopyDraft(id);
-        var edit = NativeEditors.Item(this, source.IsEvent, workspace.Document.Groups, draft,
-            DesktopCalendarTime.Wall(source.StartAtMillis ?? source.DueAtMillis ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), source.EventTimeZoneId), workspace.Document.Calendars, preferences: workspace.Document);
+        var calendars = workspace.Document.Calendars.Where(calendar => workspace.Document.SharedWritable(calendar.Id)).ToList();
+        var edit = GuardItemEditor(calendars, id, () => NativeEditors.Item(this, source.IsEvent, workspace.Document!.Groups, draft,
+            DesktopCalendarTime.Wall(source.StartAtMillis ?? source.DueAtMillis ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), source.EventTimeZoneId), calendars, preferences: workspace.Document));
         if (edit != null) Change(document => document.SaveItem(edit));
     }
     private bool Confirm(string text) => Confirmation(this, text);

@@ -180,6 +180,7 @@ public sealed class NativeWorkspaceTests
                         VerifyFeedbackControls(window, workspace, store, shotFolder);
                         VerifyCalendarReaudit(window, workspace, shotFolder);
                         VerifyCalendarOptions(window, workspace, shotFolder);
+                        VerifyParticipantControls(window, shotFolder);
                     }
                 }
                 var toggle = Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题");
@@ -240,6 +241,7 @@ public sealed class NativeWorkspaceTests
     }
     private static void Screenshot(Window window, string path)
     {
+        window.UpdateLayout(); window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
         var dpi = VisualTreeHelper.GetDpi(window);
         var image = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY), dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32); image.Render(window);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image)); using var file = File.Create(path); encoder.Save(file);
@@ -395,7 +397,7 @@ public sealed class NativeWorkspaceTests
         Descendants<Button>(window).Single(b => b.Content as string == "今天").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
         window.Width = 1280; Pump();
     }
-    private static void InspectModal(NativeWindow window, string title, Action open, Action<Window> inspect)
+    private static void InspectModal(Window window, string title, Action open, Action<Window> inspect)
     {
         Exception? failure = null; var inspected = false;
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
@@ -463,6 +465,86 @@ public sealed class NativeWorkspaceTests
         });
         Assert.DoesNotContain(Descendants<TextBox>(window), input => input.Text.Contains("://"));
         Assert.True(File.Exists(Path.Combine((string)typeof(NativeWindow).GetField("profileDirectory", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(window)!, "login-servers.json")));
+    }
+    private static void VerifyParticipantControls(NativeWindow owner, string folder)
+    {
+        var document = EventParticipantsTests.Fixture(); var original = document.Items.Single();
+        var calendars = document.Calendars.ToList();
+        calendars.Add(new DesktopCalendar("shared:other", "另一共享日历", "#7955CC") { ShareMode = "SHARED", OwnerAccount = "other", MembersJson = "[{\"username\":\"other\",\"displayName\":\"另一成员\",\"role\":\"owner\"}]" });
+        DesktopItemEdit? draft = null;
+        void Editor(Action<Window> inspect) => InspectModal(owner, "编辑日程", () => draft = NativeEditors.Item(owner, true, document.Groups, document.EditFor(original.Id), DateTime.Today, calendars), inspect);
+        void Select(Window editor, bool finish) => InspectModal(editor, "选择参与者", () => {
+            Descendants<Button>(editor).Single(button => button.Content as string == "选择参与者").BringIntoView(); editor.UpdateLayout(); ClickDialog(editor, "选择参与者");
+        }, selection => {
+            Assert.True(Descendants<System.Windows.Controls.CheckBox>(selection).Single(check => check.Tag as string == "guest").IsChecked);
+            Descendants<System.Windows.Controls.CheckBox>(selection).Single(check => check.Tag as string == "extra").IsChecked = true;
+            Screenshot(selection, Path.Combine(folder, "windows-event-participant-selection-light.png")); ClickDialog(selection, finish ? "完成" : "取消");
+        });
+        Editor(editor => { Select(editor, true); ClickDialog(editor, "取消"); }); Assert.Null(draft);
+        Assert.Single(DesktopEventParticipants.Read(document.Items.Single().EventParticipantsJson));
+        Editor(editor => {
+            Select(editor, false);
+            Assert.DoesNotContain(Descendants<TextBlock>(editor), text => text.Text.Contains("新增成员"));
+            Select(editor, true); Screenshot(editor, Path.Combine(folder, "windows-event-participants-editor-light.png")); ClickDialog(editor, "完成");
+        });
+        Assert.Equal(new[] { "guest", "extra" }, DesktopEventParticipants.Read(draft!.EventParticipantsJson).Select(value => value.Username));
+        Assert.Equal("TENTATIVE", DesktopEventParticipants.Read(draft.EventParticipantsJson).First().Response);
+        Editor(editor => {
+            var choice = Descendants<System.Windows.Controls.ComboBox>(editor).Single(control => control.ItemsSource is IEnumerable<DesktopCalendar>);
+            choice.SelectedItem = calendars.Single(value => value.Id == "shared:other");
+            InspectModal(editor, "选择参与者", () => ClickDialog(editor, "选择参与者"), selection => {
+                var checks = Descendants<System.Windows.Controls.CheckBox>(selection).ToArray(); Assert.Single(checks); Assert.Equal("other", checks[0].Tag); Assert.False(checks[0].IsChecked);
+                checks[0].IsChecked = true; ClickDialog(selection, "完成");
+            }); ClickDialog(editor, "完成");
+        }); Assert.Equal("other", DesktopEventParticipants.Read(draft!.EventParticipantsJson).Single().Username);
+        Editor(editor => {
+            var choice = Descendants<System.Windows.Controls.ComboBox>(editor).Single(control => control.ItemsSource is IEnumerable<DesktopCalendar>);
+            choice.SelectedItem = calendars.Single(value => value.Id == "default");
+            Assert.DoesNotContain(Descendants<Button>(editor), button => button.IsVisible && button.Content as string == "选择参与者"); ClickDialog(editor, "完成");
+        }); Assert.Empty(DesktopEventParticipants.Read(draft!.EventParticipantsJson));
+
+        var profile = NewDirectory(); var store = new DesktopSecureStore(profile);
+        var metadata = new JsonObject { ["id"] = "fixture", ["name"] = EventParticipantsTests.Calendar.Name, ["colorHex"] = "#3370FF", ["role"] = "viewer", ["ownerUsername"] = "owner", ["members"] = JsonNode.Parse(EventParticipantsTests.Calendar.MembersJson) };
+        var wire = (JsonObject)EventParticipantsTests.Json(document)["tasks"]!.AsArray()[0]!.DeepClone(); wire["id"] = "wire-fixture";
+        wire["title"] = "忙碌"; wire["eventVisibility"] = "PRIVATE"; wire["location"] = ""; wire["notes"] = "";
+        wire["participants"] = JsonNode.Parse("[{\"username\":\"guest\",\"response\":\"TENTATIVE\"}]");
+        document.ImportSharedCalendar(metadata, new JsonObject { ["revision"] = 2L, ["events"] = new JsonArray(wire.DeepClone()) }, EventParticipantsTests.Calendar.SharedServerUrl, true);
+        store.Save(new CloudAccountState(EventParticipantsTests.Calendar.SharedServerUrl, "guest", "fixture-device", "", "", 0, 1, "fixture-encryption-only", 0, false), document);
+        var shared = new DesktopWorkspace(store);
+        var window = new NativeWindow(shared, profile) { ShowActivated = false, Left = -10000, Top = -10000, ShowInTaskbar = false, Width = 1280, Height = 850 }; window.Show(); window.UpdateLayout();
+        wire["participants"] = JsonNode.Parse("[{\"username\":\"guest\",\"response\":\"ACCEPTED\"}]");
+        InspectModal(window, "日程详情", () => typeof(NativeWindow).GetMethod("Preview", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(window, new object[] { shared.Document!.Items.Single() }), dialog => {
+            var response = Descendants<System.Windows.Controls.ComboBox>(dialog).Single(control => System.Windows.Automation.AutomationProperties.GetAutomationId(control) == "Event.Rsvp.Response");
+            Assert.Equal(2, response.SelectedIndex); Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("组织者  ·  组织者 · owner"));
+            Assert.DoesNotContain(Descendants<TextBlock>(dialog), text => text.Text.Contains("新增成员") || text.Text.Contains("extra"));
+            Screenshot(dialog, Path.Combine(folder, "windows-event-collaboration-detail-light.png"));
+            shared.EditShared(data => data.ImportSharedCalendar(metadata, new JsonObject { ["revision"] = 2L, ["events"] = new JsonArray(wire.DeepClone()) }, EventParticipantsTests.Calendar.SharedServerUrl, true)); dialog.UpdateLayout();
+            Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text == "忙碌");
+            Assert.Equal(1, Descendants<System.Windows.Controls.ComboBox>(dialog).Single(control => System.Windows.Automation.AutomationProperties.GetAutomationId(control) == "Event.Rsvp.Response").SelectedIndex);
+            Screenshot(dialog, Path.Combine(folder, "windows-event-collaboration-refreshed-light.png"));
+            wire["participants"] = new JsonArray();
+            shared.EditShared(data => data.ImportSharedCalendar(metadata, new JsonObject { ["revision"] = 3L, ["events"] = new JsonArray(wire.DeepClone()) }, EventParticipantsTests.Calendar.SharedServerUrl, true)); dialog.UpdateLayout();
+            Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text == "参与者名单受限；你尚未回应。");
+            Assert.DoesNotContain(Descendants<TextBlock>(dialog), text => text.Text == "尚无参与者");
+            shared.EditShared(data => data.SharedCalendar(original.CalendarId)!["sharedRole"] = "revoked"); Assert.False(dialog.IsVisible); Assert.Null(dialog.Content);
+        });
+        metadata["role"] = "editor";
+        wire["title"] = "协作会议"; wire["eventVisibility"] = "PUBLIC"; wire["location"] = "研讨室"; wire["notes"] = "讨论本周任务与下一步安排。";
+        wire["participants"] = JsonNode.Parse("[{\"username\":\"guest\",\"response\":\"ACCEPTED\"},{\"username\":\"extra\",\"response\":\"NEEDS_ACTION\"}]");
+        shared.EditShared(data => data.ImportSharedCalendar(metadata, new JsonObject { ["revision"] = 3L, ["events"] = new JsonArray(wire.DeepClone()) }, EventParticipantsTests.Calendar.SharedServerUrl, true));
+        InspectModal(window, "编辑日程", () => typeof(NativeWindow).GetMethod("CopyItem", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(window, new object[] { shared.Document!.Items.Single().Id }), editor => {
+            Assert.DoesNotContain(Descendants<Button>(editor), button => button.IsVisible && button.Content as string == "选择参与者");
+            shared.EditShared(data => data.SharedCalendar(original.CalendarId)!["sharedRole"] = "revoked"); Assert.False(editor.IsVisible); Assert.Null(editor.Content);
+        });
+        Assert.Single(shared.Document!.Items);
+        shared.EditShared(data => data.ImportSharedCalendar(metadata, new JsonObject { ["revision"] = 3L, ["events"] = new JsonArray(wire.DeepClone()) }, EventParticipantsTests.Calendar.SharedServerUrl, true));
+        InspectModal(window, "日程详情", () => typeof(NativeWindow).GetMethod("Preview", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(window, new object[] { shared.Document!.Items.Single() }), dialog => {
+            Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("新增成员 · extra"));
+            Screenshot(dialog, Path.Combine(folder, "windows-event-collaboration-full-detail-light.png"));
+            Assert.True(shared.LogoutAsync().IsCompletedSuccessfully); Assert.False(dialog.IsVisible); Assert.Null(dialog.Content);
+            Assert.Single(store.Load()!.Value.Document.Items);
+        });
+        window.Close();
     }
     internal static void AssertSingleLineFits(TextBox input)
     {

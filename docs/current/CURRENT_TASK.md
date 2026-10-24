@@ -1,5 +1,11 @@
 # Current Task
 
+## Completed locally: 1.17.1 / 393 participant controls and complete details
+
+Both clients implement accepted-member participant selection, organizer/participant response details, current-account RSVP initialization/refresh and server-authorized PRIVATE projections. Ordinary cancel writes nothing; calendar changes reset selection, edits preserve existing response authority, new occurrences start unanswered and independent copies drop invitations. Confirmed response and pending/in-flight edits are both retained safely during sync conflicts. Source access and all-day notification dates are rechecked.
+
+Debug/signed Release APK, self-contained Windows output, Chinese MSI and22 selected actual-control images exist. Passed222 Android units,12 data plus18 distinct UI tests,55 Windows regressions plus one 14-stage isolated UIA flow,21 server tests and MSI lifecycle/data-preservation checks. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). No push, release or production deployment; source and artifacts are frozen.
+
 ## Completed locally: 1.17.0 / 392 calendar and account update
 
 Implement the [calendar update contract](CALENDAR_UPDATE_CONTRACT.md) on Android and native Windows. Improve the calendar body, create/adjust workflows, multiple calendars, recurrence, all-day reminders, details/copy, event/display timezones and calendar collaboration. Keep current single strong-reminder delivery and queue; opening a reminder must resolve the complete current item detail.

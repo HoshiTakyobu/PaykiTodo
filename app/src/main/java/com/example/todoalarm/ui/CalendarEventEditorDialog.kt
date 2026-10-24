@@ -110,7 +110,8 @@ internal fun CalendarEventEditorDialog(
     val seedDraft = remember(initialEvent?.id, initialDraft) { if (initialEvent == null) initialDraft else null }
     val singleInstanceContext = initialEvent?.isRecurring == true && editingScope == RecurrenceScope.CURRENT
     val defaultTimedClock = now.withMinute(0).plusMinutes(if (now.minute < 30) 30 else 60).toLocalTime()
-    val writableCalendars = workspace.calendars.filter { !it.id.startsWith("shared:") || it.sharedRole.uppercase() in setOf("OWNER", "EDITOR") }
+    val writableCalendars = workspace.calendars.filter { !it.id.startsWith("shared:") ||
+        (it.shareMode == "SHARED" && it.sharedRole.uppercase() in setOf("OWNER", "EDITOR")) }
     val sortedGroups = remember(groups) { groups.sortedWith(compareBy<TaskGroup> { it.sortOrder }.thenBy { it.id }) }
     val defaultGroupId = remember(sortedGroups) {
         sortedGroups.firstOrNull { it.name == "例行" }?.id ?: sortedGroups.firstOrNull()?.id ?: 0L
@@ -182,6 +183,10 @@ internal fun CalendarEventEditorDialog(
     var vibrateEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.vibrateEnabled ?: seedDraft?.vibrateEnabled ?: defaultVibrateEnabled) }
     val reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
     var selectedCalendarId by remember(initialEvent?.id, seedDraft) { mutableStateOf((initialEvent?.calendarId ?: seedDraft?.calendarId ?: "default").takeIf { id -> writableCalendars.any { it.id == id } } ?: "default") }
+    var participantsJson by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.eventParticipantsJson ?: seedDraft?.eventParticipantsJson ?: "[]")
+    }
+    val selectedCalendar = workspace.calendars.firstOrNull { it.id == selectedCalendarId }
     var countdownPastMode by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.countdownPastMode ?: seedDraft?.countdownPastMode ?: "AUTO") }
     var countdownEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.countdownEnabled == true || seedDraft?.countdownEnabled == true)
@@ -336,7 +341,9 @@ internal fun CalendarEventEditorDialog(
                 allDayReminderRulesJson = if (allDay) { if (reminderEnabled) allDayRulesJson else "[]" } else "",
                 eventBusyStatus = eventBusyStatus,
                 eventVisibility = eventVisibility,
-                eventParticipantsJson = initialEvent?.eventParticipantsJson ?: seedDraft?.eventParticipantsJson ?: "[]",
+                eventParticipantsJson = selectedCalendar?.let { calendar ->
+                    calendarParticipantSelection(calendar, calendarParticipants(participantsJson).map { it.username }.toSet(), participantsJson)
+                } ?: "[]",
                 accentColorHex = accentColorHex,
                 reminderMinutesBefore = normalizedOffsets.minOrNull(),
                 reminderOffsetsMinutes = normalizedOffsets,
@@ -419,8 +426,14 @@ internal fun CalendarEventEditorDialog(
 
                 EditorBlock(title = "日历") {
                     PreferenceChoice("所属日历", selectedCalendarId, writableCalendars.map { it.id to it.name }) { id ->
+                        if (id != selectedCalendarId) participantsJson = "[]"
                         selectedCalendarId = id
                         workspace.calendars.firstOrNull { it.id == id }?.let { accentColorHex = it.colorHex }
+                    }
+                }
+                if (selectedCalendar?.id?.startsWith("shared:") == true && selectedCalendar.shareMode == "SHARED") {
+                    EditorBlock(title = "日程协作") {
+                        CalendarParticipantsEditor(selectedCalendar, participantsJson) { participantsJson = it }
                     }
                 }
                 if (countdownEnabled) EditorBlock(title = "纪念展示") {

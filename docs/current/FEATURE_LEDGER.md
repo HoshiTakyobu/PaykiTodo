@@ -2,9 +2,11 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current local update: 1.17.0 / 392
+## Current local update: 1.17.1 / 393
 
-Both clients implement display/event timezones, auxiliary time scale, calendar descriptions/order/defaults, recurrence intervals/no cutoff/invalid-date policies, independent all-day reminder clock rules and draft state, current-instance copy, shared-calendar permissions/invitations/responses/conflicts, domain-free login with server selection, and compact account actions. Strong-reminder delivery and queue remain; detail navigation rereads the current record and shared access. Room33 migration and cache/reference isolation preserve personal data. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Direct results and limits: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). Shared features require updated server interfaces; no production rollout or all-device parity is claimed.
+Both clients now select shared-event participants from current accepted calendar members and show organizer/participant/current-account responses. Cancel stays transactional, changing calendars reselects members, existing responses are preserved, and new participants/occurrences start unanswered. PRIVATE viewers see only server-authorized projection. Confirmed RSVP remains visible despite pending local edits; in-flight edits preserve a recoverable candidate and old sync revision. Details/editors/reminders revalidate source access, and all-day notification dates use the event timezone.
+
+The 1.17.0 calendar/timezone/recurrence/all-day/copy/account update remains. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Current validation and artifacts: [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md); original1.17.0 scope: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). Sharing still requires updated server interfaces; production rollout and all-device parity are not claimed.
 
 ## Implemented And In Use
 
@@ -14,7 +16,7 @@ Both clients implement display/event timezones, auxiliary time scale, calendar d
 - 全天使用午夜排他结束与09:00提醒基准，跨日显示结束日期；新建日程支持多个时段并统一校验/提交。两端日历改色更新沿用旧默认色的日程/模板，保留其他自定义色。
 - Windows小月历独立翻月，窗口跨宽度断点重排，窄周按3天翻页，日历列表独立滚动；紧凑日程编辑器临近草稿、底部蓝色完成固定。新增拖动改期/结束边缘调整、15分钟吸附与Esc取消。
 - Windows规划文档支持本机图片OCR，识别文字进入草稿、完成才保存。Android完成倒数日后即时询问纪念选择，去除旧15秒时钟延迟。
-- 中文每用户MSI包含.NET、桌面/开始菜单入口和WebView2安装入口，支持Windows10 1809+/11 x64；升级/修复记住路径，卸载保留用户资料。安装后的实际EXE验证通过。
+- 中文每用户MSI包含.NET、桌面/开始菜单入口和WebView2安装入口，支持Windows 10 1809+/11 x64；升级/修复记住路径，卸载保留用户资料。安装后的实际EXE验证通过。
 
 193 Android单测、13设备用例、38 Windows回归及1条14阶段UIA流程、跨端迁移包及安装/升级/修复/卸载通过。证据和实际环境边界见[VALIDATION_1.16.26.md](VALIDATION_1.16.26.md)。下方版本条目是历史记录，其中旧版Windows循环/OCR/多时段缺口由本节更新；不代表所有平台功能均等同。
 

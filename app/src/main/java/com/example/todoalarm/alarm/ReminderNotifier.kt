@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.todoalarm.R
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.calendarZone
 import com.example.todoalarm.ui.ResolvedTaskGroup
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.formatLocalDateTime
@@ -243,16 +244,7 @@ class ReminderNotifier(
     }
 
     private fun eventDateLabel(todoItem: TodoItem): String {
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.CHINA)
-        val start = todoItem.startAtMillis?.let(::toLocalDateTime)
-            ?: return formatLocalDateTime(reminderAtMillisToDateTime(todoItem.dueAtMillis))
-        val endExclusive = todoItem.endAtMillis?.let(::toLocalDateTime)?.toLocalDate()?.minusDays(1)
-            ?: start.toLocalDate()
-        return if (start.toLocalDate() == endExclusive) {
-            start.toLocalDate().format(formatter)
-        } else {
-            "${start.toLocalDate().format(formatter)} - ${endExclusive.format(formatter)}"
-        }
+        return calendarEventNotificationDateLabel(todoItem)
     }
 
     private fun eventTimeRangeLabel(todoItem: TodoItem): String {
@@ -274,4 +266,13 @@ class ReminderNotifier(
     companion object {
         fun notificationId(todoId: Long): Int = 10_000 + AlarmScheduler.requestCodeFor(todoId, 0L)
     }
+}
+
+internal fun calendarEventNotificationDateLabel(item: TodoItem): String {
+    val zone = calendarZone(item.eventTimeZoneId)
+    val start = Instant.ofEpochMilli(item.startAtMillis ?: item.dueAtMillis).atZone(zone).toLocalDate()
+    val last = item.endAtMillis?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate().minusDays(1) }
+        ?.coerceAtLeast(start) ?: start
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.CHINA)
+    return if (start == last) start.format(formatter) else "${start.format(formatter)} - ${last.format(formatter)}"
 }

@@ -15,6 +15,7 @@ import com.example.todoalarm.data.backupSnapshotFromJson
 import com.example.todoalarm.data.calendarZone
 import com.example.todoalarm.data.decodeAllDayReminderRules
 import com.example.todoalarm.data.toJson
+import com.example.todoalarm.data.applyCalendarParticipantResponse
 import com.example.todoalarm.widget.TodoWidgetProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -271,11 +272,31 @@ class CalendarCollaborationCoordinator(private val app: TodoApplication) {
 
     suspend fun rsvp(localCalendarId: String, sharedEventId: String, response: String): String? = action {
         val scope = accountScope()
-        localCalendar(localCalendarId, scope)
-        request("POST", calendarPath(localCalendarId) + "/events/${segment(sharedEventId)}/rsvp",
+        val calendar = localCalendar(localCalendarId, scope)
+        val before = capture(calendar, scope)
+        val key = stateKey(scope, localCalendarId)
+        val baseline = preferences.getString("$key:fingerprint", null)
+        val result = request("POST", calendarPath(localCalendarId) + "/events/${segment(sharedEventId)}/rsvp",
             JSONObject().put("response", response.uppercase()))
         requireScope(scope)
-        syncLocked(localCalendarId, scope)
+        val username = app.settingsStore.currentSettings().remoteSyncUsername
+        val updatedBaseline = app.database.withTransaction {
+            val currentCalendar = localCalendar(localCalendarId, scope)
+            val current = captureInTransaction(currentCalendar, scope)
+            if (current.fingerprint != before.fingerprint) savePermissionSafetyCopy("response-update")
+            dao.getAllTodos().filter { it.calendarId == localCalendarId && it.sharedEventId == sharedEventId && it.isEvent }
+                .forEach { item -> dao.update(item.copy(eventParticipantsJson =
+                    applyCalendarParticipantResponse(item.eventParticipantsJson, username, result.getString("response")))) }
+            val after = captureInTransaction(currentCalendar, scope)
+            SharedCalendarSyncPolicy.baselineAfterAuthoritativeResponse(baseline, before.fingerprint,
+                current.fingerprint, after.fingerprint)
+        }
+        requireScope(scope)
+        if (updatedBaseline != baseline) preferences.edit().putString("$key:fingerprint", updatedBaseline).apply()
+        // Keep the old revision: unrelated edits must still conflict instead of overwriting the server.
+        try { syncLocked(localCalendarId, scope) }
+        catch (error: CancellationException) { throw error }
+        catch (error: Exception) { throw IllegalStateException("回应已发送；共享日历尚未完成同步：${error.message ?: "请稍后重试"}", error) }
     }
 
     /** Called only by an explicit, confirmed UI choice; a full safety copy is retained. */
@@ -461,10 +482,10 @@ class CalendarCollaborationCoordinator(private val app: TodoApplication) {
         TodoWidgetProvider.notifyWidgetDataChanged(app)
     }
 
-    private suspend fun savePermissionSafetyCopy() {
+    private suspend fun savePermissionSafetyCopy(reason: String = "permission-change") {
         val snapshot = app.database.withTransaction { app.repository.exportSnapshot(app.settingsStore.currentSettings()) }
         val directory = File(app.filesDir, "shared-calendar-conflicts").apply { mkdirs() }
-        val file = File(directory, "before-permission-change-${System.currentTimeMillis()}-${UUID.randomUUID()}.paykibak")
+        val file = File(directory, "before-$reason-${System.currentTimeMillis()}-${UUID.randomUUID()}.paykibak")
         file.outputStream().use { BackupArchiveCodec.write(snapshot, it) }
     }
 
@@ -536,6 +557,8 @@ internal object SharedCalendarSyncPolicy {
     enum class Decision { CLEAN, IMPORT, UPLOAD, CONFLICT }
     fun requiresPermissionReload(previousRole: String?, remoteRole: String): Boolean =
         previousRole != null && previousRole.uppercase() != remoteRole.uppercase()
+    fun baselineAfterAuthoritativeResponse(baseline: String?, before: String, current: String, after: String): String? =
+        if (baseline != null && baseline == before && before == current) after else baseline
     fun decide(baseline: String?, baselineRevision: Long, local: String, remoteRevision: Long,
                localEmpty: Boolean, remoteEmpty: Boolean, canEdit: Boolean, wasRevoked: Boolean = false): Decision {
         if (wasRevoked) return Decision.IMPORT

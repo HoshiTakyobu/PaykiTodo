@@ -67,6 +67,7 @@ internal sealed partial class DesktopSnapshotDocument
         return source with { RecurrenceType = "NONE", RecurrenceWeekdays = "", RecurrenceEndEpochDay = null,
             RecurrenceInterval = 1, RecurrenceMonthlyOrdinal = null, RecurrenceMonthlyWeekday = null,
             CalendarId = IsSharedCalendar(source.CalendarId) ? "default" : source.CalendarId,
+            EventParticipantsJson = "[]",
             CountdownEnabled = false, CountdownPastMode = "AUTO", AdditionalTimeSlots = Array.Empty<DesktopTimeSlot>() };
     }
 }

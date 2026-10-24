@@ -222,6 +222,7 @@ internal sealed partial class DesktopSnapshotDocument
     }
     private static void ApplyTemplateFields(JsonObject item, JsonObject template)
     {
+        item["eventParticipantsJson"] = DesktopEventParticipants.Select(template["eventParticipantsJson"]?.GetValue<string>() ?? "[]", item["eventParticipantsJson"]?.GetValue<string>() ?? "[]");
         foreach (var key in new[] { "itemType", "title", "notes", "location", "accentColorHex", "countdownEnabled", "calendarId", "countdownPastMode", "hiddenFromBoard", "checkInEnabled", "checkInReminderOffsetsCsv", "multiSlotBundleId", "allDay", "groupId", "reminderOffsetsCsv", "reminderOffsetMinutes", "reminderDeliveryMode", "ringEnabled", "vibrateEnabled", "alarmMode", "eventTimeZoneId", "allDayReminderRulesJson", "eventBusyStatus", "eventVisibility" }.Concat(RecurrenceFields.Where(key => key != "recurrenceAnchorDueAtMillis" && key != "recurringSeriesId"))) item[key] = template[key]?.DeepClone();
         item["recurrenceEndEpochDay"] = template["recurrenceNeverEnds"]?.GetValue<bool>() == true ? null : template["endEpochDay"]?.DeepClone();
         // Android templates express enablement through configured reminder offsets.
@@ -230,6 +231,8 @@ internal sealed partial class DesktopSnapshotDocument
     }
     private static void ResetOccurrence(JsonObject item)
     {
+        item["sharedEventId"] = "";
+        item["eventParticipantsJson"] = DesktopEventParticipants.Select(item["eventParticipantsJson"]?.GetValue<string>() ?? "[]", "[]");
         item["createdAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         foreach (var key in new[] { "completed", "canceled", "missed" }) item[key] = false;
         foreach (var key in new[] { "completedAtMillis", "canceledAtMillis", "missedAtMillis" }) item[key] = null;

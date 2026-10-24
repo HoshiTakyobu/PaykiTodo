@@ -9,6 +9,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CalendarCollaborationCoordinatorTest {
+    @Test fun confirmedResponseImportsCleanRemoteDataButNeverAcknowledgesUnuploadedOrInflightEdits() {
+        val policy = SharedCalendarSyncPolicy
+        val before = SharedCalendarWireCodec.fingerprint(SharedCalendarWireCodec.encode(listOf(event()), emptyList()))
+        val responded = event().copy(eventParticipantsJson = "[{\"username\":\"alice\",\"response\":\"ACCEPTED\"}]")
+        val after = SharedCalendarWireCodec.fingerprint(SharedCalendarWireCodec.encode(listOf(responded), emptyList()))
+        val clean = policy.baselineAfterAuthoritativeResponse(before, before, before, after)
+        assertEquals(SharedCalendarSyncPolicy.Decision.IMPORT, policy.decide(clean, 5, after, 6, false, false, true))
+        val dirty = SharedCalendarWireCodec.fingerprint(SharedCalendarWireCodec.encode(listOf(event().copy(title = "未上传修改")), emptyList()))
+        val dirtyAfter = SharedCalendarWireCodec.fingerprint(SharedCalendarWireCodec.encode(listOf(responded.copy(title = "未上传修改")), emptyList()))
+        val unchanged = policy.baselineAfterAuthoritativeResponse(before, dirty, dirty, dirtyAfter)
+        assertEquals(before, unchanged)
+        assertEquals(SharedCalendarSyncPolicy.Decision.CONFLICT, policy.decide(unchanged, 5, dirtyAfter, 6, false, false, true))
+        assertEquals(before, policy.baselineAfterAuthoritativeResponse(before, before, dirty, dirtyAfter))
+        assertNull(policy.baselineAfterAuthoritativeResponse(null, before, before, after))
+    }
+
     @Test fun simultaneousEditsAndViewerEditsRemainConflicts() {
         val policy = SharedCalendarSyncPolicy
         assertEquals(SharedCalendarSyncPolicy.Decision.CONFLICT,

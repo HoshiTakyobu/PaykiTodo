@@ -73,6 +73,16 @@ internal sealed partial class DesktopSnapshotDocument
         if (SharedCalendar(id) is { } calendar) calendar["sharedDirty"] = true;
     }
     internal IReadOnlyList<string> SharedCalendarIds => root["calendars"]!.AsArray().OfType<JsonObject>().Where(value => IsSharedCalendar(value["id"]?.GetValue<string>())).Select(value => value["id"]!.GetValue<string>()).ToArray();
+    internal void ApplySharedEventResponse(string calendarId, string eventId, string username, string response)
+    {
+        if (response is not ("ACCEPTED" or "TENTATIVE" or "DECLINED")) throw new InvalidOperationException("服务器返回的日程回应无效。");
+        var item = Tasks.OfType<JsonObject>().SingleOrDefault(value => value["calendarId"]?.GetValue<string>() == calendarId && value["sharedEventId"]?.GetValue<string>() == eventId)
+            ?? throw new InvalidOperationException("日程当前不可用，服务器已收到你的回应。");
+        var normalized = username.ToLowerInvariant();
+        var participants = DesktopEventParticipants.Read(item["eventParticipantsJson"]?.GetValue<string>() ?? "[]").Where(value => value.Username != normalized)
+            .Append(new DesktopEventParticipant(normalized, response));
+        item["eventParticipantsJson"] = DesktopEventParticipants.Json(participants);
+    }
     internal void ImportSharedCalendar(JsonObject metadata, JsonObject events, string serverUrl, bool replaceDirty = false)
     {
         var id = "shared:" + metadata["id"]!.GetValue<string>(); var old = SharedCalendar(id);
@@ -166,6 +176,30 @@ internal sealed partial class DesktopWorkspace
         if (Document == null || Account == null) throw new InvalidOperationException("请先登录账号");
         store.SaveSafetyCopy(Document); EditShared(data => data.ImportSharedCalendar(calendar, events, Account.ServerUrl, true));
     }
+    internal async Task RespondToSharedEventAsync(string calendarId, string eventId, string response)
+    {
+        if (response is not ("ACCEPTED" or "TENTATIVE" or "DECLINED")) throw new InvalidOperationException("请选择有效的日程回应。");
+        var generation = accountGeneration;
+        await sharedGate.WaitAsync();
+        try {
+            var state = Account ?? throw new InvalidOperationException("请先登录账号。");
+            var calendar = Document?.Calendars.FirstOrDefault(value => value.Id == calendarId);
+            if (generation != accountGeneration || calendar?.ShareMode != "SHARED" || calendar.SharedRole.ToLowerInvariant() is not ("owner" or "editor" or "viewer") ||
+                !string.Equals(calendar.SharedServerUrl, state.ServerUrl, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("日历来源或访问权限已变化，请重新打开日程。");
+            if (Document?.Items.Any(item => item.CalendarId == calendarId && item.SharedEventId == eventId) != true) throw new InvalidOperationException("日程当前不可用。");
+            var submittedEditVersion = editVersion;
+            var result = await SharedRequestAsync(HttpMethod.Post, "/v3/calendars/" + Uri.EscapeDataString(calendarId[7..]) + "/events/" + Uri.EscapeDataString(eventId) + "/rsvp", new JsonObject { ["response"] = response });
+            if (generation != accountGeneration || Account == null) throw new InvalidOperationException("账号已切换，服务器已收到原账号的回应。");
+            var current = Document?.Calendars.FirstOrDefault(value => value.Id == calendarId);
+            if (current?.ShareMode != "SHARED" || current.SharedRole.ToLowerInvariant() is not ("owner" or "editor" or "viewer") ||
+                !string.Equals(current.SharedServerUrl, state.ServerUrl, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("访问权限已变化，服务器已收到你的回应。");
+            var confirmed = result["response"]?.GetValue<string>();
+            if (confirmed != response) throw new InvalidOperationException("服务器未确认所选回应，请刷新日程。");
+            if (editVersion != submittedEditVersion) store.SaveSafetyCopy(Document!);
+            // Only the server-confirmed response changes. Keep unsent fields and the base revision for CAS conflict checks.
+            EditShared(data => data.ApplySharedEventResponse(calendarId, eventId, state.Username, confirmed));
+        } finally { sharedGate.Release(); }
+    }
     internal void OpenSharedCalendar(JsonObject calendar, JsonObject events)
     {
         var id = "shared:" + calendar["id"]!.GetValue<string>();
@@ -205,16 +239,25 @@ internal sealed partial class DesktopWorkspace
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException(body["message"]?.GetValue<string>() ?? $"共享日历请求失败（HTTP {(int)response.StatusCode}）");
         return body;
     }
-    internal async Task SyncSharedCalendarsAsync()
+    internal async Task SyncSharedCalendarsAsync(bool waitForGate = false)
     {
         if (Account == null || Document == null || Document.SharedCalendarIds.Count == 0) return;
-        if (!await sharedGate.WaitAsync(0)) return;
+        var generation = accountGeneration;
+        if (waitForGate) await sharedGate.WaitAsync(); else if (!await sharedGate.WaitAsync(0)) return;
         try {
+            if (Account == null || Document == null || generation != accountGeneration) return;
             var server = Account.ServerUrl; var response = await SharedRequestAsync(HttpMethod.Get, "/v3/calendars");
             var metadata = (response["calendars"] as JsonArray ?? new()).OfType<JsonObject>().ToList();
             foreach (var value in metadata) {
                 var id = "shared:" + value["id"]!.GetValue<string>(); var local = Document.SharedCalendar(id);
                 if (local == null || local["sharedServerUrl"]?.GetValue<string>() != server) continue;
+                if (value["role"]?.GetValue<string>()?.Equals("viewer", StringComparison.OrdinalIgnoreCase) == true &&
+                    (local["sharedRole"]?.GetValue<string>()?.Equals("viewer", StringComparison.OrdinalIgnoreCase) != true || local["sharedDirty"]?.GetValue<bool>() == true)) {
+                    store.SaveSafetyCopy(Document);
+                    EditShared(data => data.SharedCalendar(id)!["sharedRole"] = "revoked");
+                    var projection = await SharedRequestAsync(HttpMethod.Get, "/v3/calendars/" + Uri.EscapeDataString(value["id"]!.GetValue<string>()) + "/events");
+                    EditShared(data => data.ImportSharedCalendar(value, projection, server, true)); continue;
+                }
                 if (local["sharedRole"]?.GetValue<string>()?.Equals("revoked", StringComparison.OrdinalIgnoreCase) == true) {
                     var rejoined = await SharedRequestAsync(HttpMethod.Get, "/v3/calendars/" + Uri.EscapeDataString(value["id"]!.GetValue<string>()) + "/events");
                     AcceptSharedCloud(value, rejoined); continue;

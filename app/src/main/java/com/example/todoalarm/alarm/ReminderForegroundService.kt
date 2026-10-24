@@ -15,6 +15,7 @@ import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.sync.canReadCalendarItem
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
@@ -89,7 +90,7 @@ class ReminderForegroundService : Service() {
                 return@launch
             }
             val todoItem = app.repository.getTodo(todoId)
-            if (todoItem == null || todoItem.isHistory || !todoItem.reminderEnabled) {
+            if (todoItem == null || todoItem.isHistory || !todoItem.reminderEnabled || !app.canReadCalendarItem(todoItem)) {
                 ReminderChainLogger.log(
                     context = this@ReminderForegroundService,
                     todoId = todoId,
@@ -237,7 +238,7 @@ class ReminderForegroundService : Service() {
         scope.launch {
             val app = application as TodoApplication
             val item = app.repository.getTodo(todoId)
-            if (item != null && !item.isHistory) {
+            if (item != null && !item.isHistory && app.canReadCalendarItem(item)) {
                 val taskGroup = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
                 (reminderNotifier ?: ReminderNotifier(this@ReminderForegroundService)).showRetained(
                     todoItem = item,
@@ -294,6 +295,7 @@ class ReminderForegroundService : Service() {
     private suspend fun runAlarmModeTimeoutRetries(app: TodoApplication, todoId: Long) {
         alertController.stop()
         app.repository.getTodo(todoId)?.let { latest ->
+            if (!app.canReadCalendarItem(latest)) { dismiss(this, todoId); return }
             val taskGroup = resolveTaskGroup(latest, app.repository.getGroup(latest.groupId))
             (reminderNotifier ?: ReminderNotifier(this)).showUnhandledAlarmMode(latest, taskGroup)
         }
@@ -312,6 +314,7 @@ class ReminderForegroundService : Service() {
                 latest == null ||
                 latest.isHistory ||
                 !latest.reminderEnabled ||
+                !app.canReadCalendarItem(latest) ||
                 ActiveReminderStore.getActiveTodoId(this) != todoId
             ) {
                 return
@@ -576,7 +579,7 @@ class ReminderForegroundService : Service() {
                 runCatching {
                     if (!app.settingsStore.hasLocalAccountAccess()) return@runCatching
                     val item = app.repository.getTodo(todoId)
-                    if (item == null || item.isHistory || !item.reminderEnabled) return@runCatching
+                    if (item == null || item.isHistory || !item.reminderEnabled || !app.canReadCalendarItem(item)) return@runCatching
                     if (triggeredAtMillis != null && !app.alarmScheduler.isReminderScheduled(todoId, triggeredAtMillis)) {
                         return@runCatching
                     }

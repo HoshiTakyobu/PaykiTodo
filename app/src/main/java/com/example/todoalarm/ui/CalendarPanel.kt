@@ -121,6 +121,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.sync.canReadCalendarItem
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.ScheduleTemplate
@@ -648,7 +651,8 @@ internal fun CalendarPanel(
     }
     }
 
-    detailsTarget?.let { item ->
+    detailsTarget?.let { target ->
+        val item = events.firstOrNull { it.id == target.id } ?: target
         CalendarEventDetailsDialog(
             item = item,
             onGetEventById = onGetEventById,
@@ -2283,12 +2287,14 @@ private fun CalendarEventDetailsDialog(
     onDelete: (TodoItem) -> Unit
 ) {
     val context = LocalContext.current
+    val app = context.applicationContext as TodoApplication
+    val accountSettings by app.settingsStore.settingsFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
     var displayItem by remember(item.id) { mutableStateOf(item) }
     val calendar = LocalWorkspacePreferences.current.calendars.firstOrNull { it.id == displayItem.calendarId }
     val editable = calendar?.id?.startsWith("shared:") != true || calendar.sharedRole.uppercase() in setOf("OWNER", "EDITOR")
-    var missing by remember(item.id) { mutableStateOf(false) }
+    var loadedFor by remember(item.id) { mutableStateOf<List<Any?>?>(null) }
     var checkIns by remember(item.id) { mutableStateOf<List<EventCheckIn>>(emptyList()) }
     var checkInLoading by remember(item.id) { mutableStateOf(item.checkInEnabled) }
     var actionRunning by remember(item.id) { mutableStateOf(false) }
@@ -2310,18 +2316,23 @@ private fun CalendarEventDetailsDialog(
     )
     val totalInvestedMinutes = closedMinutes + activeMinutes
 
-    LaunchedEffect(item.id, refreshSerial, calendar?.sharedRole, calendar?.sharedRevision) {
-        if (displayItem.calendarId.startsWith("shared:") && (calendar == null || calendar.sharedRole == "REVOKED")) {
-            Toast.makeText(context, "日历访问权限已变化", Toast.LENGTH_SHORT).show()
+    var calendarResponseMessage by remember(item.id) { mutableStateOf<String?>(null) }
+    val refreshKey = listOf(item, refreshSerial, calendar?.sharedRole, calendar?.sharedRevision, calendar?.membersJson,
+        calendar?.shareMode, calendar?.sharedServerUrl, accountSettings.remoteSyncUsername,
+        accountSettings.remoteSyncUserId, accountSettings.remoteSyncServerUrl)
+    LaunchedEffect(refreshKey) {
+        loadedFor = null
+        val refreshed = onGetEventById(item.id)
+        if (refreshed == null || !app.canReadCalendarItem(refreshed)) {
+            Toast.makeText(context, "日程已删除或不可访问", Toast.LENGTH_SHORT).show()
             onDismiss()
             return@LaunchedEffect
         }
-        val refreshed = onGetEventById(item.id)
-        missing = refreshed == null
-        if (refreshed != null) displayItem = refreshed
+        displayItem = refreshed
         checkInLoading = displayItem.checkInEnabled
         checkIns = if (displayItem.checkInEnabled) onGetEventCheckIns(item.id) else emptyList()
         checkInLoading = false
+        loadedFor = refreshKey
     }
 
     DisposableEffect(lifecycleOwner, item.id, item.checkInEnabled) {
@@ -2334,19 +2345,23 @@ private fun CalendarEventDetailsDialog(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    fun refreshAfterAction(successMessage: String, operation: suspend () -> String?) {
+    fun useCurrentRecord(operation: (TodoItem) -> Unit) {
+        if (actionRunning) return
         scope.launch {
             actionRunning = true
-            val message = operation()
-            if (message == null) {
-                Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
-                refreshSerial += 1
-            } else {
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            try {
+                val latest = onGetEventById(item.id)
+                if (latest == null || !app.canReadCalendarItem(latest)) {
+                    Toast.makeText(context, "日程已删除或不可访问", Toast.LENGTH_SHORT).show()
+                    onDismiss()
+                } else operation(latest)
+            } finally {
+                actionRunning = false
             }
-            actionRunning = false
         }
     }
+
+    if (loadedFor != refreshKey) return
 
     PaykiBottomSheet(
         onDismiss = onDismiss,
@@ -2363,23 +2378,22 @@ private fun CalendarEventDetailsDialog(
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                 }
-                IconButton(onClick = { onCopy(displayItem) }) {
+                IconButton(enabled = !actionRunning, onClick = { useCurrentRecord(onCopy) }) {
                     Icon(Icons.Rounded.ContentCopy, contentDescription = "创建副本", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         },
         bottomBar = {
             CalendarEventDetailsFixedActions(
-                onCancel = { onCancel(displayItem) },
-                onEdit = { onEdit(displayItem) },
-                onDelete = { onDelete(displayItem) },
-                enabled = editable && !missing
+                onCancel = { useCurrentRecord(onCancel) },
+                onEdit = { useCurrentRecord(onEdit) },
+                onDelete = { useCurrentRecord(onDelete) },
+                enabled = editable && !actionRunning
             )
         },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 8.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            if (missing) Text("日程已删除或不可访问", color = MaterialTheme.colorScheme.error)
             if (!editable) Text(if (calendar?.sharedRole == "REVOKED") "此日历的访问已撤销。" else "你拥有此日历的只读权限。", style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                 Surface(
@@ -2418,7 +2432,12 @@ private fun CalendarEventDetailsDialog(
                 text = LocalWorkspacePreferences.current.calendars.firstOrNull { it.id == displayItem.calendarId }?.name ?: "日历")
             EventInfoRow(icon = { Icon(Icons.Rounded.Place, contentDescription = null) },
                 text = "${com.example.todoalarm.data.calendarZone(displayItem.eventTimeZoneId).id} · ${if (displayItem.eventBusyStatus == "FREE") "空闲" else "忙碌"} · ${when (displayItem.eventVisibility) { "PRIVATE" -> "私密"; "PUBLIC" -> "公开"; else -> "沿用日历设置" }}")
-            CalendarRsvpRow(displayItem)
+            calendar?.takeIf { it.id.startsWith("shared:") }?.let { source ->
+                CalendarParticipantsDetails(source, displayItem.eventParticipantsJson,
+                    restricted = source.sharedRole == "VIEWER" && displayItem.eventVisibility == "PRIVATE")
+            }
+            CalendarRsvpRow(displayItem) { message -> calendarResponseMessage = message; refreshSerial += 1 }
+            calendarResponseMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             displayItem.location.takeIf { it.isNotBlank() }?.let {
                 EventInfoRow(
                     icon = { Icon(Icons.Rounded.Place, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },

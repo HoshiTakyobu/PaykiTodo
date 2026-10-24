@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.sync.canReadCalendarItem
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.DailyBriefScheduler
 import com.example.todoalarm.alarm.DailyReportNotifier
@@ -441,7 +442,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun getTodoById(todoId: Long): TodoItem? {
-        return withContext(Dispatchers.IO) { repository.getTodo(todoId) }
+        return withContext(Dispatchers.IO) {
+            repository.getTodo(todoId)?.takeIf { app.canReadCalendarItem(it) }
+        }
     }
 
     suspend fun getTodoGroupIds(todoId: Long): List<Long> {
@@ -449,7 +452,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun getEventCheckIns(eventId: Long): List<EventCheckIn> {
-        return withContext(Dispatchers.IO) { repository.getCheckInsForEvent(eventId) }
+        return withContext(Dispatchers.IO) {
+            if (getTodoById(eventId) == null) emptyList() else repository.getCheckInsForEvent(eventId)
+        }
     }
 
     fun observeAiReports(

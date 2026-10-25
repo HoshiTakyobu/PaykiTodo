@@ -1,5 +1,12 @@
 # Session Handoff
 
+## Completed production rollout, 2026-10-25
+
+- Existing account server now provides current `/v3` calendar and invitation interfaces; original environment, service configuration, accounts and personal snapshots are preserved. Four new calendar tables initialized successfully, deployed source hashes match local modules, service is active and public health returns 200.
+- Remote Linux 21-test suite plus public dedicated-account refresh, calendar create/read/write/rename, stale revision 409, unauthenticated access 401, self-invitation rejection and personal-snapshot preservation checks passed. Turnstile still rejects invalid tokens. See [rollout record](PRODUCTION_CALENDAR_ROLLOUT_20261025.md) for exact limits and retained synthetic fixture.
+- Private recovery copies: `Backups/PaykiTodo/cloud-calendar-20261025T062856Z/`; execution evidence: `Scratch/PaykiTodo/cloud-rollout-20261025/`. Dedicated test Windows profile's session was normally refreshed and saved after backing up the old DPAPI file; its existing archive is preserved. No production second-account invitations, native windows or emulator manipulation this round.
+- Client source and artifacts remain Android 1.17.1/393 and Windows 1.17.1.0; no new APK/MSI build or GitHub publication. Continue from verified repository state and actual server status. Do not repeat this deployment or rotate credentials without a new reason.
+
 ## Completed locally 2026-10-25: 1.17.1 participants, details and response refresh
 
 - Baseline: Android `1.17.1 / 393`, Windows `1.17.1.0`, Room 33; verify source version, git status and latest commit on resume. Source and generated artifacts are frozen after local verification.
@@ -8,7 +15,7 @@
 - Device: `emulator-5554 / Pixel_8`, installed current Debug and AndroidTest packages. Final normal MainActivity cold start passed. Application/test packages stopped, emulator running, Wi-Fi/mobile data restored enabled. Original 15 business tables and credential/configuration hashes preserved; runtime WebView caches changed naturally. Before/after backups and precise exceptions are in [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md).
 - Artifacts: `app/build/outputs/apk/debug/PaykiTodo-1.17.1-debug.apk`, `app/build/outputs/apk/release/PaykiTodo-1.17.1-release.apk`, `desktop/dist/PaykiTodo.exe` (keep whole directory), `desktop/installer-output/PaykiTodo-1.17.1-windows-x64.msi`. Final hashes and boundaries are in the validation report.
 - Preview: `G:\Workspace\Deliverables\PaykiTodo\1.17.1\界面预览.html`, 22 actual-control images with synthetic data. Current evidence: `G:\Workspace\Scratch\PaykiTodo\calendar-1.17.1`; final Windows package directory is `windows-installer-final-rsvp/install-cfa43b1c46f246578f57f4efbd9dbde0`. Four participant images were recaptured after a tests-only fixture-name change; product hashes stayed identical.
-- Keep personal encrypted snapshots separate from permission-controlled shared transport. Do not reopen finished participant work or rerun tests without a new change/failure/concern. Do not push, publish or deploy production without a requested rollout; shared use requires the server `/v3` interfaces. Production account cross-device, OEM and full physical-input Windows behavior remain unverified.
+- Keep personal encrypted snapshots separate from permission-controlled shared transport. Do not reopen finished participant work or rerun tests without a new change/failure/concern. The subsequent requested production rollout is completed above; retain the authorization boundary for any future push/publication/deployment. Native cross-device invitations, OEM and full physical-input Windows behavior remain outside this rollout's verification.
 
 ## Previous local baseline: 1.17.0 calendar and account update
 

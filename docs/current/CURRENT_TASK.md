@@ -1,10 +1,14 @@
 # Current Task
 
+## Completed: existing server shared-calendar rollout, 2026-10-25
+
+The user's requested whole-task completion includes production deployment. The existing account server now runs the current cloud and calendar modules; four additive tables preserve the original accounts, devices, sessions and personal snapshots. Remote and local recovery copies exist. Linux 21-test suite, public dedicated-account calendar read/write/CAS/authentication checks and unchanged personal snapshot checks passed. See [rollout evidence and scope](PRODUCTION_CALENDAR_ROLLOUT_20261025.md). No new client build; Android remains 1.17.1/393, Windows 1.17.1.0. Native two-account/window/OEM workflows were not rerun in this rollout.
+
 ## Completed locally: 1.17.1 / 393 participant controls and complete details
 
 Both clients implement accepted-member participant selection, organizer/participant response details, current-account RSVP initialization/refresh and server-authorized PRIVATE projections. Ordinary cancel writes nothing; calendar changes reset selection, edits preserve existing response authority, new occurrences start unanswered and independent copies drop invitations. Confirmed response and pending/in-flight edits are both retained safely during sync conflicts. Source access and all-day notification dates are rechecked.
 
-Debug/signed Release APK, self-contained Windows output, Chinese MSI and22 selected actual-control images exist. Passed222 Android units,12 data plus18 distinct UI tests,55 Windows regressions plus one 14-stage isolated UIA flow,21 server tests and MSI lifecycle/data-preservation checks. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). No push, release or production deployment; source and artifacts are frozen.
+Debug/signed Release APK, self-contained Windows output, Chinese MSI and22 selected actual-control images exist. Passed222 Android units,12 data plus18 distinct UI tests,55 Windows regressions plus one 14-stage isolated UIA flow,21 server tests and MSI lifecycle/data-preservation checks. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). That local build round did not deploy production; the subsequent requested rollout is recorded above. Source and client artifacts remain frozen.
 
 ## Completed locally: 1.17.0 / 392 calendar and account update
 

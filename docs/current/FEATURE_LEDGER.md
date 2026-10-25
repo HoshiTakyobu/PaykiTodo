@@ -6,7 +6,7 @@ This ledger distinguishes completed capabilities from the active update. Histori
 
 Both clients now select shared-event participants from current accepted calendar members and show organizer/participant/current-account responses. Cancel stays transactional, changing calendars reselects members, existing responses are preserved, and new participants/occurrences start unanswered. PRIVATE viewers see only server-authorized projection. Confirmed RSVP remains visible despite pending local edits; in-flight edits preserve a recoverable candidate and old sync revision. Details/editors/reminders revalidate source access, and all-day notification dates use the event timezone.
 
-The 1.17.0 calendar/timezone/recurrence/all-day/copy/account update remains. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Current validation and artifacts: [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md); original1.17.0 scope: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). Sharing still requires updated server interfaces; production rollout and all-device parity are not claimed.
+The 1.17.0 calendar/timezone/recurrence/all-day/copy/account update remains. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Current validation and artifacts: [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md); original1.17.0 scope: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). The existing account server now provides `/v3` interfaces after the [2026-10-25 rollout](PRODUCTION_CALENDAR_ROLLOUT_20261025.md), with personal snapshots and credentials preserved. Other server installations also need these interfaces; all-device parity is not claimed.
 
 ## Implemented And In Use
 

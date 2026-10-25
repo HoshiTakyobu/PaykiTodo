@@ -1,6 +1,8 @@
 # Calendar And Account Update Contract
 
-Current local implementation: Android `1.17.1 / versionCode 393`, Windows `1.17.1.0`, Room `33`. Participant controls, complete authorized details and current-response refresh are implemented and locally verified; see [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). The original calendar/account baseline remains in [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md).
+Current local implementation: Android `1.17.3 / versionCode 395`, Windows `1.17.3.0`, Room `33`. Participant controls, authorized details and current-response refresh are implemented. Dedicated Android/Windows native invitation, acceptance, RSVP, bidirectional existing-event editing and revocation have passed; current viewer access and live search revocation are verified in [VALIDATION_1.17.3.md](VALIDATION_1.17.3.md) and [the native workflow](NATIVE_COLLABORATION_ACCEPTANCE_20261025.md). The original calendar/account baseline remains in [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md), with the participant update in [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md).
+
+The 2026-10-26 follow-up corrects this document's stale version header only; it adds no product behavior or build. Physical-device and broader capability limits remain in [the acceptance audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md).
 
 ## Calendar behavior
 

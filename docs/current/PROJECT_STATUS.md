@@ -2,22 +2,22 @@
 
 ## Current Baseline
 
-- Final acceptance review on 2026-10-25 confirms core calendar/account implementation, completed targeted regression results, preserved emulator data and unchanged artifacts. Production two-account native collaboration and physical-device behavior remain unverified; wider collaboration capability limits are explicit in [the final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md). This is not exhaustive platform acceptance.
-- Current source and local build: Android `1.17.1 / versionCode 393`, Windows `1.17.1.0`, Room `33`. Shared-event participant selection, organizer/participant details, response authority and refresh, source guards and all-day notification dates are implemented and locally verified. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md).
-- Retain the calendar/account update from 1.17.0: calendar body/create-adjust/multiple calendars/recurrence/all-day reminders/current-instance copy/timezones, domain-free login server selection and compact account actions. Strong reminders keep one window and queue.
-- Validation: 222 Android units, 12 data and 18 distinct emulator UI tests, 55 Windows regressions plus one 14-stage isolated UIA flow, 21 server tests, signed APK and MSI lifecycle checks. Android Lint 0 errors / 133 warnings. Repeated targeted checks do not increase distinct counts.
+- Current source and rebuilt local packages: Android `1.17.2 / versionCode 394`, Windows `1.17.2.0`, Room `33`. Windows shared-event saves no longer trigger unnecessary personal uploads, and personal downloads preserve concurrent shared edits. Personal content/settings still sync. See [VALIDATION_1.17.2.md](VALIDATION_1.17.2.md).
+- Current validation: 57 Windows regressions plus one 14-stage isolated UIA flow, MSI install/1.17.1 upgrade/repair/payload/installed EXE/uninstall/user-data checks, rebuilt Debug/signed Release and signature/version checks. Packaged Windows native shared-event creation reached production while personal snapshot hash and revision stayed unchanged. Existing-event editing in the packaged UI remains unverified; regression tests cover its save logic.
+- Android runtime code is unchanged this round. Full Android/Lint/server results from 1.17.1 are historical: 222 units, 12 data and 18 distinct emulator UI tests, Lint 0 errors / 133 warnings, 21 server tests. They were not rerun or counted as new 1.17.2 results. Original emulator user 0 has 646/646 matching file hashes; isolated user 10 retains the 1.17.1 registration form awaiting manual CAPTCHA.
+- Retain 1.17.1 participant selection, organizer/response details and source guards, and the 1.17.0 calendar/timezone/recurrence/account update. Strong reminders keep one window and queue. Production two-account native collaboration and physical-device behavior remain unverified; wider capability limits remain in [the final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md).
 - Existing account server updated on 2026-10-25 with `/v3` shared-calendar interfaces. Original accounts, personal snapshots and authentication configuration are preserved; Linux 21-test suite and public dedicated-account calendar read/write, conflict and authentication checks passed. See [production rollout](PRODUCTION_CALENDAR_ROLLOUT_20261025.md). GitHub Release remains unchanged; native cross-device invitation and OEM/physical-input behavior are not claimed as newly verified.
-- Previous local baseline: `1.17.0 / 392`, Windows `1.17.0.0`, Room 33. Its original artifacts and test scope remain in [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md); per-event participant controls/details were completed in 1.17.1.
+- Previous local baseline: `1.17.1 / 393`, Windows `1.17.1.0`, Room 33; its artifacts and test scope remain in [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md).
 - Repository: `https://github.com/HoshiTakyobu/PaykiTodo`; branch `main`; package `com.paykitodo.app`; Android 8.0+ / API 26+, compile/targetAPI 34; MIT license.
 
 ## Published And Local Builds
 
-- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. Do not point public downloads at an uncreated 1.17.1 tag.
-- Current Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.1-debug.apk`; SHA-256 `B0B6735A4B4B76DF6FD67AB07A4BE6310747AB3A67A2FE584750B6190D5B87B1`.
-- Current signed Release APK: `app/build/outputs/apk/release/PaykiTodo-1.17.1-release.apk`; SHA-256 `A08DD3BC1934BC36C1413FCCF751AF902EA5DC7717079FB7746A4AC77F9F5BF9`.
-- Current Windows installer: `desktop/installer-output/PaykiTodo-1.17.1-windows-x64.msi`, 80,098,368 bytes, Windows 10 1809+/11 x64, per-user with .NET; SHA-256 `6DBC4E5DD47B17A172F10BEC556C5CC33CF1A5023601EBF8074C84C1750BB39C`. See [installation instructions](../../desktop/installer/README.md).
-- Windows portable entry: `desktop/dist/PaykiTodo.exe` / file version 1.17.1.0; keep the whole directory. EXE SHA-256 `84AA67E3E1D39DA9739C48A9E78E115C8D9B7A0B2498C7A47A1C9E51CF7342D0`; main DLL SHA-256 `5346953E532D42F122C1F167B69AA7BA4635902996EE8F9260BFFC43A94C8821`, identical to MSI payload.
-- Current 22-image preview: `G:\Workspace\Deliverables\PaykiTodo\1.17.1\界面预览.html`. Signing material, private settings and generated outputs remain outside Git.
+- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. Do not point public downloads at an uncreated 1.17.2 tag.
+- Current Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.2-debug.apk`; SHA-256 `16312217F72D9C626BECC5C65EDEC44F6286EEDF4C9DB046D242DF94F9B3DF42`.
+- Current signed Release APK: `app/build/outputs/apk/release/PaykiTodo-1.17.2-release.apk`; SHA-256 `BA614115934718EC13E4A6321754068E3FA3BE00970B69173B9C67509B2CFDBC`.
+- Current Windows installer: `desktop/installer-output/PaykiTodo-1.17.2-windows-x64.msi`, 80,090,196 bytes, Windows 10 1809+/11 x64, per-user with .NET; SHA-256 `D260A8D8D09EC89EB7F736AD0B987A74606EB5DA4193D0303A19147C69B869D6`. See [installation instructions](../../desktop/installer/README.md).
+- Windows portable entry: `desktop/dist/PaykiTodo.exe` / file version 1.17.2.0; keep the whole directory. EXE SHA-256 `600861A7E9BF9E47FB4BB9654ACE04579AA7BB980152955F7473A140C0738AD8`; main DLL SHA-256 `9236B5F2C68DB7C25D2098091E01007D8872985436EE6D32B71285F5B3511F4F`, identical to MSI payload.
+- Copies and hashes: `G:\Workspace\Deliverables\PaykiTodo\1.17.2`. The 22-image preview at `G:\Workspace\Deliverables\PaykiTodo\1.17.1\界面预览.html` is historical. Signing material, private settings and generated outputs remain outside Git.
 
 ## Product Positioning
 

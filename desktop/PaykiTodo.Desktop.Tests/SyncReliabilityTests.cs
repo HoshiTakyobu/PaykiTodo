@@ -9,6 +9,85 @@ namespace PaykiTodo.Desktop.Tests;
 public sealed class SyncReliabilityTests
 {
     [Fact]
+    public async Task SharedEventEditKeepsPersonalSnapshotWhilePersonalSettingsStillSync()
+    {
+        using var server = new SnapshotServer();
+        var store = Store(server.Url);
+        var saved = store.Load()!.Value;
+        var document = EventParticipantsTests.Fixture();
+        document.SharedCalendar(EventParticipantsTests.Calendar.Id)!["sharedServerUrl"] = server.Url;
+        store.Save(saved.State, document);
+        var workspace = new DesktopWorkspace(store);
+        workspace.Edit(data => data.SaveItem(NativeWorkspaceTests.NewItem(false, "保留个人待办")));
+        await workspace.SyncAsync();
+        var revision = server.Revision;
+        var payload = server.Payload!.ToArray();
+        var shared = workspace.Document!.Items.Single(item => item.IsEvent);
+
+        // The native editor uses Edit, unlike the transport-only EditShared path.
+        workspace.Edit(data => data.SaveItem(data.EditFor(shared.Id)! with { Title = "只修改共享日程" }, shared.Id));
+        await workspace.SyncAsync();
+        Assert.Equal(revision, server.Revision);
+        Assert.Equal(payload, server.Payload);
+        Assert.Equal("只修改共享日程", store.Load()!.Value.Document.Items.Single(item => item.Id == shared.Id).Title);
+        Assert.True(workspace.Document.SharedCalendar(shared.CalendarId)!["sharedDirty"]!.GetValue<bool>());
+        Assert.False(workspace.Account!.Dirty);
+
+        workspace.Edit(data => data.SaveItem(NativeWorkspaceTests.NewItem(true, "新建共享日程") with { CalendarId = shared.CalendarId }));
+        await workspace.SyncAsync();
+        Assert.Equal(revision, server.Revision);
+        Assert.Equal(payload, server.Payload);
+
+        workspace.Edit(data => data.Settings["themeMode"] = "DARK");
+        await workspace.SyncAsync();
+        Assert.Equal(revision + 1, server.Revision);
+        var personal = DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret"));
+        Assert.Equal("DARK", personal.Settings["themeMode"]!.GetValue<string>());
+        Assert.Single(personal.Items);
+        Assert.Equal("保留个人待办", personal.Items.Single().Title);
+    }
+
+    [Fact]
+    public async Task SharedEditsDuringPersonalUploadAndDownloadPreserveBothChannels()
+    {
+        using var server = new SnapshotServer();
+        var store = Store(server.Url);
+        var document = EventParticipantsTests.Fixture();
+        document.SharedCalendar(EventParticipantsTests.Calendar.Id)!["sharedServerUrl"] = server.Url;
+        store.Save(store.Load()!.Value.State, document);
+        var workspace = new DesktopWorkspace(store);
+        var shared = document.Items.Single();
+        server.HoldUpload = true;
+        workspace.Edit(data => data.SaveItem(NativeWorkspaceTests.NewItem(false, "上传个人待办")));
+        await server.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        workspace.Edit(data => data.SaveItem(data.EditFor(shared.Id)! with { Title = "上传期间修改共享日程" }, shared.Id));
+        server.Release.TrySetResult();
+        await workspace.SyncAsync();
+        Assert.Equal(1, server.Revision);
+        Assert.False(workspace.Account!.Dirty);
+        Assert.Equal("上传期间修改共享日程", workspace.Document!.Items.Single(item => item.Id == shared.Id).Title);
+
+        var remote = DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret"));
+        var personal = remote.Items.Single();
+        remote.SaveItem(remote.EditFor(personal.Id)! with { Title = "另一设备修改个人待办" }, personal.Id);
+        server.Payload = SnapshotCrypto.Encrypt(remote.ToArchiveBytes(false, false), "fixture-secret");
+        server.Revision = 2;
+        server.ResetBarriers();
+        server.HoldDownload = true;
+        var downloading = workspace.SyncAsync();
+        await server.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        workspace.EditShared(data => data.SaveItem(data.EditFor(shared.Id)! with { Title = "下载期间修改共享日程" }, shared.Id));
+        server.Release.TrySetResult();
+        await downloading;
+        var persisted = store.Load()!.Value;
+        Assert.Equal(2, persisted.State.Revision);
+        Assert.False(persisted.State.Dirty);
+        Assert.Equal("另一设备修改个人待办", persisted.Document.Items.Single(item => !item.IsEvent).Title);
+        Assert.Equal("下载期间修改共享日程", persisted.Document.Items.Single(item => item.Id == shared.Id).Title);
+        Assert.True(persisted.Document.SharedCalendar(shared.CalendarId)!["sharedDirty"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public void RememberPasswordIsOptionalEncryptedAndSeparateFromMigrationArchive()
     {
         var folder = Path.Combine(Path.GetTempPath(), "PaykiTodo-tests", Guid.NewGuid().ToString("N"));
@@ -156,8 +235,13 @@ public sealed class SyncReliabilityTests
         public long Revision;
         public byte[]? Payload;
         public bool HoldUpload, HoldDownload;
-        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Entered { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void ResetBarriers()
+        {
+            Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
         public SnapshotServer()
         {
             var socket = new TcpListener(IPAddress.Loopback, 0); socket.Start(); var port = ((IPEndPoint)socket.LocalEndpoint).Port; socket.Stop();

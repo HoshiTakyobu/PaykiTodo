@@ -83,8 +83,10 @@ public sealed class SharedCalendarIntegrationTests
             var metadata = created["calendar"]!.AsObject(); var id = metadata["id"]!.GetValue<string>(); var local = "shared:" + id;
             var events = await first.SharedRequestAsync(HttpMethod.Get, "/v3/calendars/" + id + "/events");
             first.EditShared(data => data.ImportSharedCalendar(metadata, events, url));
-            first.EditShared(data => data.SaveItem(NativeWorkspaceTests.NewItem(true, "原始共享日程") with { CalendarId = local, ReminderEnabled = true, ReminderOffsets = new[] { 0 } }));
+            first.Edit(data => data.SaveItem(NativeWorkspaceTests.NewItem(true, "原始共享日程") with { CalendarId = local, ReminderEnabled = true, ReminderOffsets = new[] { 0 } }));
+            await first.SyncAsync();
             await first.SyncSharedCalendarsAsync();
+            Assert.Equal(0, first.Account!.Revision);
             Assert.Single(first.Document!.Items); Assert.Empty(Json(first.Document, false)["tasks"]!.AsArray());
             var firstWire = (await first.SharedRequestAsync(HttpMethod.Get, "/v3/calendars/" + id + "/events"))["events"]!.AsArray();
             var wireId = firstWire[0]!["id"]!.GetValue<string>(); Assert.False(string.IsNullOrWhiteSpace(wireId));

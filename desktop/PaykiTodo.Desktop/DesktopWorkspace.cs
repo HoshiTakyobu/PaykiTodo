@@ -42,12 +42,15 @@ internal sealed partial class DesktopWorkspace
         var candidate = DesktopSnapshotDocument.FromArchiveBytes(Document.ToArchiveBytes());
         change(candidate);
         candidate.EnsureRecurringInstances(DateTime.Today);
-        var next = Account is null ? null : Account with { Dirty = true };
+        // Shared event edits use this same native entry point. They must not
+        // publish a new personal snapshot; retain any already pending writes.
+        var personalChanged = !Document.HasSamePersonalSyncContent(candidate);
+        var next = Account is null ? null : Account with { Dirty = Account.Dirty || personalChanged };
         if (next != null) store.Save(next, candidate); else store.SaveDocument(candidate);
         Document = candidate;
         Account = next;
         editVersion++;
-        Notify("已保存在本机" + (Account == null ? "" : "，等待同步"));
+        Notify("已保存在本机" + (Account?.Dirty == true ? "，等待同步" : ""));
         if (Account != null) _ = SyncAsync();
     }
 
@@ -121,7 +124,7 @@ internal sealed partial class DesktopWorkspace
             store.Save(Account, Document);
             var result = await CloudAccountSync.SyncAsync(account, snapshot);
             if (generation != accountGeneration) return;
-            if (version != editVersion)
+            if (version != editVersion && !snapshot.HasSamePersonalSyncContent(Document!))
             {
                 // A download based on an old local version needs conflict review.
                 var downloaded = result.Document != snapshot;
@@ -131,7 +134,12 @@ internal sealed partial class DesktopWorkspace
                 return;
             }
             var downloadedDocument = result.Document != snapshot;
-            if (downloadedDocument) store.SaveSafetyCopy(Document!);
+            if (downloadedDocument) {
+                // Shared updates made during a personal download belong to the
+                // current local cache, not the copy captured before the request.
+                result.Document.PreserveSharedData(Document!);
+                store.SaveSafetyCopy(Document!);
+            }
             var document = downloadedDocument ? result.Document : Document!;
             store.Save(result.State, document);
             Account = result.State;
@@ -253,7 +261,7 @@ internal sealed partial class DesktopWorkspace
                 var snapshot = DesktopSnapshotDocument.FromArchiveBytes(Document.ToArchiveBytes());
                 var result = await CloudAccountSync.SyncAsync(Account with { Revision = revision, Dirty = true }, snapshot);
                 if (generation != accountGeneration || Account == null || Document == null) return;
-                Account = result.State with { Dirty = version != editVersion };
+                Account = result.State with { Dirty = version != editVersion && !snapshot.HasSamePersonalSyncContent(Document) };
                 store.Save(Account, Document); Notify("本机副本已上传；双方操作前副本已保留。");
             }
         } finally { syncGate.Release(); }

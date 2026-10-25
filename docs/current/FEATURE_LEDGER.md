@@ -2,13 +2,19 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current local update: 1.17.1 / 393
+## Current local update: 1.17.2 / 394
+
+Windows ordinary shared-event saves now compare personal content/settings before marking personal sync dirty. Shared-only changes during personal upload/download or explicit keep-local upload do not create redundant personal writes or false personal conflicts, and downloads preserve the latest shared cache. Existing personal edits and settings still sync.
+
+57 Windows regressions, one 14-stage isolated UIA flow and MSI lifecycle checks passed. The packaged native create form saved a production synthetic shared event while personal snapshot hash/revision, the original 6 personal records and settings stayed unchanged. Both Android APKs were rebuilt; Android runtime tests remain historical. Production two-account native collaboration awaits manual CAPTCHA and registration in isolated emulator user 10. See [VALIDATION_1.17.2.md](VALIDATION_1.17.2.md).
+
+## Previous local update: 1.17.1 / 393
 
 The [2026-10-25 final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md) distinguishes implemented behavior from acceptance gaps. Production two-account native invitation/response/revocation is not yet verified. Current participants are accepted calendar members and the organizer is the calendar owner; cross-member availability scheduling, independent subscription-source management and meeting-resource services are not complete product workflows.
 
 Both clients now select shared-event participants from current accepted calendar members and show organizer/participant/current-account responses. Cancel stays transactional, changing calendars reselects members, existing responses are preserved, and new participants/occurrences start unanswered. PRIVATE viewers see only server-authorized projection. Confirmed RSVP remains visible despite pending local edits; in-flight edits preserve a recoverable candidate and old sync revision. Details/editors/reminders revalidate source access, and all-day notification dates use the event timezone.
 
-The 1.17.0 calendar/timezone/recurrence/all-day/copy/account update remains. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Current validation and artifacts: [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md); original1.17.0 scope: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). The existing account server now provides `/v3` interfaces after the [2026-10-25 rollout](PRODUCTION_CALENDAR_ROLLOUT_20261025.md), with personal snapshots and credentials preserved. Other server installations also need these interfaces; all-device parity is not claimed.
+The 1.17.0 calendar/timezone/recurrence/all-day/copy/account update remains. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Participant-round validation and artifacts: [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md); original1.17.0 scope: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). The existing account server now provides `/v3` interfaces after the [2026-10-25 rollout](PRODUCTION_CALENDAR_ROLLOUT_20261025.md), with personal snapshots and credentials preserved. Other server installations also need these interfaces; all-device parity is not claimed.
 
 ## Implemented And In Use
 

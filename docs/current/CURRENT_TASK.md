@@ -1,5 +1,11 @@
 # Current Task
 
+## Completed: 1.17.2 shared-edit synchronization fix; native two-account acceptance pending
+
+Production Windows UI testing reproduced unnecessary personal uploads from ordinary shared-event saves. Version 1.17.2/394 limits personal dirty state to personal content/settings changes and preserves latest shared edits during personal downloads. 57 regressions, one 14-stage UIA flow, MSI lifecycle checks and rebuilt signed APK verification passed. The actual packaged create form saved a second synthetic shared event without changing personal snapshot hash/revision, existing personal records or settings. Existing-event editing in the packaged UI was not completed. See [VALIDATION_1.17.2.md](VALIDATION_1.17.2.md); packages and hashes are in `Deliverables/PaykiTodo/1.17.2`.
+
+The next unfinished step is manual CAPTCHA and second-account registration on `emulator-5554 / Pixel_8`, isolated user 10, still running 1.17.1/393. Fields are already filled; do not refill or reinstall over the form. No invitations have been sent. Original user 0 has 646/646 unchanged files, the Windows original 6 personal records/settings are intact, and the dedicated Windows client is stopped. After human verification, continue invite/accept/edit/respond/revoke using only the dedicated identities. Do not claim native two-account collaboration passed or repeat completed builds/tests without a new reason.
+
 ## Final review completed; end-to-end collaboration acceptance remains open
 
 The 2026-10-25 review confirms the implemented calendar/account requirements, completed regression outputs, data preservation and existing 1.17.1 artifacts. It does not establish production two-account Android/Windows invitation, response and revocation end to end. Broader availability scheduling, subscription-source and meeting-resource workflows are also absent. See [the requirement-by-requirement audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md). The next meaningful verification is native collaboration with suitable dedicated identities; this review made no new client build or deployment and does not authorize sending invitations to arbitrary users.

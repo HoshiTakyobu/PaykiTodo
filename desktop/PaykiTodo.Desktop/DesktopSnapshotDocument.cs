@@ -95,6 +95,9 @@ internal sealed partial class DesktopSnapshotDocument
         return output.ToArray();
     }
 
+    internal bool HasSamePersonalSyncContent(DesktopSnapshotDocument other) =>
+        DataFingerprint() == other.DataFingerprint() && JsonNode.DeepEquals(Settings, other.Settings);
+
     internal string DataFingerprint()
     {
         var data = (JsonObject)root.DeepClone();

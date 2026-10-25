@@ -12,6 +12,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+The local `1.17.2 / versionCode 394` round fixes Windows shared-event saves unnecessarily uploading personal snapshots. Personal sync ignores shared-only concurrent changes, retains the latest shared cache and still uploads actual personal edits/settings. 57 Windows regressions, one 14-stage UIA flow, installer lifecycle/data checks and rebuilt APK signature/version checks passed. Actual packaged shared creation preserved personal hash/revision and original personal records. Original Android user 0 has 646 matching files; isolated user 10 keeps the 1.17.1 registration form awaiting manual CAPTCHA. Two-account native collaboration remains pending. Packages: `Deliverables/PaykiTodo/1.17.2`; [validation](VALIDATION_1.17.2.md). No push, release or deployment this round.
+
+### Previous 1.17.1 rollout and participant update
+
 The existing account server was updated on 2026-10-25 under the user's whole-task completion request. Current `/v3` calendar interfaces are live, credentials and personal snapshots are preserved, and Linux 21-test suite plus public dedicated-account read/write/conflict/authentication checks passed. No new client build or GitHub publication; see [rollout verification](PRODUCTION_CALENDAR_ROLLOUT_20261025.md).
 
 The local `1.17.1 / versionCode 393` round completes shared-event participant selection and organizer/participant/current-response details on both clients. Edits preserve response authority, new instances/copies have independent invitation state, RSVP retains pending/in-flight local edits and current confirmed response, and source guards/all-day dates are rechecked. Room remains 33. Built APK/EXE/MSI and22 actual-control preview images exist ; 222 Android units,30 distinct emulator tests,55 Windows regressions plus one 14-stage isolated UIA flow,21 server tests and MSI lifecycle/data-preservation checks passed. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). That local round had no push, release or production deployment; the follow-up rollout is recorded above.

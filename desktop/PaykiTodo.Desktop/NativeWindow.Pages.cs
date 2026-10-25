@@ -168,7 +168,7 @@ internal sealed partial class NativeWindow
     {
         var query = search.Text.Trim();
         var body = Column(Text("搜索：" + query, 18, bold: true));
-        var items = workspace.Document!.Items.Where(item => query.Length > 0 &&
+        var items = workspace.Document!.Items.Where(item => query.Length > 0 && CanReadItemDetails(item) &&
             (item.Title + " " + item.Notes + " " + item.Location).Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
         foreach (var item in items) body.Children.Add(item.IsEvent ? Card(EventRow(item)) : TodoRow(item));
         if (items.Count == 0) body.Children.Add(Text("没有找到匹配的事项。", 14, Muted)); return Page(body);

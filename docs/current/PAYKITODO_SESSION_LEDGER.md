@@ -12,7 +12,13 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.17.2 / versionCode 394` round fixes Windows shared-event saves unnecessarily uploading personal snapshots. Personal sync ignores shared-only concurrent changes, retains the latest shared cache and still uploads actual personal edits/settings. 57 Windows regressions, one 14-stage UIA flow, installer lifecycle/data checks and rebuilt APK signature/version checks passed. Actual packaged shared creation preserved personal hash/revision and original personal records. Original Android user 0 has 646 matching files; isolated user 10 keeps the 1.17.1 registration form awaiting manual CAPTCHA. Two-account native collaboration remains pending. Packages: `Deliverables/PaykiTodo/1.17.2`; [validation](VALIDATION_1.17.2.md). No push, release or deployment this round.
+The local `1.17.3 / versionCode 395` round hides unauthorized shared search cache on both clients and fixes Android all-day search dates and dormant reminder presentation. Manual CAPTCHA/registration are complete. Actual dedicated 1.17.2 Android/Windows editor invite/accept/RSVP/bidirectional existing-event edits/revocation passed; 1.17.3 viewer access and live search revocation passed. Windows personal snapshot/revision 24, six original personal records/settings and 646 original Android user-0 file hashes remain unchanged. Test user 10 retains its identity and three revoked shared cache rows, all reminders off.
+
+227 Android units, Lint, rebuilt signed APK verification, 57 Windows regressions, one 14-stage UIA flow and MSI install/real 1.17.2 upgrade/repair/payload/installed app/uninstall/user-data checks passed. Packages: `Deliverables/PaykiTodo/1.17.3`; [validation](VALIDATION_1.17.3.md), [native collaboration](NATIVE_COLLABORATION_ACCEPTANCE_20261025.md). Dedicated Windows host/client stopped; interactive Pixel_8 mirror remains. No push, release or deployment this round.
+
+### Previous 1.17.2 personal/shared isolation
+
+Windows normal shared-event saves no longer upload personal snapshots unnecessarily; personal sync preserves concurrent shared cache and continues uploading real personal edits/settings. The initial single-account build/acceptance record remains in [VALIDATION_1.17.2.md](VALIDATION_1.17.2.md). Its pending manual/two-account steps were completed in the follow-up above.
 
 ### Previous 1.17.1 rollout and participant update
 

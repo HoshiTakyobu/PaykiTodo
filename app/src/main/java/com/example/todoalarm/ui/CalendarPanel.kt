@@ -2411,7 +2411,7 @@ private fun CalendarEventDetailsDialog(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (displayItem.allDay) formatDateRange(displayItem) else formatDateTimeRangeWithoutTimezone(displayItem),
+                        text = if (displayItem.allDay) calendarEventDateRangeLabel(displayItem) else formatDateTimeRangeWithoutTimezone(displayItem),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
@@ -2664,13 +2664,16 @@ private fun recurrencePreviewLine(item: TodoItem): String? {
     }
 }
 
-private fun eventReminderSummary(item: TodoItem): String? {
+internal fun eventReminderSummary(item: TodoItem): String? {
+    if (!item.reminderEnabled) return null
+    val allDayRules = if (item.allDay) runCatching {
+        com.example.todoalarm.data.decodeAllDayReminderRules(item.allDayReminderRulesJson)
+    }.getOrDefault(emptyList()) else emptyList()
     val summaries = buildList {
-        if (item.allDay && item.allDayReminderRulesJson.isNotBlank()) {
-            val rules = runCatching { com.example.todoalarm.data.decodeAllDayReminderRules(item.allDayReminderRulesJson) }.getOrDefault(emptyList())
-            if (rules.isNotEmpty()) add("全天提醒：" + rules.joinToString("、") { "${if (it.daysBefore == 0) "当天" else "提前${it.daysBefore}天"} ${"%02d:%02d".format(it.minuteOfDay / 60, it.minuteOfDay % 60)}" })
+        if (allDayRules.isNotEmpty()) {
+            add("全天提醒：" + allDayRules.joinToString("、") { "${if (it.daysBefore == 0) "当天" else "提前${it.daysBefore}天"} ${"%02d:%02d".format(it.minuteOfDay / 60, it.minuteOfDay % 60)}" })
         }
-        item.configuredReminderOffsetsMinutes.takeIf { it.isNotEmpty() }?.let { offsets ->
+        item.configuredReminderOffsetsMinutes.takeIf { allDayRules.isEmpty() && it.isNotEmpty() }?.let { offsets ->
             add("普通提醒：${offsets.sortedDescending().joinToString("、") { reminderOffsetLabel(it) }}")
         }
         item.configuredCheckInReminderOffsetsMinutes.takeIf { item.checkInEnabled && it.isNotEmpty() }?.let { offsets ->
@@ -2686,6 +2689,7 @@ private fun eventReminderSummary(item: TodoItem): String? {
 
 private fun reminderOffsetLabel(minutes: Int): String {
     return when {
+        minutes == 0 -> "开始时"
         minutes % (24 * 60) == 0 -> "提前${minutes / (24 * 60)}天"
         minutes % 60 == 0 -> "提前${minutes / 60}小时"
         else -> "提前${minutes}分钟"
@@ -2892,7 +2896,7 @@ private fun formatDateTimeRange(item: TodoItem): String {
     }
 }
 
-private fun formatDateRange(item: TodoItem): String {
+internal fun calendarEventDateRangeLabel(item: TodoItem): String {
     val zone = com.example.todoalarm.data.calendarZone(item.eventTimeZoneId)
     val start = item.startAtMillis?.let { millisToDate(it, zone) } ?: return "未设置日期"
     val endExclusive = item.endAtMillis?.let { millisToDate(it, zone) }?.minusDays(1) ?: start

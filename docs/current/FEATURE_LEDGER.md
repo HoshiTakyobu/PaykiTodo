@@ -2,15 +2,19 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current local update: 1.17.2 / 394
+## Current local update: 1.17.3 / 395
 
-Windows ordinary shared-event saves now compare personal content/settings before marking personal sync dirty. Shared-only changes during personal upload/download or explicit keep-local upload do not create redundant personal writes or false personal conflicts, and downloads preserve the latest shared cache. Existing personal edits and settings still sync.
+Android and Windows shared search now respects current account/server/calendar access, hiding revoked cached content while retaining recovery data. Android all-day search uses event dates and an all-day label; disabled reminders do not display dormant rules, active all-day rules exclude remembered timed offsets, and zero offset says “开始时”.
 
-57 Windows regressions, one 14-stage isolated UIA flow and MSI lifecycle checks passed. The packaged native create form saved a production synthetic shared event while personal snapshot hash/revision, the original 6 personal records and settings stayed unchanged. Both Android APKs were rebuilt; Android runtime tests remain historical. Production two-account native collaboration awaits manual CAPTCHA and registration in isolated emulator user 10. See [VALIDATION_1.17.2.md](VALIDATION_1.17.2.md).
+227 Android units, Lint, rebuilt signed APK verification, 57 Windows regressions, one 14-stage UIA flow and MSI lifecycle checks passed. Native production collaboration completed on 1.17.2 after the user's manual verification: editor invite/accept, RSVP, bidirectional existing-event edits and revoke. On 1.17.3 the same identities passed viewer acceptance, date/reminder presentation and live search revocation. Personal data and the original emulator user remain intact. See [validation](VALIDATION_1.17.3.md) and [native flow](NATIVE_COLLABORATION_ACCEPTANCE_20261025.md).
+
+## Previous local update: 1.17.2 / 394
+
+Windows ordinary shared-event saves compare personal content/settings before marking personal sync dirty. Shared-only changes during personal upload/download or explicit keep-local upload do not create redundant personal writes or false personal conflicts, and downloads preserve the latest shared cache. Existing personal edits and settings still sync. The original single-account acceptance and artifacts remain in [VALIDATION_1.17.2.md](VALIDATION_1.17.2.md); its later two-account follow-up is recorded above.
 
 ## Previous local update: 1.17.1 / 393
 
-The [2026-10-25 final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md) distinguishes implemented behavior from acceptance gaps. Production two-account native invitation/response/revocation is not yet verified. Current participants are accepted calendar members and the organizer is the calendar owner; cross-member availability scheduling, independent subscription-source management and meeting-resource services are not complete product workflows.
+The [2026-10-25 final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md) distinguishes implemented behavior from acceptance gaps. That audit originally left production two-account native invitation/response/revocation open; the follow-up recorded above closes that specific gap. Current participants are accepted calendar members and the organizer is the calendar owner; cross-member availability scheduling, independent subscription-source management and meeting-resource services are not complete product workflows.
 
 Both clients now select shared-event participants from current accepted calendar members and show organizer/participant/current-account responses. Cancel stays transactional, changing calendars reselects members, existing responses are preserved, and new participants/occurrences start unanswered. PRIVATE viewers see only server-authorized projection. Confirmed RSVP remains visible despite pending local edits; in-flight edits preserve a recoverable candidate and old sync revision. Details/editors/reminders revalidate source access, and all-day notification dates use the event timezone.
 

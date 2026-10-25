@@ -38,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +49,7 @@ import com.example.todoalarm.data.GlobalSearchResult
 import com.example.todoalarm.data.PlanningNodeSearchResult
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.TodoApplication
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
@@ -66,7 +68,12 @@ internal fun SearchPanel(
     onOpenAiReport: (AiReport) -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
-    var result by remember { mutableStateOf(GlobalSearchResult.empty()) }
+    var rawResult by remember { mutableStateOf(GlobalSearchResult.empty()) }
+    val app = LocalContext.current.applicationContext as TodoApplication
+    val workspace = LocalWorkspacePreferences.current
+    val readableCalendars = workspace.calendars.filter(app.calendarCollaboration::canReadCachedCalendar).map { it.id }.toSet()
+    // Re-evaluate retained search results when account/calendar permissions change.
+    val result = rawResult.withAccessibleCalendars(readableCalendars)
     var loading by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
     val safeQuery = query.trim()
@@ -74,13 +81,13 @@ internal fun SearchPanel(
     LaunchedEffect(safeQuery) {
         errorText = null
         if (safeQuery.isBlank()) {
-            result = GlobalSearchResult.empty()
+            rawResult = GlobalSearchResult.empty()
             loading = false
             return@LaunchedEffect
         }
         delay(300)
         loading = true
-        result = try {
+        rawResult = try {
             onSearch(safeQuery)
         } catch (error: Exception) {
             errorText = error.message ?: "搜索失败"
@@ -229,12 +236,21 @@ private fun SearchEventRow(item: TodoItem, onClick: () -> Unit) {
         tint = colorFromHex(item.accentColorHex ?: PaykiColorPresets.DefaultEvent),
         title = item.title,
         subtitle = listOfNotNull(
-            item.startAtMillis?.let { formatLocalDateTime(reminderAtMillisToDateTime(it)) },
+            calendarEventSearchTimeLabel(item),
             item.location.takeIf { it.isNotBlank() }
         ).joinToString(" · "),
         onClick = onClick
     )
 }
+
+internal fun GlobalSearchResult.withAccessibleCalendars(readableCalendars: Set<String>): GlobalSearchResult {
+    fun readable(item: TodoItem) = !item.calendarId.startsWith("shared:") || item.calendarId in readableCalendars
+    return copy(todos = todos.filter(::readable), events = events.filter(::readable))
+}
+
+internal fun calendarEventSearchTimeLabel(item: TodoItem): String? =
+    if (item.allDay) "${calendarEventDateRangeLabel(item)} 全天"
+    else item.startAtMillis?.let { formatLocalDateTime(reminderAtMillisToDateTime(it)) }
 
 @Composable
 private fun SearchPlanningNodeRow(result: PlanningNodeSearchResult, onClick: () -> Unit) {

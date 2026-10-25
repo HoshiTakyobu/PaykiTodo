@@ -538,6 +538,23 @@ public sealed class NativeWorkspaceTests
         });
         Assert.Single(shared.Document!.Items);
         shared.EditShared(data => data.ImportSharedCalendar(metadata, new JsonObject { ["revision"] = 3L, ["events"] = new JsonArray(wire.DeepClone()) }, EventParticipantsTests.Calendar.SharedServerUrl, true));
+        var search = Descendants<TextBox>(window).Single(input => System.Windows.Automation.AutomationProperties.GetName(input) == "搜索事项");
+        search.Text = "协作会议";
+        Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "执行搜索").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.UpdateLayout();
+        Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "协作会议");
+        shared.EditShared(data => data.SharedCalendar(original.CalendarId)!["sharedRole"] = "revoked");
+        window.UpdateLayout();
+        Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "协作会议");
+        Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "没有找到匹配的事项。");
+        Assert.Single(store.Load()!.Value.Document.Items);
+        shared.EditShared(data => {
+            data.SharedCalendar(original.CalendarId)!["sharedRole"] = "editor";
+            data.SharedCalendar(original.CalendarId)!["sharedServerUrl"] = "https://other-fixture.invalid";
+        });
+        window.UpdateLayout();
+        Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "协作会议");
+        shared.EditShared(data => data.ImportSharedCalendar(metadata, new JsonObject { ["revision"] = 3L, ["events"] = new JsonArray(wire.DeepClone()) }, EventParticipantsTests.Calendar.SharedServerUrl, true));
         InspectModal(window, "日程详情", () => typeof(NativeWindow).GetMethod("Preview", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(window, new object[] { shared.Document!.Items.Single() }), dialog => {
             Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("新增成员 · extra"));
             Screenshot(dialog, Path.Combine(folder, "windows-event-collaboration-full-detail-light.png"));

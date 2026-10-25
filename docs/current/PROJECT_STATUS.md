@@ -2,6 +2,7 @@
 
 ## Current Baseline
 
+- Final acceptance review on 2026-10-25 confirms core calendar/account implementation, completed targeted regression results, preserved emulator data and unchanged artifacts. Production two-account native collaboration and physical-device behavior remain unverified; wider collaboration capability limits are explicit in [the final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md). This is not exhaustive platform acceptance.
 - Current source and local build: Android `1.17.1 / versionCode 393`, Windows `1.17.1.0`, Room `33`. Shared-event participant selection, organizer/participant details, response authority and refresh, source guards and all-day notification dates are implemented and locally verified. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md).
 - Retain the calendar/account update from 1.17.0: calendar body/create-adjust/multiple calendars/recurrence/all-day reminders/current-instance copy/timezones, domain-free login server selection and compact account actions. Strong reminders keep one window and queue.
 - Validation: 222 Android units, 12 data and 18 distinct emulator UI tests, 55 Windows regressions plus one 14-stage isolated UIA flow, 21 server tests, signed APK and MSI lifecycle checks. Android Lint 0 errors / 133 warnings. Repeated targeted checks do not increase distinct counts.

@@ -1,5 +1,13 @@
 # Session Handoff
 
+## Final acceptance audit, 2026-10-25
+
+- Resumed the interrupted final review against clean `f7f1590`, Android 1.17.1/393, Windows 1.17.1.0 and Room 33. No product code, client build, production deployment or release changed. See [final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md).
+- Read the completed 222-unit XML, 24 targeted Android device results, 55 Windows regression TRX and one 14-stage isolated UIA result. These are repeated subsets of existing coverage, not newly added distinct tests. Read existing server rollout evidence; no new multi-account invitation was sent.
+- Rechecked before/after emulator backups: all 15 table contents preserved, all 644 original files retained, credential/configuration hashes unchanged; one startup-guard runtime file changed, two isolated test files added. Existing Debug/Release/MSI/EXE/DLL hashes match validation, all 22 preview images exist. Emulator remains `emulator-5554 / Pixel_8`, installed Debug 1.17.1/393; this continuation only queried package metadata and did not start/reinstall the app.
+- Core calendar/account implementation and deployment are complete in their recorded scope. Production two-account Android/Windows invite/accept/edit/respond/revoke remains unverified; organizer is currently the calendar owner, participants must be accepted calendar members, and cross-member availability scheduling, subscription-source management and meeting-resource services are not implemented as complete workflows. Do not describe this as exhaustive feature or platform acceptance.
+- Next useful verification is the native two-account collaboration flow, followed by physical-device reminder checks; review actual fixture availability and invitation authorization before execution. Do not rerun successful suites or redeploy merely because another continuation starts. No new APK: keep using the existing 1.17.1 files and preview listed below.
+
 ## Completed production rollout, 2026-10-25
 
 - Existing account server now provides current `/v3` calendar and invitation interfaces; original environment, service configuration, accounts and personal snapshots are preserved. Four new calendar tables initialized successfully, deployed source hashes match local modules, service is active and public health returns 200.

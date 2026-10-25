@@ -4,6 +4,8 @@ This ledger distinguishes completed capabilities from the active update. Histori
 
 ## Current local update: 1.17.1 / 393
 
+The [2026-10-25 final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md) distinguishes implemented behavior from acceptance gaps. Production two-account native invitation/response/revocation is not yet verified. Current participants are accepted calendar members and the organizer is the calendar owner; cross-member availability scheduling, independent subscription-source management and meeting-resource services are not complete product workflows.
+
 Both clients now select shared-event participants from current accepted calendar members and show organizer/participant/current-account responses. Cancel stays transactional, changing calendars reselects members, existing responses are preserved, and new participants/occurrences start unanswered. PRIVATE viewers see only server-authorized projection. Confirmed RSVP remains visible despite pending local edits; in-flight edits preserve a recoverable candidate and old sync revision. Details/editors/reminders revalidate source access, and all-day notification dates use the event timezone.
 
 The 1.17.0 calendar/timezone/recurrence/all-day/copy/account update remains. Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Current validation and artifacts: [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md); original1.17.0 scope: [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md). The existing account server now provides `/v3` interfaces after the [2026-10-25 rollout](PRODUCTION_CALENDAR_ROLLOUT_20261025.md), with personal snapshots and credentials preserved. Other server installations also need these interfaces; all-device parity is not claimed.

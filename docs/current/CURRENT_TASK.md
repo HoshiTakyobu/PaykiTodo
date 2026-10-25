@@ -1,5 +1,9 @@
 # Current Task
 
+## Final review completed; end-to-end collaboration acceptance remains open
+
+The 2026-10-25 review confirms the implemented calendar/account requirements, completed regression outputs, data preservation and existing 1.17.1 artifacts. It does not establish production two-account Android/Windows invitation, response and revocation end to end. Broader availability scheduling, subscription-source and meeting-resource workflows are also absent. See [the requirement-by-requirement audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md). The next meaningful verification is native collaboration with suitable dedicated identities; this review made no new client build or deployment and does not authorize sending invitations to arbitrary users.
+
 ## Completed: existing server shared-calendar rollout, 2026-10-25
 
 The user's requested whole-task completion includes production deployment. The existing account server now runs the current cloud and calendar modules; four additive tables preserve the original accounts, devices, sessions and personal snapshots. Remote and local recovery copies exist. Linux 21-test suite, public dedicated-account calendar read/write/CAS/authentication checks and unchanged personal snapshot checks passed. See [rollout evidence and scope](PRODUCTION_CALENDAR_ROLLOUT_20261025.md). No new client build; Android remains 1.17.1/393, Windows 1.17.1.0. Native two-account/window/OEM workflows were not rerun in this rollout.

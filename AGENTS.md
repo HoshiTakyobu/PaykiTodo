@@ -108,6 +108,8 @@ Do not treat a passing emulator smoke test as complete coverage for OEM-specific
 
 If the session starts or reuses an emulator, record the device id / AVD name, installed APK path, and checked screens or flows in `docs/current/SESSION_HANDOFF.md`. This prevents later confusion when an Android Emulator window is still open on the user's desktop.
 
+Before asking the user to operate an emulator (especially to complete human verification), verify that an interactive window is actually visible on the user's desktop. An ADB-connected device or a successful screenshot is not proof that the user has a window. Check for `-no-window` / headless startup. Prefer attaching an interactive mirror to the existing device over restarting it when a registration form or session must survive; record the viewer entry point and confirm the displayed page. Human verification remains a manual user action.
+
 ## Git Commit Message Rules
 
 Commit messages are part of the product history. They should primarily describe product behavior changes and bug-fix logic, not process bookkeeping.

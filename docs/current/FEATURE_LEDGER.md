@@ -2,7 +2,11 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current local update: 1.17.3 / 395
+## Current local fix: 1.17.4 / 396
+
+Phone local edits no longer synchronously run widget IPC, sync scheduling, shared-calendar refresh scheduling, or automatic-backup file I/O from the Room change callback/completion coroutine. Automatic backups are serialized on `Dispatchers.IO`; the database edit remains local-first and cloud sync stays asynchronous. The 1.17.4 Debug APK is rebuilt; 1.17.3 remains the latest signed Release/Windows artifact.
+
+## Previous local update: 1.17.3 / 395
 
 Android and Windows shared search now respects current account/server/calendar access, hiding revoked cached content while retaining recovery data. Android all-day search uses event dates and an all-day label; disabled reminders do not display dormant rules, active all-day rules exclude remembered timed offsets, and zero offset says “开始时”.
 

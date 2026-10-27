@@ -1,5 +1,14 @@
 # Session Handoff
 
+## Current: completed 1.17.4 / 396 local-write responsiveness, 2026-10-27
+
+- Baseline was clean `1.17.3 / 395`; the current source is bumped to `1.17.4 / versionCode 396`.
+- Root cause found: repository change callbacks synchronously called widget refresh, `markRemoteSyncDirty()` / sync scheduling, and shared-calendar scheduling on the caller thread; enabled auto-backup also exported and wrote a full archive from the ViewModel coroutine without switching to I/O.
+- Implemented: callback follow-up work is launched on `TodoApplication.applicationScope` (`Dispatchers.IO`); auto-backup is explicitly on `Dispatchers.IO` and serialized with a mutex. Local Room writes remain authoritative and cloud sync remains background work.
+- Passed: `:app:testDebugUnitTest`, `:app:lintDebug`, and `:app:assembleDebug`. Installed `app/build/outputs/apk/debug/PaykiTodo-1.17.4-debug.apk` on `emulator-5554 / Pixel_8`; cold start reached the daily board and a real create/complete interaction removed the task immediately. Evidence: [VALIDATION_1.17.4.md](VALIDATION_1.17.4.md).
+- Latest APK rebuilt in this round: `app/build/outputs/apk/debug/PaykiTodo-1.17.4-debug.apk`. Signed Release APK, Windows package and full instrumentation were not rebuilt in this round.
+- The dedicated emulator user 10 remains active. The manual smoke test created one synthetic `latency test` history entry; original user 0 and production data were not touched.
+
 ## Current: completed 1.17.3 search access and native collaboration, 2026-10-25
 
 - 2026-10-26 documentation follow-up: rechecked the original calendar/account requirements and current delivery. Corrected `CALENDAR_UPDATE_CONTRACT.md`, which still called 1.17.1 current and omitted the completed native collaboration follow-up. Source/packages stay 1.17.3/395, all three delivered installer hashes still match, and no product tests/builds/deployment were repeated.

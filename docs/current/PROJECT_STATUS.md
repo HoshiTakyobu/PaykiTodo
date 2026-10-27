@@ -2,7 +2,9 @@
 
 ## Current Baseline
 
-- Current source and rebuilt local packages: Android `1.17.3 / versionCode 395`, Windows `1.17.3.0`, Room `33`. Both clients filter shared search results by current account/server/calendar access; Android fixes all-day search dates and disabled-reminder details. See [VALIDATION_1.17.3.md](VALIDATION_1.17.3.md).
+- Current source baseline: Android `1.17.4 / versionCode 396`, Room `33`. Local todo/calendar writes now return without waiting for widget refresh, sync scheduling, shared-calendar refresh, or automatic-backup I/O; the latter runs on a background coroutine. The 1.17.3 packages remain the latest built artifacts until this fix is rebuilt and verified.
+
+- Current source and latest rebuilt local package: Android `1.17.4 / versionCode 396`, Room `33`; Windows remains `1.17.3.0`. The 1.17.4 fix moves local-edit follow-up work and automatic-backup I/O off the phone operation path. See [VALIDATION_1.17.4.md](VALIDATION_1.17.4.md). The 1.17.3 package remains the latest signed Release/Windows artifact.
 - Passed: 227 Android units, Lint 0 errors / 133 warnings / 30 informational, rebuilt Debug/signed Release and signature/version checks; 57 Windows regressions plus one 14-stage isolated UIA flow; MSI install/real 1.17.2 upgrade/repair/payload/installed EXE/uninstall/user-data checks. Full instrumentation/server suites were not rerun for this fix.
 - Manual CAPTCHA and dedicated second-account registration are complete. Actual 1.17.2 Android/packaged Windows editor invitation, acceptance, RSVP, bidirectional existing-event edits and revocation passed. New 1.17.3 viewer acceptance, correct date/reminder presentation and automatic removal from already-open Android search passed. See [native collaboration](NATIVE_COLLABORATION_ACCEPTANCE_20261025.md).
 - Personal snapshot hash and revision 24 stayed unchanged throughout collaboration; original 6 Windows personal records/settings are intact. Original Android user 0 has 646/646 matching file hashes; user 10 retains the test identity, three revoked cached events and zero enabled reminders. Dedicated Windows client/host are stopped; visible Pixel_8 mirror remains available.
@@ -13,8 +15,8 @@
 
 ## Published And Local Builds
 
-- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. No 1.17.3 public tag or download is claimed.
-- Current Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.3-debug.apk`; SHA-256 `E13599786871A5723D61F2B7C05959DD3DB4C495F3F44FDBED4AED43A42EFC83`.
+- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. No 1.17.4 public tag or download is claimed.
+- Current Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.4-debug.apk` (rebuilt this round; hash not separately recorded).
 - Current signed Release APK: `app/build/outputs/apk/release/PaykiTodo-1.17.3-release.apk`; SHA-256 `2D3048E4115B351BA392237273E8BA8A9DD6E6E1A2D0446F7CD98826036E00F3`.
 - Current Windows installer: `desktop/installer-output/PaykiTodo-1.17.3-windows-x64.msi`, 80,102,484 bytes, Windows 10 1809+/11 x64, per-user with .NET; SHA-256 `852BA6A35C0A31AC3F93252BC792A1039BCA3B7BDBEC3B35419BB1B7D36D502D`. See [installation instructions](../../desktop/installer/README.md).
 - Windows portable entry: `desktop/dist/PaykiTodo.exe` / file version 1.17.3.0; keep the whole directory. EXE SHA-256 `9BB7160E59D58A7EB56DBADEB29D51D735B5059A1FAAA7AC237F3E9F79EAB197`; main DLL SHA-256 `CF012472201DC80E81C800D07691606F280A8200786D0ECC65AF2C89F591F272`, identical to MSI payload.

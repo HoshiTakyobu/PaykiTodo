@@ -90,6 +90,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
@@ -144,6 +146,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val todayDateFlow = MutableStateFlow(LocalDate.now())
     private val calendarEventWindowFlow = MutableStateFlow(calendarEventWindowAround(LocalDate.now()))
     private var quoteRefreshJob: Job? = null
+    private val autoBackupMutex = Mutex()
 
     init {
         viewModelScope.launch {
@@ -1789,9 +1792,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val settings = settingsStore.currentSettings()
         if (!settings.autoBackupEnabled) return
         val directoryUri = settings.backupDirectoryUri ?: return
-        runCatching {
-            val snapshot = repository.exportSnapshot(settings)
-            app.backupManager.autoBackupToDirectory(directoryUri, snapshot)
+        // BackupArchiveCodec and SAF I/O can take hundreds of milliseconds on a
+        // phone. Keep the completion path responsive and serialize overlapping
+        // backups so several quick edits do not write the same archive at once.
+        withContext(Dispatchers.IO) {
+            autoBackupMutex.withLock {
+                runCatching {
+                    val snapshot = repository.exportSnapshot(settingsStore.currentSettings())
+                    app.backupManager.autoBackupToDirectory(directoryUri, snapshot)
+                }
+            }
         }
     }
 

@@ -134,9 +134,15 @@ class TodoApplication : Application() {
 
     val repository: TodoRepository by lazy {
         TodoRepository(database) {
-            TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
-            remoteSyncCoordinator.onLocalDataChanged()
-            calendarCollaboration.onLocalDataChanged()
+            // Room writes are initiated by the UI coroutine. Do not make a local
+            // edit wait for widget IPC, SharedPreferences commits, or network
+            // scheduling. Those are follow-up effects and belong off the caller's
+            // thread; the database transaction itself remains synchronous.
+            applicationScope.launch {
+                TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
+                remoteSyncCoordinator.onLocalDataChanged()
+                calendarCollaboration.onLocalDataChanged()
+            }
         }
     }
 

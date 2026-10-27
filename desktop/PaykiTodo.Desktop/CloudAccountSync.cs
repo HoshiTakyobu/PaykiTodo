@@ -26,7 +26,29 @@ internal sealed record CloudAccountState(
 internal sealed record CloudAuthenticationResult(CloudAccountState State, long RemoteRevision);
 
 internal sealed record CloudSyncResult(CloudAccountState State, DesktopSnapshotDocument Document, string Message);
-internal sealed class CloudSessionExpiredException() : InvalidOperationException("登录已过期，请重新登录；本机数据、离线提醒和待同步修改已保留。");
+internal sealed class CloudSessionExpiredException : InvalidOperationException
+{
+    public string ErrorCode { get; }
+
+    public CloudSessionExpiredException(string? errorCode = null, string? serverMessage = null)
+        : base(CreateMessage(errorCode, serverMessage))
+    {
+        ErrorCode = string.IsNullOrWhiteSpace(errorCode) ? "session_expired" : errorCode;
+    }
+
+    private static string CreateMessage(string? errorCode, string? serverMessage)
+    {
+        var suffix = "；本机数据、离线提醒和待同步修改已保留。";
+        return errorCode switch
+        {
+            "invalid_refresh_token" => "云端刷新令牌已失效，请重新登录" + suffix,
+            "device_revoked" => "此电脑已被云端撤销，请重新登录" + suffix,
+            "invalid_token" or "missing_token" => "此电脑的云端会话已失效或被撤销，请重新登录" + suffix,
+            _ when !string.IsNullOrWhiteSpace(serverMessage) => serverMessage!.TrimEnd('。', ' ') + suffix,
+            _ => "登录已过期，请重新登录" + suffix
+        };
+    }
+}
 internal sealed record CloudDownload(DesktopSnapshotDocument Document, long Revision);
 
 internal sealed class CloudRevisionConflictException(long remoteRevision)
@@ -199,8 +221,13 @@ internal static class CloudAccountSync
     internal static async Task<CloudAccountState> EnsureAccessTokenAsync(CloudAccountState state, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        if (state.LocalAccessLocked || state.RefreshExpiresAt <= now || string.IsNullOrWhiteSpace(state.RefreshToken)) throw new CloudSessionExpiredException();
+        if (state.LocalAccessLocked || state.RefreshExpiresAt <= now || string.IsNullOrWhiteSpace(state.RefreshToken))
+        {
+            DesktopDiagnosticLog.Write("session.local_expired", $"server={SafeHost(state.ServerUrl)} device={DesktopDiagnosticLog.Fingerprint(state.DeviceId)} refreshExpiresAt={state.RefreshExpiresAt} now={now} locked={state.LocalAccessLocked}");
+            throw new CloudSessionExpiredException(state.LocalAccessLocked ? "local_access_locked" : "invalid_refresh_token");
+        }
         if (!string.IsNullOrWhiteSpace(state.AccessToken) && state.AccessExpiresAt > now + 30) return state;
+        DesktopDiagnosticLog.Write("session.refresh.start", $"server={SafeHost(state.ServerUrl)} device={DesktopDiagnosticLog.Fingerprint(state.DeviceId)} accessExpiresAt={state.AccessExpiresAt} refreshExpiresAt={state.RefreshExpiresAt} now={now}");
         var payload = JsonSerializer.SerializeToUtf8Bytes(new { refreshToken = state.RefreshToken });
         using var request = new HttpRequestMessage(HttpMethod.Post, state.ServerUrl + "/v2/auth/refresh");
         request.Content = new ByteArrayContent(payload);
@@ -208,6 +235,7 @@ internal static class CloudAccountSync
         using var response = await Client.SendAsync(request, cancellationToken);
         using var json = await ReadJsonAsync(response, cancellationToken);
         EnsureSuccess(response, json.RootElement);
+        DesktopDiagnosticLog.Write("session.refresh.success", $"server={SafeHost(state.ServerUrl)} device={DesktopDiagnosticLog.Fingerprint(state.DeviceId)} accessExpiresAt={json.RootElement.GetProperty("accessExpiresAt").GetInt64()} refreshExpiresAt={json.RootElement.GetProperty("refreshExpiresAt").GetInt64()}");
         return state with
         {
             AccessToken = json.RootElement.GetProperty("accessToken").GetString() ?? "",
@@ -234,10 +262,19 @@ internal static class CloudAccountSync
     private static void EnsureSuccess(HttpResponseMessage response, JsonElement body)
     {
         if (response.IsSuccessStatusCode) return;
-        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new CloudSessionExpiredException();
+        var code = body.TryGetProperty("error", out var errorValue) ? errorValue.GetString() : null;
         var message = body.TryGetProperty("message", out var value) ? value.GetString() : null;
+        DesktopDiagnosticLog.Write("http.failure", $"status={(int)response.StatusCode} error={code ?? "unknown"} message={Sanitize(message)}");
+        if (response.StatusCode == HttpStatusCode.Unauthorized && code is "invalid_token" or "invalid_refresh_token" or "missing_token" or "device_revoked")
+            throw new CloudSessionExpiredException(code, message);
         throw new InvalidOperationException(string.IsNullOrWhiteSpace(message) ? $"云服务请求失败（HTTP {(int)response.StatusCode}）" : message);
     }
+
+    private static string SafeHost(string serverUrl)
+        => Uri.TryCreate(serverUrl, UriKind.Absolute, out var uri) ? uri.Host : "unknown";
+
+    private static string Sanitize(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "" : value.Replace('\r', ' ').Replace('\n', ' ').Trim()[..Math.Min(value.Trim().Length, 160)];
 
     public static string NormalizeServerUrl(string value)
     {
@@ -307,6 +344,7 @@ internal sealed class DesktopSecureStore
     private readonly string statePath;
     private readonly string snapshotPath;
     private readonly string workspacePath;
+    private readonly string installationIdentityPath;
 
     public DesktopSecureStore(string? storageDirectory = null)
     {
@@ -315,6 +353,31 @@ internal sealed class DesktopSecureStore
         statePath = Path.Combine(directory, "cloud-account.bin");
         snapshotPath = Path.Combine(directory, "cloud-snapshot.bin");
         workspacePath = Path.Combine(directory, "cloud-workspace.bin");
+        installationIdentityPath = Path.Combine(directory, "installation-identity.bin");
+    }
+
+    /// <summary>
+    /// Returns an identity for this Windows installation/profile. It is kept
+    /// outside the encrypted account workspace so copying that workspace to a
+    /// second computer cannot silently reuse the first computer's device ID.
+    /// </summary>
+    public string GetOrCreateInstallationDeviceId()
+    {
+        try
+        {
+            if (File.Exists(installationIdentityPath))
+            {
+                var identity = JsonSerializer.Deserialize<InstallationIdentity>(Unprotect(File.ReadAllBytes(installationIdentityPath)));
+                if (identity is not null && Guid.TryParseExact(identity.DeviceId, "N", out _) &&
+                    string.Equals(identity.MachineName, Environment.MachineName, StringComparison.OrdinalIgnoreCase))
+                    return identity.DeviceId;
+            }
+        }
+        catch { /* A copied profile or an older file is replaced below. */ }
+
+        var created = new InstallationIdentity(Guid.NewGuid().ToString("N"), Environment.MachineName);
+        AtomicWrite(installationIdentityPath, Protect(JsonSerializer.SerializeToUtf8Bytes(created)));
+        return created.DeviceId;
     }
 
     public void Save(CloudAccountState state, DesktopSnapshotDocument document)
@@ -410,4 +473,28 @@ internal sealed class DesktopSecureStore
     private static byte[] Protect(byte[] value) => ProtectedData.Protect(value, Entropy, DataProtectionScope.CurrentUser);
     private static byte[] Unprotect(byte[] value) => ProtectedData.Unprotect(value, Entropy, DataProtectionScope.CurrentUser);
     private sealed record PersistedWorkspace(CloudAccountState State, byte[] Archive);
+    private sealed record InstallationIdentity(string DeviceId, string MachineName);
+}
+
+internal static class DesktopDiagnosticLog
+{
+    private static readonly object Gate = new();
+    private static readonly string Path = System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo", "diagnostics.log");
+
+    public static void Write(string eventName, string details)
+    {
+        try
+        {
+            lock (Gate)
+            {
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
+                File.AppendAllText(Path, $"{DateTimeOffset.UtcNow:O}\t{eventName}\t{details}{Environment.NewLine}", Encoding.UTF8);
+            }
+        }
+        catch { /* Diagnostics must never block login or local editing. */ }
+    }
+
+    public static string Fingerprint(string value)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value ?? "")))[..12];
 }

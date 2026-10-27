@@ -235,7 +235,8 @@ internal sealed partial class DesktopWorkspace
         if (generation != accountGeneration) throw new InvalidOperationException("账号已切换，请重新操作。");
         if (response.StatusCode == HttpStatusCode.NotFound) throw new InvalidOperationException("当前服务器尚未提供共享日历，请先更新服务器或选择支持此功能的服务器。");
         if (response.StatusCode == HttpStatusCode.Conflict) throw new SharedCalendarConflictException(body["currentRevision"]?.GetValue<long>() ?? 0);
-        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new CloudSessionExpiredException();
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new CloudSessionExpiredException(body["error"]?.GetValue<string>(), body["message"]?.GetValue<string>());
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException(body["message"]?.GetValue<string>() ?? $"共享日历请求失败（HTTP {(int)response.StatusCode}）");
         return body;
     }

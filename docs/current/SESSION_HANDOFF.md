@@ -1,5 +1,12 @@
 # Session Handoff
 
+## Current: Windows 1.17.4.0 multi-computer session recovery, 2026-10-27
+
+- Windows source is now `1.17.4.0`; Android remains `1.17.4 / versionCode 396`. The desktop client stores a DPAPI-protected `installation-identity.bin` beside the workspace and uses it for login. A copied `cloud-workspace.bin` therefore cannot silently reuse the original computer's device ID; machine-name changes also rotate the local installation identity.
+- The server login path keeps the old device active when a reused ID arrives with a different device name/platform, assigning a new generated ID. Existing same-device logins continue to rotate only that device's session. The server's 13-test suite and desktop's 60-test suite pass (57 passed, 3 skipped).
+- `CloudSessionExpiredException` now distinguishes expired refresh tokens, invalid access tokens and revoked devices. `%LOCALAPPDATA%\PaykiTodo\diagnostics.log` records safe status/error/expiry details only; it never records passwords, access tokens or refresh tokens. The other computer's old log is not present in this workspace, so an exact historical cause cannot be proven from local files alone.
+- MSI `PaykiTodo-1.17.4-windows-x64.msi` is built at `desktop/installer-output/PaykiTodo-1.17.4-windows-x64.msi` (80,090,176 bytes; SHA-256 `29830769257C8CC7B9F5C1C160BA17F5DE2187FA42DFE6EEE65E8D0B4ACB80E2`). The portable output `desktop/dist/PaykiTodo.exe` is file version `1.17.4.0` with SHA-256 `04f56a9d2b86d1d785284a78551976a73f9ee8d31048cdfbbb78e6c2a61026f8`. Copies and notes are in `G:\Workspace\Deliverables\PaykiTodo\1.17.4`; do not delete the existing `1.17.3` artifact.
+
 ## Current: completed 1.17.4 / 396 local-write responsiveness, 2026-10-27
 
 - Baseline was clean `1.17.3 / 395`; the current source is bumped to `1.17.4 / versionCode 396`.

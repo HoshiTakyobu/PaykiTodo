@@ -57,7 +57,7 @@ internal sealed partial class DesktopWorkspace
     public async Task LoginAsync(string server, string username, string password, bool register, string? token)
     {
         var result = await CloudAccountSync.AuthenticateAsync(server, username, password,
-            Account?.DeviceId ?? Guid.NewGuid().ToString("N"), register, turnstileToken: token);
+            store.GetOrCreateInstallationDeviceId(), register, turnstileToken: token);
         var saved = store.Load();
         var same = saved != null && saved.Value.State.Username == result.State.Username &&
             saved.Value.State.ServerUrl == result.State.ServerUrl;

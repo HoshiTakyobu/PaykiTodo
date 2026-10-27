@@ -237,9 +237,7 @@ internal sealed class MainForm : Form
             registerButton.Enabled = false;
             SetStatus(register ? "正在注册云账号…" : "正在登录云账号…");
             var stored = cloudStore.Load();
-            var deviceId = stored?.State.Username.Equals(username, StringComparison.OrdinalIgnoreCase) == true
-                ? stored!.Value.State.DeviceId
-                : Guid.NewGuid().ToString("N");
+            var deviceId = cloudStore.GetOrCreateInstallationDeviceId();
             var authentication = await CloudAccountSync.AuthenticateAsync(serverUrl, username, password, deviceId, register);
             var useStored = stored is not null &&
                 stored.Value.State.Username.Equals(authentication.State.Username, StringComparison.OrdinalIgnoreCase) &&

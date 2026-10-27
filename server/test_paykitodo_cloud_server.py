@@ -155,6 +155,25 @@ class CloudServerIntegrationTest(unittest.TestCase):
         self.assertFalse(previous["active"])
         self.assertTrue(previous["revoked"])
 
+    def test_reused_device_id_from_another_machine_gets_a_new_device(self):
+        account = self.create_account("cloned_device")
+        original_id = account["deviceId"]
+        status, _, raw = self.request("/v2/auth/login", "POST", {
+            "username": "tester_cloned_device",
+            "password": "correct horse battery staple",
+            "deviceId": original_id,
+            "deviceName": "另一台电脑",
+            "platform": "windows",
+        })
+        self.assertEqual(200, status, raw)
+        cloned = json.loads(raw)
+        self.assertNotEqual(original_id, cloned["deviceId"])
+        status, _, raw = self.request("/v2/devices", headers={"Authorization": f"Bearer {cloned['accessToken']}"})
+        self.assertEqual(200, status, raw)
+        devices = json.loads(raw)["devices"]
+        self.assertEqual(2, len(devices))
+        self.assertEqual(2, sum(device["active"] for device in devices))
+
     def test_password_change_atomically_rekeys_snapshot_and_revokes_sessions(self):
         account = self.create_account("password_change")
         headers = {"Authorization": f"Bearer {account['accessToken']}"}

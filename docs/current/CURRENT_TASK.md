@@ -1,5 +1,11 @@
 # Current Task
 
+## Completed: Windows 1.17.4.0 multi-computer session recovery
+
+The Windows client previously reused `DeviceId` from the encrypted workspace during login. Copying `%LOCALAPPDATA%\PaykiTodo` to another computer therefore caused the second login to replace the first computer's session, even though the cloud service supports multiple devices. Windows now persists a separate installation identity, the server allocates a new device when a reused ID has a different machine name/platform, and authentication failures retain server error codes. Safe diagnostics record endpoint host, status, error code, token expiry timestamps and hashed device identity without credentials or token values.
+
+Validation: 60 desktop tests (57 passed, 3 skipped) and 13 server tests pass. The Windows `1.17.4.0` self-contained MSI still needs to be rebuilt and installed separately; no production server deployment was performed in this source round.
+
 ## Completed: 1.17.3 / 395 search access and Android calendar presentation
 
 Manual CAPTCHA and second-account registration are complete. The dedicated 1.17.2 native Android/Windows workflow passed editor invitation, acceptance, RSVP, bidirectional existing-event edits and revocation. Inspection exposed revoked titles in search, dormant reminder rules in details and incorrect all-day search dates; 1.17.3 fixes these issues. The same identities passed viewer acceptance, correct details/search and automatic removal from already-open Android search after revocation.

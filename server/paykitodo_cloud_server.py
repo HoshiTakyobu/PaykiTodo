@@ -394,8 +394,16 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             if row["disabled"]:
                 raise ApiError(HTTPStatus.FORBIDDEN, "account_disabled", "账号已被停用")
             connection.execute("BEGIN IMMEDIATE")
-            existing = connection.execute("SELECT user_id FROM devices WHERE id = ?", (device_id,)).fetchone()
+            existing = connection.execute("SELECT user_id,name,platform FROM devices WHERE id = ?", (device_id,)).fetchone()
             if existing is not None and int(existing["user_id"]) != int(row["id"]):
+                device_id = uuid.uuid4().hex
+            elif existing is not None and (
+                str(existing["name"]) != device_name or str(existing["platform"]) != platform
+            ):
+                # A copied local profile can carry the old device ID to another
+                # computer. Keep both computers active instead of rotating the
+                # original computer's session away; the desktop client also
+                # creates an installation-scoped ID before reaching this guard.
                 device_id = uuid.uuid4().hex
             connection.execute(
                 "INSERT INTO devices(id,user_id,name,platform,created_at,last_seen_at,revoked_at) VALUES(?,?,?,?,?,?,NULL) "

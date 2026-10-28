@@ -2,7 +2,13 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current local update: 1.17.5 / 397
+## Current Android fix: 1.17.6 / 398
+
+Snapshot export reads related database tables in one transaction so concurrent replacement cannot mix old groups with new tasks. New regression reproduces the previous invalid relationship; nested sync export and checklist archive roundtrips remain valid. Automatic-backup compression/file I/O remains separate from the snapshot read.
+
+229 units, Lint, 24 data + 6 account + 1 live Android checks and 1 existing packaged Windows compatibility check passed. New signed/Debug APKs are delivered; Windows stays 1.17.5.0. Original emulator user 0/10 files match their before-round hashes. Scope and artifacts: [validation](VALIDATION_1.17.6.md).
+
+## Previous local update: 1.17.5 / 397
 
 Follow-up acceptance confirms an already-open packaged Windows client automatically reflects Android completion in its visible task list and persisted store, while retaining another task. The local coordinated measurement was 5092 ms with no manual sync. Two additional targeted tests passed; app binaries remain unchanged. See [live-window validation](VALIDATION_1.17.5_LIVE_SYNC.md).
 

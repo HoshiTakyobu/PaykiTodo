@@ -2,23 +2,21 @@
 
 ## Current Baseline
 
-- Follow-up on 2026-10-28: the already-open packaged Windows EXE automatically received an Android completion and removed its visible task without manual sync; the second task and persisted state were correct. Joint local measurement: 5092 ms. Two new targeted checks passed (cumulative emulator 29, Windows/bridge/UIA 68); existing app binaries/version remain unchanged. See [live-window validation](VALIDATION_1.17.5_LIVE_SYNC.md).
-- Current source and verified local packages: Android `1.17.5 / versionCode 397`, Room `33`; Windows `1.17.5.0`. Starting commit was `344bcdd`. The 2026-10-28 12-item feedback round is complete; see [validation](VALIDATION_1.17.5.md) and [requirements](REQUEST_2026-10-28.md).
-- Both-client icons, fixed Windows brand/navigation artwork, larger real-weight text, colored cards, timed quick checklists, direct imported task presentation and modern/optional-classic calendar colors are implemented. Local edits, reminder work, backups and synchronization remain responsive; running clients check new versions every 3 seconds.
-- Passed: 229 Android units, Lint 0 errors / 134 warnings / 30 informational, 28 distinct emulator tests (including targeted reruns), signed APK verification; 65 Windows regressions, one isolated UIA flow and one Android-to-Windows encrypted snapshot bridge; final MSI install/1.17.4 upgrade/repair/payload/startup/uninstall/data-preservation checks.
-- Phone completion during a held upload dispatched in 35 ms and kept the UI queue responsive; Windows downloaded and persisted the completed task. This is local fixture evidence, not a production latency guarantee.
-- Original emulator user 0 retains 646/646 file hashes. Existing user 10 business tables remain identical; runtime/session metadata differences are recorded. Dedicated user 11 contains local synthetic fixtures. Local server and test Windows processes are stopped; headless Pixel_8 remains on user 10's home screen.
-- Previous source baseline: `1.17.4 / 396`; retain its installation identity/session isolation and local-first data safeguards. Existing production calendar service is unchanged by this round. No push, server deployment or public release.
-- Repository: `https://github.com/HoshiTakyobu/PaykiTodo`; branch `main`; package `com.paykitodo.app`; Android 8.0+ / API 26+, compile/target API 34; MIT license.
+- Current Android source and verified APKs: `1.17.6 / versionCode 398`, Room `33`. Windows source, MSI and portable EXE remain `1.17.5.0`; no Windows rebuild for this Android-only fix. Starting commit: `9e4ff78`.
+- A real Room regression reproduced snapshot export mixing old group rows and new task rows during an atomic replacement. `TodoRepository.exportSnapshot` now reads all related tables within one transaction; automatic-backup encoding/file I/O remains outside that read. See [1.17.6 validation](VALIDATION_1.17.6.md).
+- Passed this round: 229 Android units; Lint 0 errors/134 warnings/30 informational; 24 data, 6 account-sync and 1 live-window Android tests; 1 isolated packaged Windows compatibility test; Debug/Release/AndroidTest builds, APK signature/version/upgrade-certificate checks and normal cold start. No repeated full Windows/MSI lifecycle suite.
+- Existing 12-item visual/checklist/responsiveness work remains complete. Earlier [1.17.5 validation](VALIDATION_1.17.5.md) and [live-window follow-up](VALIDATION_1.17.5_LIVE_SYNC.md) retain their original scopes; latest Android-to-existing-Windows live refresh passed with a single local 2408 ms observation, not a latency guarantee.
+- Original emulator user 0 retains 646/646 matching file hashes; user 10 retains 148/148 for this round. Dedicated user 11 test/runtime changes are backed up. Test apps/server are stopped, headless Pixel_8 restored to user 10 home. No production deployment, push or publication.
+- Repository: `https://github.com/HoshiTakyobu/PaykiTodo`; branch `main`; package `com.paykitodo.app`; Android 8.0+/API 26+, compile/target API 34; MIT license.
 
 ## Published And Local Builds
 
-- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. There is no claimed public 1.17.5 tag/download.
-- Debug: `app/build/outputs/apk/debug/PaykiTodo-1.17.5-debug.apk`; SHA-256 `758FB0FCED3EC5641CA3248F3BCB9FF97C53818676E10E6F17D4D40EEEB3E515`.
-- Signed Release: `app/build/outputs/apk/release/PaykiTodo-1.17.5-release.apk`; SHA-256 `7260031D0107B8646F9381B482F94A9123FE741B00E9D54474A8EC5CF956DE35`.
-- Windows MSI: `desktop/installer-output/PaykiTodo-1.17.5-windows-x64.msi`, 80,172,116 bytes; SHA-256 `AFD9B5E6E97CA339C0A0E2923A68AC86CE39878EF68CABD1D89DAABD699F49C5`. Windows 10 1809+/11 x64, per-user with .NET; see [installation](../../desktop/installer/README.md).
-- Windows portable: `desktop/dist/PaykiTodo.exe`, file version `1.17.5.0`; SHA-256 `D2CA8662B2870453571140BA965FF64CCC3CFBB6F84F31AA9E848B32339E913E`. Keep the full directory.
-- Verified copy, 18-image preview, instructions and full payload hashes: `G:\Workspace\Deliverables\PaykiTodo\1.17.5`. Older deliverables remain intact; generated outputs, private evidence and signing material stay outside Git.
+- Published GitHub Release remains [v1.15.18](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18). No public 1.17.6 tag/download is claimed.
+- Android signed Release: `app/build/outputs/apk/release/PaykiTodo-1.17.6-release.apk`, 21,034,478 bytes; SHA-256 `03D6E7F6986A54D7CBF5EEE9957C5D07434133AC86A4871EA46E106C6F55E1F6`.
+- Android Debug: `app/build/outputs/apk/debug/PaykiTodo-1.17.6-debug.apk`, 40,700,774 bytes; SHA-256 `ABDB8E9E9531E22F2A02E719D13F76EE6A0CD8776BD2DCE94B054AE2C339AAEF`.
+- Verified APK copies, instructions and hashes: `G:\Workspace\Deliverables\PaykiTodo\1.17.6`. Existing older deliverables remain intact.
+- Current Windows MSI remains `desktop/installer-output/PaykiTodo-1.17.5-windows-x64.msi`; SHA-256 `AFD9B5E6E97CA339C0A0E2923A68AC86CE39878EF68CABD1D89DAABD699F49C5`.
+- Current Windows portable entry remains `desktop/dist/PaykiTodo.exe` (full directory required); SHA-256 `D2CA8662B2870453571140BA965FF64CCC3CFBB6F84F31AA9E848B32339E913E`. Installer/portable copies and the unchanged 18-image preview are in `G:\Workspace\Deliverables\PaykiTodo\1.17.5`.
 
 ## Product Positioning
 

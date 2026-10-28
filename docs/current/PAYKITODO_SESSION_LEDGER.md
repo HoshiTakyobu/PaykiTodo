@@ -12,6 +12,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+Android 1.17.6/398 fixes a reproducible mixed-generation database export during concurrent edits. The repository now captures related tables transactionally, without moving automatic-backup file I/O into the read transaction. 229 units, Lint, 31 targeted emulator checks and an existing packaged Windows compatibility check passed. Signed APK/Debug delivery: `Deliverables/PaykiTodo/1.17.6`; Windows remains 1.17.5.0. User 0/10 file hashes are unchanged, test user 11 backed up, fixtures stopped. [Validation](VALIDATION_1.17.6.md). Local commit only; public release remains v1.15.18.
+
+### Previous 1.17.5 visual and live-sync work
+
 2026-10-28 continuation: two new coordinated tests verify Android completion reaches an already-open packaged Windows window automatically and survives local storage reload; local joint measurement 5092 ms. Normal Windows data hashes unchanged; only dedicated emulator user 11 used, then restored user 10 home. Test service stopped. Application artifacts/version unchanged; [follow-up evidence](VALIDATION_1.17.5_LIVE_SYNC.md).
 
 The completed local 1.17.5 / versionCode 397 round implements the original thread's 12-item Android/Windows visual and responsiveness feedback. Fixed Windows brand/navigation outlines, real font weights, colored cards, timed quick checklists, direct imported task presentation and selectable calendar colors are delivered. Phone edits are independent of background sync/reminders/backup completion; a held-network local completion subsequently persisted on Windows through an encrypted snapshot.

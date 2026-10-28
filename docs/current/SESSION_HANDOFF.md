@@ -1,6 +1,16 @@
 # Session Handoff
 
-## Current: completed 1.17.5 / 397, 2026-10-28
+## Current: completed Android 1.17.6 / 398 snapshot consistency, 2026-10-28
+
+- Continued from `9e4ff78`. The original 12-item work remains complete; this later audit reproduced a new concurrent export bug: old group ID 1 with a task referencing replaced group ID 2. Repository snapshot reads now share one Room transaction, while automatic-backup encoding/file I/O stays with its caller. Existing nested sync transactions remain supported.
+- Android is 1.17.6/398, Room 33; Windows stays 1.17.5.0. Passed: 229 units, Lint 0 errors/134 warnings/30 informational, 24 data + 6 account + 1 live Android checks and 1 packaged Windows compatibility check. New regression failed before the fix and passes afterward. Signed Release, Debug and AndroidTest builds and release upgrade certificate equality passed.
+- Final normal MainActivity cold start returned Status: ok / COLD after an initial user-switch launch wait timeout; login UI was actually observed. New Android completion automatically reached already-open Windows and persisted, with a local joint 2408 ms observation. Details/limits: [VALIDATION_1.17.6.md](VALIDATION_1.17.6.md).
+- Latest APKs: `app/build/outputs/apk/release/PaykiTodo-1.17.6-release.apk` and `app/build/outputs/apk/debug/PaykiTodo-1.17.6-debug.apk`. Copies, guide and hashes are in `Deliverables/PaykiTodo/1.17.6`. Windows MSI/portable/preview remain the existing 1.17.5 files; no rebuilt Windows package is claimed.
+- Evidence: `Scratch/PaykiTodo/snapshot-consistency-20261028`. Before/after backups: `Backups/PaykiTodo/before-snapshot-fix-20261028-175530` and `after-snapshot-fix-20261028-183727`. User 0: 646/646 identical files; user 10: 148/148 identical. Dedicated user 11 has recorded test/runtime changes (87 original files identical, 25 changed, 36 added), all backed up.
+- Emulator `emulator-5554 / Pixel_8` is headless, current 1.17.6 Debug/AndroidTest installed. Test apps stopped; restored user 10 home. Local 19443/19444 fixture stopped; packaged Windows test exited. No physical phone was connected and no production-account login/CAPTCHA verification was performed.
+- This completed round uses a focused Chinese local commit, no push/tag/publication/server deployment. All implementation, required checks and local artifacts are complete; physical-device/production-network limits are optional verification boundaries, not an unfinished development step. Do not repeat passed checks without a new change or concrete concern.
+
+## Previous: completed 1.17.5 / 397, 2026-10-28
 
 - Continuation follow-up: [live-window sync](VALIDATION_1.17.5_LIVE_SYNC.md) now proves the already-open 1.17.5.0 packaged EXE receives an Android ViewModel completion automatically, updates the visible list and persists it. Local joint measurement 5092 ms, no manual sync/relogin. Two new targeted tests passed; cumulative emulator 29 and Windows/bridge/UIA 68. No product-source change, version bump or application rebuild. Original artifact hashes remain authoritative.
 - Follow-up evidence: `Scratch/PaykiTodo/live-sync-20261028/run-2`; test backup `Backups/PaykiTodo/before-live-sync-20261028-173459/user-11.tar`. Both first-attempt and passing evidence retained. Normal Windows profile hashes unchanged; test EXE/server stopped and emulator restored to user 10 home. Only emulator was connected; physical-phone and production-network limits remain. `Invoke-DesktopAcceptance.ps1 -TestFilter` allows targeted isolated checks without rerunning the full suite.

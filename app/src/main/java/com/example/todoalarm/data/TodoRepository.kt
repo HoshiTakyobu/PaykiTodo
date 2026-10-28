@@ -2281,13 +2281,16 @@ class TodoRepository(
         return deleted
     }
 
-    suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot {
+    // Read related tables from one committed state while local edits and
+    // background backup/sync run concurrently. Archive encoding and file/network
+    // I/O belong to callers after this short database transaction has completed.
+    suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot = database.withTransaction {
         val planningNotes = todoDao.getAllPlanningNotes()
         val planningMappings = mutableListOf<PlanningLineMapping>()
         for (note in planningNotes) {
             planningMappings += todoDao.getMappingsForNote(note.id)
         }
-        return BackupSnapshot(
+        BackupSnapshot(
             exportedAtMillis = System.currentTimeMillis(),
             groups = todoDao.getAllGroups(),
             templates = todoDao.getAllRecurringTemplates(),

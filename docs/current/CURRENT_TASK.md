@@ -1,5 +1,11 @@
 # Current Task
 
+## Completed: Android 1.17.6 / 398 后台备份快照一致性
+
+从 `9e4ff78` 接续并发审查，已用真实 Room 测试复现并修复旧分组与新待办混合导出的问题。快照多表读取现在使用同一事务，兼容已有同步事务，自动备份压缩/文件写入仍在后台。
+
+229 单测、Lint、31 项针对性模拟器检查及 1 项正式 Windows 兼容检查通过；Debug/签名 Release/AndroidTest 构建、签名与升级证书校验、正常冷启动均完成。新 Android APK 在 `Deliverables/PaykiTodo/1.17.6`，Windows 沿用 1.17.5；原 user 0/10 全部文件哈希一致。见 [VALIDATION_1.17.6.md](VALIDATION_1.17.6.md)。本地中文提交，不推送或公开发布。下方为历史轮次。
+
 ## Completed: 1.17.5 / 397 双端体验与后台同步
 
 2026-10-28 继续补验：正式 Windows EXE 已打开时，能自动接收手机完成操作、更新可见列表并持久化，联合本地测量 5092 毫秒；两端各新增 1 项定向检查通过。只改测试与记录，原应用版本和交付包不变，详见[实时窗口补验](VALIDATION_1.17.5_LIVE_SYNC.md)。

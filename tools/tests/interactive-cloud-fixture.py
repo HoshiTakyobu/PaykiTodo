@@ -22,7 +22,8 @@ module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 module.DB.initialize()
-state = {"outage": False, "holdUpload": False, "holdDownload": False, "entered": False}
+state = {"outage": False, "holdUpload": False, "holdDownload": False, "entered": False,
+         "livePhase": "", "liveUsername": ""}
 release = threading.Event()
 
 

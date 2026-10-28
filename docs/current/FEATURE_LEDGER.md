@@ -4,6 +4,8 @@ This ledger distinguishes completed capabilities from the active update. Histori
 
 ## Current local update: 1.17.5 / 397
 
+Follow-up acceptance confirms an already-open packaged Windows client automatically reflects Android completion in its visible task list and persisted store, while retaining another task. The local coordinated measurement was 5092 ms with no manual sync. Two additional targeted tests passed; app binaries remain unchanged. See [live-window validation](VALIDATION_1.17.5_LIVE_SYNC.md).
+
 The 12-item feedback round is complete: larger white-tile icons, fixed Book Antiqua bold-italic brand and HYQiHei 60S navigation artwork, genuine font weights, larger colored task cards, timed quick checklists and direct Windows task presentation. Windows calendar defaults to pale surfaces/colored text/side stripes, with optional classic colors retained through Android backup roundtrips.
 
 Phone completion/reminder operations run off the main thread; sync, shared refresh and widgets run independently. Application-lifetime automatic backups coalesce requests without making editing wait. Running clients poll every 3 seconds; cheap Android revision checks retain periodic/manual content audits and conflict protections. A held-upload test kept UI dispatch at 35 ms; the resulting encrypted Android snapshot was downloaded and persisted by an independent Windows client.

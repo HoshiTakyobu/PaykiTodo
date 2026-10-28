@@ -301,6 +301,32 @@ class AccountSyncAcceptanceTest {
         stage("S09", "Windows bridge account $username")
     }
 
+    @Test fun openedWindowsAutomaticallyReceivesAndroidCompletion() = runBlocking {
+        Assume.assumeTrue("Opt-in concurrently running Windows fixture required",
+            InstrumentationRegistry.getArguments().getString("liveWindowsFixture") == "true")
+        val task = add("live completion propagation")
+        add("live untouched task")
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        control(JSONObject().put("release", true).put("liveUsername", username)
+            .put("livePhase", "android-ready").toString())
+        until { state().optString("livePhase") == "windows-ready" }
+        val viewModels = androidx.lifecycle.ViewModelStore()
+        try {
+            withContext(Dispatchers.Main) {
+                val model = androidx.lifecycle.ViewModelProvider(viewModels,
+                    androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory(app))[com.example.todoalarm.ui.TodoViewModel::class.java]
+                model.completeTodo(task)
+            }
+            until { app.repository.getTodo(task.id)?.completed == true }
+            until { state().optString("livePhase") == "windows-completed" }
+            assertTrue(remote().tasks.single { it.id == task.id }.completed)
+            assertFalse(app.repository.getAllTodos().single { it.title == "live untouched task" }.completed)
+            stage("S10", "Already-open Windows automatically removed completed task and persisted Android completion; untouched task retained")
+        } finally {
+            withContext(Dispatchers.Main) { viewModels.clear() }
+        }
+    }
+
     @Test fun completionAutoUploadsAndMissedDirtyFlagIsDetectedAfterRestart() = runBlocking {
         val task = add("completion propagation")
         until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }

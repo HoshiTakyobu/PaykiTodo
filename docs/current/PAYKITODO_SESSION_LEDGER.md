@@ -12,6 +12,8 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+2026-10-28 continuation: two new coordinated tests verify Android completion reaches an already-open packaged Windows window automatically and survives local storage reload; local joint measurement 5092 ms. Normal Windows data hashes unchanged; only dedicated emulator user 11 used, then restored user 10 home. Test service stopped. Application artifacts/version unchanged; [follow-up evidence](VALIDATION_1.17.5_LIVE_SYNC.md).
+
 The completed local 1.17.5 / versionCode 397 round implements the original thread's 12-item Android/Windows visual and responsiveness feedback. Fixed Windows brand/navigation outlines, real font weights, colored cards, timed quick checklists, direct imported task presentation and selectable calendar colors are delivered. Phone edits are independent of background sync/reminders/backup completion; a held-network local completion subsequently persisted on Windows through an encrypted snapshot.
 
 229 Android units, Lint, 28 distinct emulator tests, 65 Windows regressions plus isolated UIA and a cross-client bridge, and the final MSI lifecycle checks passed. Signed APK, Debug APK, MSI, portable directory and 18-image preview: `Deliverables/PaykiTodo/1.17.5`. [Validation](VALIDATION_1.17.5.md) records exact hashes, targeted reruns and boundaries. User 0 retains all 646 file hashes; user 10 business tables remain identical. New user 11 holds local fixtures; test server stopped, headless Pixel_8 restored to user 10 home. Local Chinese commit only; public release remains v1.15.18.

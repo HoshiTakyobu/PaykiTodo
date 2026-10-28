@@ -2,6 +2,7 @@
 
 ## Current Baseline
 
+- Follow-up on 2026-10-28: the already-open packaged Windows EXE automatically received an Android completion and removed its visible task without manual sync; the second task and persisted state were correct. Joint local measurement: 5092 ms. Two new targeted checks passed (cumulative emulator 29, Windows/bridge/UIA 68); existing app binaries/version remain unchanged. See [live-window validation](VALIDATION_1.17.5_LIVE_SYNC.md).
 - Current source and verified local packages: Android `1.17.5 / versionCode 397`, Room `33`; Windows `1.17.5.0`. Starting commit was `344bcdd`. The 2026-10-28 12-item feedback round is complete; see [validation](VALIDATION_1.17.5.md) and [requirements](REQUEST_2026-10-28.md).
 - Both-client icons, fixed Windows brand/navigation artwork, larger real-weight text, colored cards, timed quick checklists, direct imported task presentation and modern/optional-classic calendar colors are implemented. Local edits, reminder work, backups and synchronization remain responsive; running clients check new versions every 3 seconds.
 - Passed: 229 Android units, Lint 0 errors / 134 warnings / 30 informational, 28 distinct emulator tests (including targeted reruns), signed APK verification; 65 Windows regressions, one isolated UIA flow and one Android-to-Windows encrypted snapshot bridge; final MSI install/1.17.4 upgrade/repair/payload/startup/uninstall/data-preservation checks.

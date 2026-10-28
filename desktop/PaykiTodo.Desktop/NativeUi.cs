@@ -23,14 +23,26 @@ internal static class NativeUi
     private const string StyleKey = "PaykiTodo.ControlStyles";
     public static FontFamily BundledFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
     public static FontFamily InterfaceFont { get; private set; } = new("Microsoft YaHei UI");
+    public static FontWeight EmphasisWeight { get; private set; } = FontWeights.Bold;
     public static FontFamily UtilityFont => InterfaceFont;
     public static void SetInterfaceFont(string? name)
     {
         InterfaceFont = name == "Sarasa UI SC" ? BundledFont :
             string.IsNullOrWhiteSpace(name) || !Fonts.SystemFontFamilies.Any(font => font.Source == name) ? new FontFamily("Microsoft YaHei UI") : new FontFamily(name);
+        // Never manufacture a heavy outline for a font that ships only one face.
+        EmphasisWeight = InterfaceFont.GetTypefaces()
+            .Where(face => face.Style == FontStyles.Normal && face.Weight.ToOpenTypeWeight() >= 600 &&
+                face.TryGetGlyphTypeface(out var glyph) && glyph.StyleSimulations == StyleSimulations.None)
+            .OrderBy(face => face.Weight.ToOpenTypeWeight()).Select(face => (FontWeight?)face.Weight).FirstOrDefault() ?? FontWeights.Normal;
     }
     public static FontFamily HeadingFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#FZQingKeBenYueSongS-R-GB");
-    public static FontFamily BrandFont { get; } = new("Century Gothic, Century, Segoe UI");
+    private static readonly Lazy<ResourceDictionary> FixedArtwork = new(() => new ResourceDictionary {
+        Source = new Uri("pack://application:,,,/PaykiTodo;component/Assets/BrandArtwork.xaml")
+    });
+    public static System.Windows.Shapes.Path FixedLabel(string key, Brush color) => new() {
+        Data = (Geometry)FixedArtwork.Value[key], Fill = color, Stretch = Stretch.None,
+        VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0)
+    };
     private static readonly Lazy<ImageSource> IconSource = new(() => {
         using var stream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/PaykiTodo;component/Assets/PaykiTodo.ico")).Stream;
         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -57,12 +69,61 @@ internal static class NativeUi
         Text = value, FontFamily = InterfaceFont,
         FontSize = size, Foreground = color ?? Ink, TextWrapping = TextWrapping.Wrap,
         LineHeight = Math.Ceiling(size * 1.4), LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-        FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
+        FontWeight = bold ? EmphasisWeight : FontWeights.Normal,
         Margin = new Thickness(0, 1, 0, 3)
     };
     public static StackPanel Column(params UIElement[] elements)
     {
         var panel = new StackPanel(); foreach (var element in elements) panel.Children.Add(element); return panel;
+    }
+    public static Brush AccentSurface(string hex) => Mix(B(hex), Paper, Dark ? 0.80 : 0.90);
+    public static Brush AccentInk(string hex)
+    {
+        var color = B(hex); var surface = AccentSurface(hex);
+        for (var i = 0; i < 14 && Contrast(color, surface) < 4.5; i++) color = Mix(color, Ink, 0.18);
+        return color;
+    }
+    private static Brush Mix(Brush first, Brush second, double amount)
+    {
+        var a = ((SolidColorBrush)first).Color; var b = ((SolidColorBrush)second).Color;
+        return new SolidColorBrush(Color.FromRgb((byte)(a.R * (1 - amount) + b.R * amount),
+            (byte)(a.G * (1 - amount) + b.G * amount), (byte)(a.B * (1 - amount) + b.B * amount)));
+    }
+    private static double Contrast(Brush a, Brush b)
+    {
+        double L(Brush brush) {
+            var c = ((SolidColorBrush)brush).Color;
+            double V(byte value) { var s = value / 255d; return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4); }
+            return 0.2126 * V(c.R) + 0.7152 * V(c.G) + 0.0722 * V(c.B);
+        }
+        var x = L(a); var y = L(b); return (Math.Max(x, y) + 0.05) / (Math.Min(x, y) + 0.05);
+    }
+    public static UIElement AlarmIcon()
+    {
+        var icon = new Canvas { Width = 20, Height = 22, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        icon.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M 4,2 L 1,5 M 16,2 L 19,5 M 5,18 L 3,21 M 15,18 L 17,21"), Stroke = B(Dark ? "#FFA8A0" : "#C23F49"), StrokeThickness = 2.5 });
+        var face = new System.Windows.Shapes.Ellipse { Width = 15, Height = 15, Stroke = B(Dark ? "#FFA8A0" : "#C23F49"), StrokeThickness = 1.8, Fill = Paper };
+        Canvas.SetLeft(face, 2.5); Canvas.SetTop(face, 4); icon.Children.Add(face);
+        icon.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M 10,7 L 10,12 L 13,14"), Stroke = Ink, StrokeThickness = 1.5 });
+        return icon;
+    }
+    public static CheckBox TaskToggle(bool completed, bool enabled)
+    {
+        var toggle = new CheckBox { IsChecked = completed, IsEnabled = enabled, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0), Background = Paper, BorderBrush = Muted, Foreground = Forest };
+        toggle.Template = (ControlTemplate)XamlReader.Parse("""
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="CheckBox">
+              <Grid Width="30" Height="36" Background="Transparent">
+                <Ellipse Width="26" Height="26" Stroke="{TemplateBinding BorderBrush}" StrokeThickness="2" Fill="{TemplateBinding Background}"/>
+                <Path x:Name="check" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Data="M 7,18 L 12,23 L 23,12" Stroke="{TemplateBinding Foreground}" StrokeThickness="2.5" Visibility="Collapsed"/>
+              </Grid>
+              <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="check" Property="Visibility" Value="Visible"/></Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource PaykiTodo.FocusBrush}"/></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+            """);
+        return toggle;
     }
     public static WrapPanel Row(params UIElement[] elements)
     {
@@ -70,15 +131,15 @@ internal static class NativeUi
     }
     public static Border Card(UIElement child, double padding = 20) => new()
     {
-        Background = Paper, CornerRadius = new CornerRadius(12), Padding = new Thickness(padding),
-        BorderBrush = Outline, BorderThickness = new Thickness(1),
+        Background = Paper, CornerRadius = new CornerRadius(22), Padding = new Thickness(padding),
+        BorderBrush = B("#E1E7F0"), BorderThickness = new Thickness(1),
         Margin = new Thickness(0, 0, 0, 16), Child = child
     };
     public static Button Action(string label, Action click, bool primary = false)
     {
         var button = new Button { Content = label, FontFamily = InterfaceFont, FontSize = 14, MinHeight = 40,
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
-            FontWeight = primary ? FontWeights.SemiBold : FontWeights.Medium, Padding = new Thickness(16, 9, 16, 9),
+            FontWeight = primary ? EmphasisWeight : FontWeights.Normal, Padding = new Thickness(16, 9, 16, 9),
             Margin = new Thickness(0, 0, 8, 6), Background = primary ? B("#326F59") : B("#EAF0ED"),
             Foreground = primary ? B("#FFFFFF") : Ink, BorderBrush = primary ? Forest : Outline, BorderThickness = new Thickness(1), Cursor = System.Windows.Input.Cursors.Hand };
         AutomationProperties.SetName(button, label);
@@ -89,7 +150,7 @@ internal static class NativeUi
         var button = Action(label, click);
         var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) }); row.ColumnDefinitions.Add(new ColumnDefinition());
         row.Children.Add(new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 18, VerticalAlignment = VerticalAlignment.Center, Foreground = Forest });
-        var text = Text(label, 17, bold: true);
+        var text = FixedLabel(label, Ink);
         text.Margin = new Thickness(6, 0, 0, 0); text.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(text, 1); row.Children.Add(text);
         button.Content = row; button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         button.Padding = new Thickness(16, 12, 12, 12); button.Margin = new Thickness(12, 3, 12, 3);
@@ -111,8 +172,11 @@ internal static class NativeUi
         var row = new Grid { Margin = new Thickness(0, 0, 0, 20) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) }); row.ColumnDefinitions.Add(new ColumnDefinition());
         row.Children.Add(new System.Windows.Controls.Image { Source = AppIcon, Width = 32, Height = 32, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center });
-        var heading = Text(title, 22, bold: true);
-        if (title == "PaykiTodo") { heading.FontFamily = BrandFont; heading.FontWeight = FontWeights.Normal; }
+        FrameworkElement heading = title == "PaykiTodo"
+            ? new System.Windows.Controls.Image { Source = new DrawingImage(new GeometryDrawing(Ink, null, (Geometry)FixedArtwork.Value["Brand"])),
+                Width = 126, Height = 30, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left }
+            : Text(title, 22, bold: true);
+        AutomationProperties.SetName(heading, title);
         var labels = Column(heading); if (!string.IsNullOrEmpty(subtitle)) labels.Children.Add(Text(subtitle, 13, Muted));
         Grid.SetColumn(labels, 1); row.Children.Add(labels); return row;
     }
@@ -161,7 +225,8 @@ internal static class NativeUi
     public static void ConfigureRendering(DependencyObject target)
     {
         TextOptions.SetTextFormattingMode(target, TextFormattingMode.Display);
-        TextOptions.SetTextRenderingMode(target, TextRenderingMode.Grayscale);
+        TextOptions.SetTextRenderingMode(target, TextRenderingMode.Auto);
+        TextOptions.SetTextHintingMode(target, TextHintingMode.Fixed);
     }
     public static void PositionNear(Window dialog, Window owner, System.Windows.Point screenPoint)
     {

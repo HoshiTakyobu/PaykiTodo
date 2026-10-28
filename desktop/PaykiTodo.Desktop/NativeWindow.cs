@@ -25,7 +25,8 @@ internal sealed partial class NativeWindow : Window
     private TextBlock title = Text("每日看板", 25, bold: true);
     private TextBlock status = Text("", 12, Muted);
     private TextBox search = Input();
-    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(15) };
+    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(3) };
+    private bool syncTickRunning;
     private readonly Dictionary<string, Button> navigationButtons = new();
     private string page = "每日看板";
     private DateTime selectedDay = DateTime.Today;
@@ -58,7 +59,14 @@ internal sealed partial class NativeWindow : Window
         };
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && calendarDraft != null) { ClearCalendarDraft(); e.Handled = true; } };
         this.workspace.Changed += OnWorkspaceChanged;
-        timer.Tick += async (_, _) => { await this.workspace.SyncAsync(); try { await this.workspace.SyncSharedCalendarsAsync(); } catch (Exception error) { this.workspace.Notify(DesktopWorkspace.FriendlyError(error)); } ReviewCountdowns(); }; timer.Start();
+        timer.Tick += async (_, _) => {
+            if (syncTickRunning) return;
+            syncTickRunning = true;
+            try { await this.workspace.SyncAsync(); await this.workspace.SyncSharedCalendarsAsync(); }
+            catch (Exception error) { this.workspace.Notify(DesktopWorkspace.FriendlyError(error)); }
+            finally { syncTickRunning = false; }
+            ReviewCountdowns();
+        }; timer.Start();
         Closed += (_, _) => { timer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
         Loaded += async (_, _) => { if (workspace == null) reminders = new DesktopReminders(this, this.workspace, OpenItemDetails); await this.workspace.SyncAsync(); };
         Render();
@@ -139,8 +147,8 @@ internal sealed partial class NativeWindow : Window
             pair.Value.Background = selected ? B(page == "日历" ? "#E8F0FF" : "#DCEBE2") : B("#F8FAF9");
             pair.Value.BorderThickness = new Thickness(selected ? 3 : 0, 0, 0, 0);
             pair.Value.BorderBrush = selected && page == "日历" ? Ocean : Forest;
-            if (pair.Value.Content is Grid labels && labels.Children[1] is TextBlock label)
-                label.Foreground = selected ? (page == "日历" ? Ocean : Forest) : Ink;
+            if (pair.Value.Content is Grid labels && labels.Children[1] is System.Windows.Shapes.Path label)
+                label.Fill = selected ? (page == "日历" ? Ocean : Forest) : Ink;
         }
         renderedDocument = workspace.Document;
         renderedItems = workspace.Document?.Items ?? Array.Empty<DesktopItem>();

@@ -57,6 +57,7 @@ internal static class DesktopCalendarTime
 internal sealed partial class DesktopSnapshotDocument
 {
     public int CalendarDefaultDurationMinutes => Math.Clamp(Settings["calendarDefaultDurationMinutes"]?.GetValue<int>() ?? 30, 15, 1440);
+    public bool ClassicCalendarColors => Settings["desktopCalendarEventStyle"]?.GetValue<string>() == "CLASSIC";
     public string CalendarTimedDefaultRemindersCsv => Settings["calendarTimedDefaultRemindersCsv"]?.GetValue<string>() ?? "15";
     public string CalendarAllDayDefaultRemindersJson => Settings["calendarAllDayDefaultRemindersJson"]?.GetValue<string>() ?? "[{\"daysBefore\":0,\"minuteOfDay\":480}]";
     public string CalendarDisplayTimeZoneId => Settings["calendarDisplayTimeZoneId"]?.GetValue<string>() ?? "";

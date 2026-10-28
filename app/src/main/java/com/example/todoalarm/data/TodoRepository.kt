@@ -152,14 +152,18 @@ class TodoRepository(
             val persistedIds = mutableMapOf<Int, Long>()
             val createdItems = draft.nodes.map { node ->
                 val parentId = node.parentTemporaryId?.let(persistedIds::get)
+                val deadline = node.dueMinuteOfDay?.let { minute ->
+                    java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                        .atTime(minute / 60, minute % 60).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                }
                 val item = TodoItem(
                     title = node.title.trim(),
                     notes = node.notes.trim(),
-                    dueAtMillis = NO_DUE_DATE_MILLIS,
-                    reminderAtMillis = null,
-                    reminderEnabled = false,
-                    ringEnabled = false,
-                    vibrateEnabled = false,
+                    dueAtMillis = deadline ?: NO_DUE_DATE_MILLIS,
+                    reminderAtMillis = deadline,
+                    reminderEnabled = deadline != null,
+                    ringEnabled = deadline != null,
+                    vibrateEnabled = deadline != null,
                     groupId = defaultGroup,
                     quickChecklistGroupId = groupId,
                     parentTodoId = parentId,

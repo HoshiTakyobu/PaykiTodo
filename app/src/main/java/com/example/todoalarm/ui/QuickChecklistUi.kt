@@ -40,6 +40,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -64,23 +66,20 @@ import com.example.todoalarm.data.TodoItem
 @Composable
 internal fun QuickChecklistActionButton(onClick: () -> Unit) {
     IconButton(onClick = onClick) {
-        Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.MenuBook,
-                contentDescription = "快速清单",
-                modifier = Modifier.size(25.dp)
-            )
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(14.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("!", fontSize = 10.sp, fontWeight = FontWeight.Black, lineHeight = 10.sp)
-                }
+        val ink = MaterialTheme.colorScheme.onSurface
+        val accent = MaterialTheme.colorScheme.primary
+        androidx.compose.foundation.Canvas(Modifier.size(26.dp).semantics { contentDescription = "快速清单" }) {
+            val scale = size.width / 20f
+            fun line(x1: Float, y1: Float, x2: Float, y2: Float, color: Color, width: Float = 1.4f) {
+                drawLine(color, androidx.compose.ui.geometry.Offset(x1 * scale, y1 * scale),
+                    androidx.compose.ui.geometry.Offset(x2 * scale, y2 * scale), width * scale)
+            }
+            drawRect(ink, androidx.compose.ui.geometry.Offset(3 * scale, scale),
+                androidx.compose.ui.geometry.Size(14 * scale, 18 * scale), style = androidx.compose.ui.graphics.drawscope.Stroke(1.4f * scale))
+            listOf(6f, 10f, 14f).forEach { y ->
+                line(9f, y, 14f, y, ink)
+                line(5f, y, 6f, y + 1, accent, 1.5f)
+                line(6f, y + 1, 8f, y - 2, accent, 1.5f)
             }
         }
     }
@@ -157,7 +156,7 @@ internal fun QuickChecklistEditorDialog(
                 ) {
                     item {
                         Text(
-                            "标题可选，可直接写 - 任务；短横线数量表示层级；--# 添加可见说明；// 后内容不会保存。",
+                            "标题可选；- 做作业, #16:00 设置今天 16:00 的 DDL 和提醒；短横线表示层级，--# 添加说明，// 添加注释。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -238,7 +237,7 @@ private fun QuickChecklistPreview(
                 Column(modifier = Modifier.padding(start = ((node.depth - 1).coerceAtLeast(0) * 18).dp)) {
                     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("□", color = MaterialTheme.colorScheme.primary)
-                        Text(node.title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Text(node.title + (node.dueMinuteOfDay?.let { " · 今天 %02d:%02d 提醒".format(it / 60, it % 60) } ?: ""), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     }
                     if (node.notes.isNotBlank()) {
                         Text(

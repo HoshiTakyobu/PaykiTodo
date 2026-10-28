@@ -9,6 +9,7 @@ import threading
 from http.server import ThreadingHTTPServer
 
 root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(root))
 output = Path(sys.argv[1]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 os.environ.update(PAYKITODO_CLOUD_DB=str(output / "cloud.sqlite3"),
@@ -26,6 +27,10 @@ release = threading.Event()
 
 
 class FixtureHandler(module.PaykiTodoCloudHandler):
+    # Keep TLS responses alive until the Android client has read the complete
+    # payload, like the HTTPS reverse proxy used by a deployed server.
+    protocol_version = "HTTP/1.1"
+
     def do_POST(self):
         if self.path == "/fixture/control":
             values = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
@@ -63,4 +68,8 @@ context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 context.load_cert_chain(output / "localhost.crt", output / "localhost.key")
 server.socket = context.wrap_socket(server.socket, server_side=True)
 server.daemon_threads = True
+# Same isolated database over loopback HTTP for the native Windows client.
+desktop_server = ThreadingHTTPServer(("127.0.0.1", 19444), FixtureHandler)
+desktop_server.daemon_threads = True
+threading.Thread(target=desktop_server.serve_forever, daemon=True).start()
 server.serve_forever()

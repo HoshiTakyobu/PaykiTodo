@@ -1,13 +1,26 @@
 # Session Handoff
 
-## Current: Windows 1.17.4.0 multi-computer session recovery, 2026-10-27
+## Current: completed 1.17.5 / 397, 2026-10-28
+
+- Original request: continue `01a18120-c477-7652-aa0d-b6c981cb290c`; [12 requirements](REQUEST_2026-10-28.md) are implemented and locally verified. Source/packages are Android 1.17.5/397, Windows 1.17.5.0, Room 33. Starting HEAD was `344bcdd`; recheck status/log/version before further work.
+- Fixed brand/nav are outlined assets, not bundled local font files. Custom Windows text uses only real weights. Timed checklist syntax is creation-day local time, DDL and at-time reminder; past triggers are not backfilled. Windows shows imported tasks directly. Calendar modern/classic setting survives Android backup transport.
+- Phone completion/reminder IPC runs on IO, backup requests coalesce in an application-level writer, and sync/shared/widget work cannot block one another. Running clients check every 3 seconds; Android retains 15-second content audits and forced manual audits. Existing concurrent-write/conflict/session safeguards remain.
+- Passed: 229 Android units, Lint 0 errors/134 warnings/30 information, 28 distinct emulator checks; 65 Windows regressions, 1 isolated UIA flow and 1 separate Android-to-Windows bridge; final MSI lifecycle/data-preservation tests. A held-upload completion dispatched in 35 ms, stayed locally responsive, uploaded and persisted on Windows. Targeted reruns and limits: [validation](VALIDATION_1.17.5.md).
+- Current APKs: `app/build/outputs/apk/debug/PaykiTodo-1.17.5-debug.apk` and `app/build/outputs/apk/release/PaykiTodo-1.17.5-release.apk` (signature verified). MSI: `desktop/installer-output/PaykiTodo-1.17.5-windows-x64.msi`; portable: `desktop/dist/PaykiTodo.exe` (whole directory). Copies, 483-file verification, hashes, notes and 18-image `界面预览.html` are in `G:\Workspace\Deliverables\PaykiTodo\1.17.5`.
+- Evidence: `G:\Workspace\Scratch\PaykiTodo\feedback-20261028`; final installer evidence under `installer-tests-v3/install-8f6ec09179374636bb19d036c9a6a0b4`. Final MSI payload is `desktop/obj/installer/1.17.5-82747b595ad84a2fb8b3647c802d1da0/payload`. Earlier failed candidates/logs remain; do not use their hashes as final.
+- Emulator: `emulator-5554 / Pixel_8`, current Debug/AndroidTest installed. Dedicated user 11 `PaykiTodo-1.17.5-test` was used for synthetic local sync and final normal MainActivity launch. Test apps are stopped; current user restored to 10 home. Emulator is headless (`-no-window`), no interactive mirror was opened. Do not tell the user a window is visible.
+- Preservation: original user 0 646/646 hashes match. User 10 17 database tables are identical, with only documented runtime/session metadata differences. Backups: `Backups/PaykiTodo/before-feedback-20261028-161008` and `after-feedback-20261028-170432`; preserve all previous/failed backup files and older deliverables.
+- Local fixture ports 19443/19444 are stopped. Windows test processes and MSI test installation are closed/uninstalled. First failed installer acceptance appended test messages to ordinary diagnostics only; this history was retained. New test diagnostics and `--data-directory` logs use the chosen isolated profile.
+- Finish state: local Chinese feature commit only; no push/tag/publication/server deployment. Published GitHub Release remains v1.15.18. Do not repeat successful tests/builds without a new change or concern. OEM background/lock-screen/vibration and production-network latency remain outside these results. Below is historical context.
+
+## Previous: Windows 1.17.4.0 multi-computer session recovery, 2026-10-27
 
 - Windows source is now `1.17.4.0`; Android remains `1.17.4 / versionCode 396`. The desktop client stores a DPAPI-protected `installation-identity.bin` beside the workspace and uses it for login. A copied `cloud-workspace.bin` therefore cannot silently reuse the original computer's device ID; machine-name changes also rotate the local installation identity.
 - The server login path keeps the old device active when a reused ID arrives with a different device name/platform, assigning a new generated ID. Existing same-device logins continue to rotate only that device's session. The server's 13-test suite and desktop's 60-test suite pass (57 passed, 3 skipped).
 - `CloudSessionExpiredException` now distinguishes expired refresh tokens, invalid access tokens and revoked devices. `%LOCALAPPDATA%\PaykiTodo\diagnostics.log` records safe status/error/expiry details only; it never records passwords, access tokens or refresh tokens. The other computer's old log is not present in this workspace, so an exact historical cause cannot be proven from local files alone.
 - MSI `PaykiTodo-1.17.4-windows-x64.msi` is built at `desktop/installer-output/PaykiTodo-1.17.4-windows-x64.msi` (80,090,176 bytes; SHA-256 `29830769257C8CC7B9F5C1C160BA17F5DE2187FA42DFE6EEE65E8D0B4ACB80E2`). The portable output `desktop/dist/PaykiTodo.exe` is file version `1.17.4.0` with SHA-256 `04f56a9d2b86d1d785284a78551976a73f9ee8d31048cdfbbb78e6c2a61026f8`. Copies and notes are in `G:\Workspace\Deliverables\PaykiTodo\1.17.4`; do not delete the existing `1.17.3` artifact.
 
-## Current: completed 1.17.4 / 396 local-write responsiveness, 2026-10-27
+## Previous: completed 1.17.4 / 396 local-write responsiveness, 2026-10-27
 
 - Baseline was clean `1.17.3 / 395`; the current source is bumped to `1.17.4 / versionCode 396`.
 - Root cause found: repository change callbacks synchronously called widget refresh, `markRemoteSyncDirty()` / sync scheduling, and shared-calendar scheduling on the caller thread; enabled auto-backup also exported and wrote a full archive from the ViewModel coroutine without switching to I/O.
@@ -16,7 +29,7 @@
 - Latest APK rebuilt in this round: `app/build/outputs/apk/debug/PaykiTodo-1.17.4-debug.apk`. Signed Release APK, Windows package and full instrumentation were not rebuilt in this round.
 - The dedicated emulator user 10 remains active. The manual smoke test created one synthetic `latency test` history entry; original user 0 and production data were not touched.
 
-## Current: completed 1.17.3 search access and native collaboration, 2026-10-25
+## Previous: completed 1.17.3 search access and native collaboration, 2026-10-25
 
 - 2026-10-26 documentation follow-up: rechecked the original calendar/account requirements and current delivery. Corrected `CALENDAR_UPDATE_CONTRACT.md`, which still called 1.17.1 current and omitted the completed native collaboration follow-up. Source/packages stay 1.17.3/395, all three delivered installer hashes still match, and no product tests/builds/deployment were repeated.
 - Source and rebuilt packages: Android `1.17.3 / 395`, Windows `1.17.3.0`, Room 33. Starting commit `4bed7d1`; verify status/version/log on resume. Both-client search permission filtering and Android all-day/reminder presentation are complete. [Validation](VALIDATION_1.17.3.md) has final hashes, results and limits.

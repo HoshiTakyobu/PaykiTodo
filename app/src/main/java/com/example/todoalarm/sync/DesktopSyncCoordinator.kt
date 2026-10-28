@@ -315,6 +315,7 @@ class DesktopSyncCoordinator(
                     .put("notes", node.notes)
                     .put("sourceLine", node.sourceLine)
                     .put("sortOrder", node.sortOrder)
+                    .put("dueMinuteOfDay", node.dueMinuteOfDay)
             }))
             put("diagnostics", JSONArray(draft.diagnostics.map { diagnostic ->
                 JSONObject()
@@ -331,6 +332,8 @@ class DesktopSyncCoordinator(
             throw IllegalArgumentException("第 ${diagnostic.sourceLine} 行：${diagnostic.message}")
         }
         val group = app.repository.createQuickChecklist(draft)
+        app.repository.getAllTodos().filter { it.quickChecklistGroupId == group.id && it.reminderEnabled }
+            .forEach { app.alarmScheduler.schedule(it) }
         return JSONObject().put("ok", true).put("group", group.toDesktopJson())
     }
 

@@ -238,7 +238,7 @@ internal static class NativeEditors
         {
             preview.Children.Clear(); var draft = QuickChecklistParser.Parse(source.Text);
             preview.Children.Add(Text(string.IsNullOrWhiteSpace(draft.Title) ? "快速清单" : draft.Title, 22, bold: true));
-            foreach (var node in draft.Nodes) preview.Children.Add(new Border { Margin = new Thickness(Math.Min(node.Depth, 12) * 14, 4, 0, 4), Child = Text("○  " + node.Title + (string.IsNullOrEmpty(node.Notes) ? "" : "\n" + node.Notes)) });
+            foreach (var node in draft.Nodes) preview.Children.Add(new Border { Margin = new Thickness(Math.Min(node.Depth, 12) * 14, 4, 0, 4), Child = Text("○  " + node.Title + (node.DueMinuteOfDay is { } minute ? $" · 今天 {minute / 60:00}:{minute % 60:00} 提醒" : "") + (string.IsNullOrEmpty(node.Notes) ? "" : "\n" + node.Notes)) });
             error.Text = string.Join("\n", draft.Diagnostics.Select(problem => $"第 {problem.SourceLine} 行：{problem.Message}"));
         }
         source.TextChanged += (_, _) => Refresh();
@@ -249,7 +249,7 @@ internal static class NativeEditors
             var prefix = QuickChecklistParser.ContinuationPrefix(line).TrimEnd();
             var insert = "\n" + prefix + (prefix.Length > 0 ? " " : ""); var position = source.SelectionStart; source.SelectedText = insert; source.CaretIndex = position + insert.Length; e.Handled = true;
         };
-        var fields = Column(BrandHeading("想到就记", "标题可选 · 短横线定义任务 · Enter 自动续写"),
+        var fields = Column(BrandHeading("想到就记", "- 做作业, #16:00 · 设置今天的 DDL 和提醒 · Enter 自动续写"),
             Text("- 任务　-- 子任务　--# 说明　// 不保存的注释", 13, Muted), grid);
         dialog.Content = EditorLayout(fields, error, () => dialog.Close(), () => {
             var draft = QuickChecklistParser.Parse(source.Text);

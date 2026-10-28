@@ -90,8 +90,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
@@ -146,7 +144,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val todayDateFlow = MutableStateFlow(LocalDate.now())
     private val calendarEventWindowFlow = MutableStateFlow(calendarEventWindowAround(LocalDate.now()))
     private var quoteRefreshJob: Job? = null
-    private val autoBackupMutex = Mutex()
 
     init {
         viewModelScope.launch {
@@ -385,7 +382,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         draft.diagnostics.firstOrNull { it.severity == com.example.todoalarm.data.QuickChecklistDiagnosticSeverity.ERROR }
             ?.let { return "第 ${it.sourceLine} 行：${it.message}" }
         return runCatching {
-            repository.createQuickChecklist(draft)
+            val group = repository.createQuickChecklist(draft)
+            repository.getAllTodos().filter { it.quickChecklistGroupId == group.id && it.reminderEnabled }
+                .forEach { scheduleReminderOrDisable(it) }
             autoBackupIfEnabled()
             null
         }.getOrElse { error ->
@@ -400,14 +399,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleQuickChecklistGroup(group: QuickChecklistGroup) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.setQuickChecklistGroupCollapsed(group.id, !group.collapsed)
             autoBackupIfEnabled()
         }
     }
 
     fun toggleQuickChecklistTask(item: TodoItem) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.setQuickChecklistTaskCollapsed(item.id, !item.quickChecklistCollapsed)
             autoBackupIfEnabled()
         }
@@ -985,7 +984,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun completeTodo(todoItem: TodoItem) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val result = repository.setCompletedWithResult(todoItem.id, true)
             clearReminderArtifacts(result?.affectedItems ?: listOf(todoItem))
             autoBackupIfEnabled()
@@ -997,7 +996,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             .filter { it.isTodo && !it.completed && !it.canceled }
             .distinctBy { it.id }
         if (targets.isEmpty()) return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val affectedItems = buildList {
                 targets.forEach { item ->
                     val result = repository.setCompletedWithResult(item.id, true)
@@ -1010,7 +1009,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun cancelTodo(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val canceledItems = repository.cancelTodo(todoItem, scope)
             clearReminderArtifacts(canceledItems)
             autoBackupIfEnabled()
@@ -1022,7 +1021,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             .filter { it.isTodo && !it.completed && !it.canceled }
             .distinctBy { it.id }
         if (targets.isEmpty()) return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val canceledItems = buildList {
                 targets.forEach { item ->
                     // Batch cancellation deliberately affects only each selected occurrence.
@@ -1035,7 +1034,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun cancelCalendarEvent(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val canceledItems = repository.cancelCalendarEvent(todoItem, scope)
             clearReminderArtifacts(canceledItems.ifEmpty { listOf(todoItem) })
             autoBackupIfEnabled()
@@ -1043,7 +1042,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun restoreTodo(todoItem: TodoItem) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val restored = repository.restoreTodoFromHistory(
                 item = todoItem,
                 missedThresholdMillis = MISSED_THRESHOLD_MILLIS
@@ -1054,7 +1053,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteTodo(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val deletedItems = repository.deleteTodo(todoItem, scope)
             clearReminderArtifacts(deletedItems.ifEmpty { listOf(todoItem) })
             autoBackupIfEnabled()
@@ -1062,7 +1061,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteCalendarEvent(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val deletedItems = repository.deleteCalendarEvent(todoItem, scope)
             clearReminderArtifacts(deletedItems.ifEmpty { listOf(todoItem) })
             autoBackupIfEnabled()
@@ -1070,7 +1069,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun acknowledgeCalendarEvent(todoItem: TodoItem) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.acknowledgeCalendarEvent(todoItem.id)
             clearReminderArtifacts(listOf(todoItem))
             autoBackupIfEnabled()
@@ -1788,24 +1787,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             recurrence.endDate != original.recurrenceEndDate
     }
 
-    private suspend fun autoBackupIfEnabled() {
+    private fun autoBackupIfEnabled() {
         val settings = settingsStore.currentSettings()
         if (!settings.autoBackupEnabled) return
-        val directoryUri = settings.backupDirectoryUri ?: return
-        // BackupArchiveCodec and SAF I/O can take hundreds of milliseconds on a
-        // phone. Keep the completion path responsive and serialize overlapping
-        // backups so several quick edits do not write the same archive at once.
-        withContext(Dispatchers.IO) {
-            autoBackupMutex.withLock {
-                runCatching {
-                    val snapshot = repository.exportSnapshot(settingsStore.currentSettings())
-                    app.backupManager.autoBackupToDirectory(directoryUri, snapshot)
-                }
-            }
-        }
+        app.localAutoBackup.request()
     }
 
-    private suspend fun scheduleReminderOrDisable(item: TodoItem) {
+    private suspend fun scheduleReminderOrDisable(item: TodoItem) = withContext(Dispatchers.IO) {
         if (item.isEvent) {
             ReminderDispatchTracker.clear(app, item.id)
             if (!item.isHistory) {
@@ -1816,18 +1804,18 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             if (!item.reminderEnabled || item.isHistory) {
                 clearDisabledReminderArtifacts(item.id)
             }
-            return
+            return@withContext
         }
         if (item.isTodo && !item.hasDueDate) {
             clearDisabledReminderArtifacts(item.id)
             if (item.reminderEnabled || item.reminderAtMillis != null) {
                 repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
             }
-            return
+            return@withContext
         }
         if (!item.reminderEnabled) {
             clearDisabledReminderArtifacts(item.id)
-            return
+            return@withContext
         }
         ReminderDispatchTracker.clear(app, item.id)
         val scheduleMessage = alarmScheduler.schedule(item)
@@ -1895,14 +1883,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return start to endExclusive
     }
 
-    private fun clearReminderArtifacts(items: List<TodoItem>) {
+    private suspend fun clearReminderArtifacts(items: List<TodoItem>) = withContext(Dispatchers.IO) {
         items.forEach { item ->
             alarmScheduler.cancel(item.id)
             ReminderForegroundService.dismiss(app, item.id)
         }
     }
 
-    private fun clearDisabledReminderArtifacts(todoId: Long) {
+    private suspend fun clearDisabledReminderArtifacts(todoId: Long) = withContext(Dispatchers.IO) {
         alarmScheduler.cancelReminderOnly(todoId)
         ReminderForegroundService.dismiss(app, todoId)
     }

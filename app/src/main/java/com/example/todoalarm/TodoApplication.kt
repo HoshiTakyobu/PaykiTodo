@@ -139,9 +139,13 @@ class TodoApplication : Application() {
             // scheduling. Those are follow-up effects and belong off the caller's
             // thread; the database transaction itself remains synchronous.
             applicationScope.launch {
-                TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
                 remoteSyncCoordinator.onLocalDataChanged()
+            }
+            applicationScope.launch {
                 calendarCollaboration.onLocalDataChanged()
+            }
+            applicationScope.launch {
+                TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
             }
         }
     }
@@ -152,6 +156,10 @@ class TodoApplication : Application() {
 
     val backupManager: BackupManager by lazy {
         BackupManager(applicationContext)
+    }
+
+    val localAutoBackup: com.example.todoalarm.data.LocalAutoBackup by lazy {
+        com.example.todoalarm.data.LocalAutoBackup(this)
     }
 
     val quoteRepository: QuoteRepository by lazy {

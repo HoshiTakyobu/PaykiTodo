@@ -16,6 +16,17 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class QuickChecklistRepositoryTest {
+    @Test fun timedChecklistCreatesActualLocalDeadlineAndReminder() = runBlocking {
+        repository.createQuickChecklist(QuickChecklistParser.parse("- 做作业, #16:00\n- 自由安排"))
+        val task = repository.getAllTodos().single { it.title == "做作业" }
+        val local = java.time.Instant.ofEpochMilli(task.dueAtMillis).atZone(java.time.ZoneId.systemDefault())
+        assertEquals(java.time.LocalDate.now(), local.toLocalDate())
+        assertEquals(java.time.LocalTime.of(16, 0), local.toLocalTime())
+        assertTrue(task.reminderEnabled)
+        assertEquals(task.dueAtMillis, task.reminderAtMillis)
+        assertEquals(listOf(task.dueAtMillis), task.reminderTriggerTimesMillis())
+        assertFalse(repository.getAllTodos().single { it.title == "自由安排" }.reminderEnabled)
+    }
     private lateinit var database: AppDatabase
     private lateinit var repository: TodoRepository
 

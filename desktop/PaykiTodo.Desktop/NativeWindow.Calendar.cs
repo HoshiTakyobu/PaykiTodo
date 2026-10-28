@@ -213,9 +213,14 @@ internal sealed partial class NativeWindow
                 var itemStart = CalendarLocal(item, item.StartAtMillis); var itemEnd = CalendarLocal(item, item.EndAtMillis);
                 var minute = Math.Max(0, (itemStart - day).TotalMinutes); var duration = Math.Max(28, (Math.Min(1440, (itemEnd - day).TotalMinutes) - minute) * HourHeight / 60);
                 var position = layout[item.Id];
-                var tile = new Border { Background = B(item.AccentColor), CornerRadius = new CornerRadius(4), Padding = new Thickness(5, 2, 5, 2), Height = duration - 2,
-                    Child = Column(Text(item.Title, 12, B("#FFFFFF"), true), Text(itemStart.ToString("HH:mm"), 11, B("#FFFFFF"))), ClipToBounds = true,
-                    Opacity = itemEnd < CalendarNow ? 0.55 : 0.94, ToolTip = item.Title + "\n" + TimeLabel(item) + "\n" + item.Location };
+                var classic = workspace.Document!.ClassicCalendarColors;
+                var ink = classic ? B("#FFFFFF") : AccentInk(item.AccentColor);
+                var tile = new Border { Background = classic ? B(item.AccentColor) : AccentSurface(item.AccentColor),
+                    BorderBrush = B(item.AccentColor), BorderThickness = new Thickness(4, 0, 0, 0),
+                    CornerRadius = new CornerRadius(5), Padding = new Thickness(6, 3, 4, 2), Height = duration - 2,
+                    Child = Column(Text(item.Title, 14, ink), Text(itemStart.ToString("HH:mm") + "–" + itemEnd.ToString("HH:mm"), 12, ink)), ClipToBounds = true,
+                    Opacity = itemEnd < CalendarNow ? 0.65 : 1, ToolTip = item.Title + "\n" + TimeLabel(item) + "\n" + item.Location };
+                System.Windows.Automation.AutomationProperties.SetAutomationId(tile, "Calendar.Event." + item.Id);
                 void Position() { tile.Width = Math.Max(10, (canvas.ActualWidth - 4) / position.Columns - 3); Canvas.SetLeft(tile, position.Lane * (canvas.ActualWidth - 4) / position.Columns + 2); }
                 canvas.SizeChanged += (_, _) => Position(); Canvas.SetTop(tile, TimeInset + minute * HourHeight / 60); canvas.Children.Add(tile);
                 AttachCalendarDrag(tile, item, canvas, grid, start, count);

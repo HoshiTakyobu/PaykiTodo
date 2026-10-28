@@ -2,28 +2,22 @@
 
 ## Current Baseline
 
-- Current source baseline: Android `1.17.4 / versionCode 396`; Windows `1.17.4.0`. Windows account login now uses an installation-scoped device identity, so copying an older encrypted workspace to another computer no longer reuses the original computer's cloud session. Server responses distinguish expired/revoked sessions and safe auth diagnostics are written to `%LOCALAPPDATA%\PaykiTodo\diagnostics.log`.
-- Windows session fix validation: 60 desktop tests (57 passed, 3 intentionally skipped) and 13 server tests pass. A new server regression confirms that a reused device ID with a different machine identity receives a separate active device. MSI `1.17.4` is built at `desktop/installer-output/PaykiTodo-1.17.4-windows-x64.msi`, 80,090,176 bytes, SHA-256 `29830769257C8CC7B9F5C1C160BA17F5DE2187FA42DFE6EEE65E8D0B4ACB80E2`; the previous `1.17.3` package remains available.
-
-- Current source baseline: Android `1.17.4 / versionCode 396`, Room `33`; Windows `1.17.4.0`. Local todo/calendar writes now return without waiting for widget refresh, sync scheduling, shared-calendar refresh, or automatic-backup I/O; the latter runs on a background coroutine. Windows installation identity and multi-computer session recovery are documented in [VALIDATION_1.17.4_WINDOWS_SESSION.md](VALIDATION_1.17.4_WINDOWS_SESSION.md).
-
-- Current source and latest rebuilt local package: Android `1.17.4 / versionCode 396`, Room `33`; Windows `1.17.4.0`. The 1.17.4 Android fix moves local-edit follow-up work and automatic-backup I/O off the phone operation path; the Windows session fix is validated separately. See [VALIDATION_1.17.4.md](VALIDATION_1.17.4.md) and [VALIDATION_1.17.4_WINDOWS_SESSION.md](VALIDATION_1.17.4_WINDOWS_SESSION.md). Android `1.17.3` remains the latest signed Release APK; Windows `1.17.4` is the latest MSI/portable build.
-- Passed: 227 Android units, Lint 0 errors / 133 warnings / 30 informational, rebuilt Debug/signed Release and signature/version checks; 57 Windows regressions plus one 14-stage isolated UIA flow; MSI install/real 1.17.2 upgrade/repair/payload/installed EXE/uninstall/user-data checks. Full instrumentation/server suites were not rerun for this fix.
-- Manual CAPTCHA and dedicated second-account registration are complete. Actual 1.17.2 Android/packaged Windows editor invitation, acceptance, RSVP, bidirectional existing-event edits and revocation passed. New 1.17.3 viewer acceptance, correct date/reminder presentation and automatic removal from already-open Android search passed. See [native collaboration](NATIVE_COLLABORATION_ACCEPTANCE_20261025.md).
-- Personal snapshot hash and revision 24 stayed unchanged throughout collaboration; original 6 Windows personal records/settings are intact. Original Android user 0 has 646/646 matching file hashes; user 10 retains the test identity, three revoked cached events and zero enabled reminders. Dedicated Windows client/host are stopped; visible Pixel_8 mirror remains available.
-- Retain the 1.17.2 personal/shared synchronization fix and 1.17.1 participant/details behavior. Strong reminders keep one window and queue. OEM/physical-input coverage and wider availability/subscription/meeting-resource limits remain in [the audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md).
-- Existing account server was updated on 2026-10-25 with `/v3` shared-calendar interfaces, preserving accounts, personal snapshots and authentication configuration. Historical Linux 21-test suite and dedicated-account API checks are in [production rollout](PRODUCTION_CALENDAR_ROLLOUT_20261025.md). No new deployment or GitHub publication in this fix round.
-- Previous local baseline: `1.17.2 / 394`, Windows `1.17.2.0`, Room 33; [previous validation](VALIDATION_1.17.2.md).
+- Current source and verified local packages: Android `1.17.5 / versionCode 397`, Room `33`; Windows `1.17.5.0`. Starting commit was `344bcdd`. The 2026-10-28 12-item feedback round is complete; see [validation](VALIDATION_1.17.5.md) and [requirements](REQUEST_2026-10-28.md).
+- Both-client icons, fixed Windows brand/navigation artwork, larger real-weight text, colored cards, timed quick checklists, direct imported task presentation and modern/optional-classic calendar colors are implemented. Local edits, reminder work, backups and synchronization remain responsive; running clients check new versions every 3 seconds.
+- Passed: 229 Android units, Lint 0 errors / 134 warnings / 30 informational, 28 distinct emulator tests (including targeted reruns), signed APK verification; 65 Windows regressions, one isolated UIA flow and one Android-to-Windows encrypted snapshot bridge; final MSI install/1.17.4 upgrade/repair/payload/startup/uninstall/data-preservation checks.
+- Phone completion during a held upload dispatched in 35 ms and kept the UI queue responsive; Windows downloaded and persisted the completed task. This is local fixture evidence, not a production latency guarantee.
+- Original emulator user 0 retains 646/646 file hashes. Existing user 10 business tables remain identical; runtime/session metadata differences are recorded. Dedicated user 11 contains local synthetic fixtures. Local server and test Windows processes are stopped; headless Pixel_8 remains on user 10's home screen.
+- Previous source baseline: `1.17.4 / 396`; retain its installation identity/session isolation and local-first data safeguards. Existing production calendar service is unchanged by this round. No push, server deployment or public release.
 - Repository: `https://github.com/HoshiTakyobu/PaykiTodo`; branch `main`; package `com.paykitodo.app`; Android 8.0+ / API 26+, compile/target API 34; MIT license.
 
 ## Published And Local Builds
 
-- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. No 1.17.4 public tag or download is claimed.
-- Current Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.17.4-debug.apk` (rebuilt this round; hash not separately recorded).
-- Current signed Release APK: `app/build/outputs/apk/release/PaykiTodo-1.17.3-release.apk`; SHA-256 `2D3048E4115B351BA392237273E8BA8A9DD6E6E1A2D0446F7CD98826036E00F3`.
-- Current Windows installer: `desktop/installer-output/PaykiTodo-1.17.4-windows-x64.msi`, 80,090,176 bytes, Windows 10 1809+/11 x64, per-user with .NET; SHA-256 `29830769257C8CC7B9F5C1C160BA17F5DE2187FA42DFE6EEE65E8D0B4ACB80E2`. See [installation instructions](../../desktop/installer/README.md).
-- Windows portable entry: `desktop/dist/PaykiTodo.exe` / file version 1.17.4.0; keep the whole directory. EXE SHA-256 `04f56a9d2b86d1d785284a78551976a73f9ee8d31048cdfbbb78e6c2a61026f8`.
-- Verified Windows copy, hash and notes: `G:\Workspace\Deliverables\PaykiTodo\1.17.4`. Previous 1.17.3 and older deliverables remain intact. Generated artifacts, private evidence and signing material stay outside Git.
+- Published GitHub Release remains `v1.15.18`: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`. There is no claimed public 1.17.5 tag/download.
+- Debug: `app/build/outputs/apk/debug/PaykiTodo-1.17.5-debug.apk`; SHA-256 `758FB0FCED3EC5641CA3248F3BCB9FF97C53818676E10E6F17D4D40EEEB3E515`.
+- Signed Release: `app/build/outputs/apk/release/PaykiTodo-1.17.5-release.apk`; SHA-256 `7260031D0107B8646F9381B482F94A9123FE741B00E9D54474A8EC5CF956DE35`.
+- Windows MSI: `desktop/installer-output/PaykiTodo-1.17.5-windows-x64.msi`, 80,172,116 bytes; SHA-256 `AFD9B5E6E97CA339C0A0E2923A68AC86CE39878EF68CABD1D89DAABD699F49C5`. Windows 10 1809+/11 x64, per-user with .NET; see [installation](../../desktop/installer/README.md).
+- Windows portable: `desktop/dist/PaykiTodo.exe`, file version `1.17.5.0`; SHA-256 `D2CA8662B2870453571140BA965FF64CCC3CFBB6F84F31AA9E848B32339E913E`. Keep the full directory.
+- Verified copy, 18-image preview, instructions and full payload hashes: `G:\Workspace\Deliverables\PaykiTodo\1.17.5`. Older deliverables remain intact; generated outputs, private evidence and signing material stay outside Git.
 
 ## Product Positioning
 

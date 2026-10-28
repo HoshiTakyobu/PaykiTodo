@@ -151,7 +151,10 @@ class AccountSyncAcceptanceTest {
         val cloud = app.repository.exportSnapshot(store.currentSettings()).copy(tasks = listOf(TodoItem(id = 9901,
             title = "visible cloud replacement", dueAtMillis = Long.MAX_VALUE, reminderAtMillis = null,
             reminderEnabled = false, ringEnabled = false, vibrateEnabled = false)))
+        coordinator.stop()
         publish(cloud)
+        // Keep a deliberate local/cloud conflict until the user confirms.
+        store.markRemoteSyncDirty()
         screen = ActivityScenario.launch(Intent().setClassName(app, "androidx.activity.ComponentActivity"))
         screen!!.onActivity { activity -> activity.setContent {
             MaterialTheme {
@@ -163,23 +166,24 @@ class AccountSyncAcceptanceTest {
         suspend fun click(label: String) {
             repeat(20) {
                 val node = visibleNodes().firstOrNull { it.text?.toString() == label && it.isVisibleToUser }
-                if (node != null) { tap(node); delay(400); return }
+                if (node != null) { tap(node); delay(400); stage("UI", "Clicked $label"); return }
                 shell("input swipe 540 1900 540 800 400"); delay(150)
             }
             error("Visible account control not found: $label")
         }
-        click("检查云端并恢复")
+        click("检查云端")
         until { visibleNodes().any { it.text?.toString() == "确认恢复云端副本" } }
         click("取消")
         assertTrue(app.repository.getAllTodos().any { it.title == "local before cloud replacement" })
-        click("检查云端并恢复")
+        click("检查云端")
         until { visibleNodes().any { it.text?.toString() == "确认恢复云端副本" } }
         click("确认")
         until { app.repository.getAllTodos().singleOrNull()?.title == "visible cloud replacement" }
-        click("恢复最近的操作前副本")
+        click("恢复操作前副本")
         until { visibleNodes().any { it.text?.toString() == "恢复操作前副本" } }
         click("确认恢复")
         until { app.repository.getAllTodos().any { it.title == "local before cloud replacement" } }
+        until { !store.currentSettings().remoteSyncDirty }
         click("保留本机上传")
         until { visibleNodes().any { it.text?.toString() == "确认保留本机上传" } }
         click("确认")
@@ -246,6 +250,9 @@ class AccountSyncAcceptanceTest {
         assertEquals("cloud replacement", app.repository.getAllTodos().single().title)
         coordinator.restoreNewestSafetyCopy()
         assertTrue(app.repository.getAllTodos().any { it.title == "changed after review" })
+        // Restoring a safety copy intentionally queues an automatic upload.
+        // Review the settled revision before confirming another manual upload.
+        until { !store.currentSettings().remoteSyncDirty }
         coordinator.resolveCloud(coordinator.inspectCloud(), true)
         assertTrue(remote().tasks.any { it.title == "changed after review" })
         stage("S06", "Stale review rejected; confirmed restore keeps local recovery copy; restore copy and keep-local upload verified")
@@ -265,11 +272,41 @@ class AccountSyncAcceptanceTest {
         stage("S07", "Same-account reauthentication preserves revision and dirty under failed sync; explicit logout locks without deleting tasks")
     }
 
+    @Test fun completingWhileUploadIsHeldKeepsMainThreadResponsiveAndEventuallyUploads() = runBlocking {
+        val task = add("responsive completion")
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        control("""{"holdUpload":true,"release":false}""")
+        add("held network write")
+        until { state().optBoolean("entered") }
+        val viewModels = androidx.lifecycle.ViewModelStore()
+        try {
+            val started = android.os.SystemClock.elapsedRealtime()
+            withContext(Dispatchers.Main) {
+                val model = androidx.lifecycle.ViewModelProvider(viewModels,
+                    androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory(app))[com.example.todoalarm.ui.TodoViewModel::class.java]
+                model.completeTodo(task)
+            }
+            val dispatchMillis = android.os.SystemClock.elapsedRealtime() - started
+            assertTrue("Main-thread completion dispatch took ${dispatchMillis}ms", dispatchMillis < 1_000)
+            until { app.repository.getTodo(task.id)?.completed == true }
+            repeat(5) { withContext(Dispatchers.Main) { /* UI queue remains live during network hold. */ }; delay(40) }
+            assertTrue(state().optBoolean("entered"))
+            stage("S08", "Completion saved locally while upload held; main dispatch ${dispatchMillis}ms and five UI heartbeats passed")
+        } finally {
+            control("""{"holdUpload":false,"release":true}""")
+            withContext(Dispatchers.Main) { viewModels.clear() }
+        }
+        until { !store.currentSettings().remoteSyncDirty }
+        assertTrue(remote().tasks.single { it.id == task.id }.completed)
+        stage("S09", "Windows bridge account $username")
+    }
+
     @Test fun completionAutoUploadsAndMissedDirtyFlagIsDetectedAfterRestart() = runBlocking {
         val task = add("completion propagation")
         until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        val beforeCompletion = store.currentSettings().remoteSyncRevision
         app.repository.setCompleted(task.id, true)
-        until { !store.currentSettings().remoteSyncDirty }
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > beforeCompletion }
         assertTrue(remote().tasks.single { it.id == task.id }.completed)
         coordinator.stop()
         val local = app.repository.exportSnapshot(store.currentSettings())
@@ -296,8 +333,14 @@ class AccountSyncAcceptanceTest {
         assertTrue(coordinator.syncNow() is RemoteSyncResult.UpToDate)
     }
 
-    private suspend fun add(title: String) = app.repository.addTodo(TodoItem(title = title, dueAtMillis = Long.MAX_VALUE,
-        reminderAtMillis = null, reminderEnabled = false, ringEnabled = false, vibrateEnabled = false))
+    private suspend fun add(title: String): TodoItem {
+        val generation = store.remoteChangeGeneration()
+        val item = app.repository.addTodo(TodoItem(title = title, dueAtMillis = Long.MAX_VALUE,
+            reminderAtMillis = null, reminderEnabled = false, ringEnabled = false, vibrateEnabled = false))
+        // The repository deliberately posts follow-up work asynchronously.
+        until { store.remoteChangeGeneration() > generation }
+        return item
+    }
     private suspend fun until(predicate: suspend () -> Boolean) { repeat(750) { if (predicate()) return; delay(100) }; error("Local sync fixture timeout") }
     private fun replace(value: RemoteSyncCoordinator) {
         val lazy = TodoApplication::class.java.getDeclaredField("remoteSyncCoordinator\$delegate").apply { isAccessible = true }.get(app)
@@ -324,6 +367,7 @@ class AccountSyncAcceptanceTest {
     private fun stage(id: String, result: String) {
         val folder = File(app.getExternalFilesDir(null), "interactive-acceptance").apply { mkdirs() }
         File(folder, "sync-steps.txt").appendText("$id PASS $result\n")
+        File(app.filesDir, "sync-steps.txt").appendText("$id PASS $result\n")
     }
     private fun shell(command: String) { android.os.ParcelFileDescriptor.AutoCloseInputStream(inst.uiAutomation.executeShellCommand(command)).use { it.readBytes() } }
 }

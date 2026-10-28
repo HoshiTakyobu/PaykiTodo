@@ -479,8 +479,8 @@ internal sealed class DesktopSecureStore
 internal static class DesktopDiagnosticLog
 {
     private static readonly object Gate = new();
-    private static readonly string Path = System.IO.Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo", "diagnostics.log");
+    internal static string DirectoryPath { get; set; } = System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
 
     public static void Write(string eventName, string details)
     {
@@ -488,8 +488,9 @@ internal static class DesktopDiagnosticLog
         {
             lock (Gate)
             {
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-                File.AppendAllText(Path, $"{DateTimeOffset.UtcNow:O}\t{eventName}\t{details}{Environment.NewLine}", Encoding.UTF8);
+                Directory.CreateDirectory(DirectoryPath);
+                File.AppendAllText(System.IO.Path.Combine(DirectoryPath, "diagnostics.log"),
+                    $"{DateTimeOffset.UtcNow:O}\t{eventName}\t{details}{Environment.NewLine}", Encoding.UTF8);
             }
         }
         catch { /* Diagnostics must never block login or local editing. */ }

@@ -2,9 +2,17 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current local fix: 1.17.4 / 396
+## Current local update: 1.17.5 / 397
 
-Phone local edits no longer synchronously run widget IPC, sync scheduling, shared-calendar refresh scheduling, or automatic-backup file I/O from the Room change callback/completion coroutine. Automatic backups are serialized on `Dispatchers.IO`; the database edit remains local-first and cloud sync stays asynchronous. Windows `1.17.4.0` now stores an installation-scoped device ID separately from the encrypted account workspace, distinguishes expired/revoked sessions, and writes token-free diagnostics. The server keeps independent devices active when a copied ID arrives with a different machine identity. The 1.17.4 Debug APK is rebuilt; Windows MSI is being rebuilt for this session fix.
+The 12-item feedback round is complete: larger white-tile icons, fixed Book Antiqua bold-italic brand and HYQiHei 60S navigation artwork, genuine font weights, larger colored task cards, timed quick checklists and direct Windows task presentation. Windows calendar defaults to pale surfaces/colored text/side stripes, with optional classic colors retained through Android backup roundtrips.
+
+Phone completion/reminder operations run off the main thread; sync, shared refresh and widgets run independently. Application-lifetime automatic backups coalesce requests without making editing wait. Running clients poll every 3 seconds; cheap Android revision checks retain periodic/manual content audits and conflict protections. A held-upload test kept UI dispatch at 35 ms; the resulting encrypted Android snapshot was downloaded and persisted by an independent Windows client.
+
+229 Android units, Lint, 28 distinct emulator tests, 67 distinct Windows/bridge/UIA checks, signed APK validation and complete MSI lifecycle checks passed. Rebuilt local outputs and limits are in [1.17.5 validation](VALIDATION_1.17.5.md); no public release or production deployment.
+
+## Previous local fix: 1.17.4 / 396
+
+Phone local edits no longer synchronously run widget IPC, sync scheduling, shared-calendar refresh scheduling, or automatic-backup file I/O from the Room change callback/completion coroutine. Automatic backups are serialized on `Dispatchers.IO`; the database edit remains local-first and cloud sync stays asynchronous. Windows `1.17.4.0` now stores an installation-scoped device ID separately from the encrypted account workspace, distinguishes expired/revoked sessions, and writes token-free diagnostics. The server keeps independent devices active when a copied ID arrives with a different machine identity. The 1.17.4 Debug APK is rebuilt; Windows 1.17.4 MSI was built for that session fix.
 
 ## Previous local update: 1.17.3 / 395
 

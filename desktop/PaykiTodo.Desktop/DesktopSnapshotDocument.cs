@@ -11,6 +11,15 @@ internal sealed partial class DesktopSnapshotDocument
     private const long NoDueDateMillis = long.MaxValue;
     private JsonObject root;
 
+    public IReadOnlyList<DesktopGroup> GroupsForItem(DesktopItem item)
+    {
+        var ids = (root["todoGroupTags"] as JsonArray)?.OfType<JsonObject>()
+            .Where(tag => tag["todoId"]?.GetValue<long>() == item.Id)
+            .Select(tag => tag["groupId"]!.GetValue<long>()).ToHashSet() ?? new HashSet<long>();
+        ids.Add(item.GroupId);
+        return Groups.Where(group => ids.Contains(group.Id)).ToList();
+    }
+
     private DesktopSnapshotDocument(JsonObject root)
     {
         this.root = root;
@@ -380,6 +389,9 @@ internal sealed partial class DesktopSnapshotDocument
         {
             var id = NextId(Tasks);
             persistedIds[node.TemporaryId] = id;
+            var deadline = node.DueMinuteOfDay is { } minute
+                ? new DateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(now).LocalDateTime.Date.AddMinutes(minute)).ToUnixTimeMilliseconds()
+                : (long?)null;
             Tasks.Add(new JsonObject
             {
                 ["id"] = id,
@@ -387,13 +399,15 @@ internal sealed partial class DesktopSnapshotDocument
                 ["itemType"] = "TODO",
                 ["title"] = node.Title,
                 ["notes"] = node.Notes,
-                ["dueAtMillis"] = NoDueDateMillis,
+                ["dueAtMillis"] = deadline ?? NoDueDateMillis,
+                ["reminderAtMillis"] = deadline,
+                ["reminderOffsetsCsv"] = deadline != null ? "0" : "",
                 ["completed"] = false,
                 ["canceled"] = false,
                 ["missed"] = false,
-                ["reminderEnabled"] = false,
-                ["ringEnabled"] = false,
-                ["vibrateEnabled"] = false,
+                ["reminderEnabled"] = deadline != null,
+                ["ringEnabled"] = deadline != null,
+                ["vibrateEnabled"] = deadline != null,
                 ["reminderDeliveryMode"] = "FULLSCREEN_AND_NOTIFICATION",
                 ["groupId"] = DefaultGroupId(),
                 ["accentColorHex"] = DefaultGroupColor(),

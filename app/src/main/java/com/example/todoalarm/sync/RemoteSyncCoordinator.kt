@@ -79,16 +79,17 @@ class RemoteSyncCoordinator(
     private var periodicJob: Job? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     @Volatile private var accountGeneration = 0L
+    private var lastContentAuditAt = 0L
     private data class Download(val snapshot: BackupSnapshot, val revision: Long)
     data class CloudReview(val snapshot: BackupSnapshot, val revision: Long, val localFingerprint: String, val accountGeneration: Long)
 
     @Synchronized fun start() {
         val settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled || !settingsStore.hasLocalAccountAccess()) return
-        RemoteSyncJobService.schedule(app)
+        runCatching { RemoteSyncJobService.schedule(app) }.onFailure(com.example.todoalarm.CrashLogger::recordNonFatal)
         if (networkCallback == null) {
             val callback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) { scope.launch { runCatching { syncNow() } } }
+                override fun onAvailable(network: Network) { scope.launch { runCatching { syncNow(forceAudit = false) } } }
             }
             app.getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(callback)
             networkCallback = callback
@@ -96,9 +97,9 @@ class RemoteSyncCoordinator(
         if (periodicJob?.isActive == true) return
         periodicJob = scope.launch {
             while (isActive && settingsStore.currentSettings().remoteSyncEnabled) {
-                runCatching { syncNow() }
+                runCatching { syncNow(forceAudit = false) }
                     .onFailure { settingsStore.markRemoteSyncError(it.message ?: "云同步失败") }
-                delay(TimeUnit.SECONDS.toMillis(15))
+                delay(TimeUnit.SECONDS.toMillis(3))
             }
             periodicJob = null
         }
@@ -120,7 +121,6 @@ class RemoteSyncCoordinator(
         val settings = settingsStore.currentSettings()
         if (!settingsStore.hasLocalAccountAccess()) return
         settingsStore.markRemoteSyncDirty()
-        if (settings.remoteSyncEnabled && settings.remoteSyncUsername.isNotBlank()) RemoteSyncJobService.schedule(app, changed = true)
         if (!settings.remoteSyncEnabled || !settingsStore.hasValidRemoteSession()) {
             pendingJob?.cancel()
             pendingJob = null
@@ -128,6 +128,9 @@ class RemoteSyncCoordinator(
             return
         }
         requestLocalSync()
+        // OS scheduling failure must not prevent the running app from uploading.
+        runCatching { RemoteSyncJobService.schedule(app, changed = true) }
+            .onFailure(com.example.todoalarm.CrashLogger::recordNonFatal)
     }
 
     private fun requestLocalSync(): Unit = synchronized(this) {
@@ -139,7 +142,7 @@ class RemoteSyncCoordinator(
                 delay(1_000L)
                 do {
                     completedGeneration = settingsStore.remoteChangeGeneration()
-                    val result = syncNow()
+                    val result = syncNow(forceAudit = false)
                     successful = result is RemoteSyncResult.Uploaded || result is RemoteSyncResult.UpToDate || result is RemoteSyncResult.Downloaded
                 } while (isActive && successful && settingsStore.currentSettings().remoteSyncDirty)
             } finally {
@@ -375,7 +378,7 @@ class RemoteSyncCoordinator(
         app.stopService(Intent(app, DesktopSyncService::class.java))
     }
 
-    suspend fun syncNow(): RemoteSyncResult = withContext(Dispatchers.IO) { syncMutex.withLock {
+    suspend fun syncNow(forceAudit: Boolean = true): RemoteSyncResult = withContext(Dispatchers.IO) { syncMutex.withLock {
         val settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled) return@withLock RemoteSyncResult.Disabled
         if (!settingsStore.hasValidRemoteSession()) {
@@ -383,14 +386,14 @@ class RemoteSyncCoordinator(
             return@withLock RemoteSyncResult.NotConfigured
         }
         if (settings.remoteSyncUsername.isBlank()) return@withLock RemoteSyncResult.NotConfigured
-        try { syncAccountNow() } catch (cancelled: CancellationException) { throw cancelled }
+        try { syncAccountNow(forceAudit) } catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) {
             settingsStore.markRemoteSyncError(error.message ?: "云同步失败")
             RemoteSyncResult.Failed(error.message ?: "云同步失败")
         }
     } }
 
-    private suspend fun syncAccountNow(): RemoteSyncResult {
+    private suspend fun syncAccountNow(forceAudit: Boolean = true): RemoteSyncResult {
         var settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled || settings.remoteSyncUsername.isBlank() || !settingsStore.hasValidRemoteSession()) return RemoteSyncResult.NotConfigured
         val serverUrl = cloudServerUrl()
@@ -398,18 +401,25 @@ class RemoteSyncCoordinator(
         val accessToken = ensureAccessToken(serverUrl, settings)
         if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
         settings = settingsStore.currentSettings()
+        val status = getJson(serverUrl, "/v2/sync/status", accessToken)
+        if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
+        settings = settingsStore.currentSettings()
+        val remoteRevision = status.optLong("revision", 0L)
+        val localRevision = settings.remoteSyncRevision
+        val previousFingerprint = settingsStore.remoteDataFingerprint()
+        val auditAt = android.os.SystemClock.elapsedRealtime()
+        // Fast polls check a small server revision. Retain a periodic content
+        // audit for legacy/missed callbacks without exporting all records every 3s.
+        if (!forceAudit && !settings.remoteSyncDirty && previousFingerprint.isNotBlank() && remoteRevision == localRevision &&
+            auditAt - lastContentAuditAt in 0L until 15_000L) return RemoteSyncResult.UpToDate(localRevision)
         val generation = settingsStore.remoteChangeGeneration()
         val localBefore = app.database.withTransaction { app.repository.exportSnapshot(settings).personalSyncSnapshot() }
         val fingerprint = BackupArchiveCodec.dataFingerprint(localBefore)
-        val previousFingerprint = settingsStore.remoteDataFingerprint()
+        lastContentAuditAt = auditAt
         if (!settings.remoteSyncDirty && previousFingerprint.isNotBlank() && previousFingerprint != fingerprint) {
             settingsStore.markRemoteSyncDirty()
             settings = settingsStore.currentSettings()
         }
-        val status = getJson(serverUrl, "/v2/sync/status", accessToken)
-        if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
-        val remoteRevision = status.optLong("revision", 0L)
-        val localRevision = settings.remoteSyncRevision
 
         if (settings.remoteSyncDirty && settings.remoteSyncConflictRevision > 0L) {
             settingsStore.markRemoteSyncConflict(maxOf(remoteRevision, settings.remoteSyncConflictRevision))

@@ -1,5 +1,11 @@
 # Current Task
 
+## Completed: 1.17.5 / 397 双端体验与后台同步
+
+[2026-10-28 的 12 项反馈](REQUEST_2026-10-28.md)已完成，开始基线 `344bcdd`。双端图标、固定桌面字体、卡片和日历样式、快速清单时间、手机响应及跨端完成状态均已实施并验证。
+
+Debug/签名 Release/MSI/便携成品及 18 图预览已交付至 `G:\Workspace\Deliverables\PaykiTodo\1.17.5`。229 Android 单测、28 项不同模拟器检查、67 项不同 Windows/桥接/UIA 检查及 MSI 生命周期通过；失败后的定向复测、数据保留和实际边界见 [VALIDATION_1.17.5.md](VALIDATION_1.17.5.md)。按项目规则作中文本地提交，不推送或公开发布。下方为历史轮次。
+
 ## Completed: Windows 1.17.4.0 multi-computer session recovery
 
 The Windows client previously reused `DeviceId` from the encrypted workspace during login. Copying `%LOCALAPPDATA%\PaykiTodo` to another computer therefore caused the second login to replace the first computer's session, even though the cloud service supports multiple devices. Windows now persists a separate installation identity, the server allocates a new device when a reused ID has a different machine name/platform, and authentication failures retain server error codes. Safe diagnostics record endpoint host, status, error code, token expiry timestamps and hashed device identity without credentials or token values.

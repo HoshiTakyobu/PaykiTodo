@@ -1370,8 +1370,11 @@ function renderQuickChecklistPreview(preview) {
   const title = preview.title ? '<h3 class="quick-checklist-preview-title">' + escapeHtml(preview.title) + '</h3>' : '';
   const nodes = (preview.nodes || []).map(node => {
     const depth = Math.max(1, Number(node.depth || 1));
+    const minute = node.dueMinuteOfDay;
+    const time = Number.isInteger(minute) && minute >= 0 && minute < 1440
+      ? ' · 今天 ' + String(Math.floor(minute / 60)).padStart(2, '0') + ':' + String(minute % 60).padStart(2, '0') + ' 提醒' : '';
       return '<div style="margin-left:' + ((depth - 1) * 20) + 'px">'
-      + '<div class="quick-checklist-preview-row"><span class="quick-checklist-checkbox" aria-hidden="true">□</span><span>' + escapeHtml(node.title || '') + '</span></div>'
+      + '<div class="quick-checklist-preview-row"><span class="quick-checklist-checkbox" aria-hidden="true">□</span><span>' + escapeHtml((node.title || '') + time) + '</span></div>'
       + (node.notes ? '<div class="quick-checklist-preview-note">' + escapeHtml(node.notes) + '</div>' : '')
       + '</div>';
   }).join('');

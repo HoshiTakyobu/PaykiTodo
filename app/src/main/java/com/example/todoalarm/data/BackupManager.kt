@@ -117,6 +117,7 @@ private fun AppSettings.toJson(): JSONObject {
         put("themeMode", themeMode.name)
         put("mainFont", mainFont)
         put("desktopFontFamily", desktopFontFamily)
+        put("desktopCalendarEventStyle", desktopCalendarEventStyle)
         put("countdownPastDays", countdownPastDays)
         put("hiddenCalendarIds", JSONArray(hiddenCalendarIds.toList()))
         put("calendarDefaultDurationMinutes", calendarDefaultDurationMinutes)
@@ -876,6 +877,7 @@ private fun JSONObject?.toSettings(): AppSettings {
     return AppSettings(
         mainFont = optString("mainFont", "SYSTEM"),
         desktopFontFamily = optStringOrNull("desktopFontFamily"),
+        desktopCalendarEventStyle = optString("desktopCalendarEventStyle", "MODERN"),
         countdownPastDays = optInt("countdownPastDays", 7).coerceIn(0, 365),
         hiddenCalendarIds = optJSONArray("hiddenCalendarIds")?.let { array -> (0 until array.length()).map { array.optString(it) }.toSet() } ?: emptySet(),
         calendarDefaultDurationMinutes = optInt("calendarDefaultDurationMinutes", 30),

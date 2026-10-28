@@ -143,7 +143,7 @@ fun AccountAuthScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.ic_launcher_art_transparent),
+                        painter = painterResource(R.drawable.ic_launcher_badged),
                         contentDescription = "PaykiTodo 图标",
                         modifier = Modifier
                             .size(82.dp)

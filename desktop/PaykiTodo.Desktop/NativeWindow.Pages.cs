@@ -9,6 +9,7 @@ using CheckBox = System.Windows.Controls.CheckBox;
 using ComboBox = System.Windows.Controls.ComboBox;
 using Orientation = System.Windows.Controls.Orientation;
 using TextBox = System.Windows.Controls.TextBox;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
 
 namespace PaykiTodo.Desktop;
 
@@ -23,7 +24,9 @@ internal sealed partial class NativeWindow
         var schedules = EventsOn(today).Where(item => Local(item.EndAtMillis) > DateTime.Now).ToList();
         var greeting = Text(DateTime.Now.Hour < 12 ? "早上好，开启新的一天" : DateTime.Now.Hour < 18 ? "下午好，按自己的节奏来" : "晚上好，给今天一个好结尾", 28, Ocean);
         greeting.FontFamily = HeadingFont;
-        var body = Column(Card(Column(greeting, Text(today.ToString("yyyy年M月d日  dddd", CultureInfo.GetCultureInfo("zh-CN")), 14, Muted))));
+        var greetingCard = Card(Column(greeting, Text(today.ToString("yyyy年M月d日  dddd", CultureInfo.GetCultureInfo("zh-CN")), 14, Muted)), 24);
+        greetingCard.CornerRadius = new CornerRadius(8, 8, 28, 28);
+        var body = Column(greetingCard);
         var columns = new Grid(); columns.ColumnDefinitions.Add(new ColumnDefinition()); columns.ColumnDefinitions.Add(new ColumnDefinition());
         columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var left = Column(SectionHeader($"今日待办（{tasks.Count}）", ChecklistAction(CreateChecklist)));
@@ -39,10 +42,10 @@ internal sealed partial class NativeWindow
         var scheduleBody = Column();
         foreach (var item in schedules) scheduleBody.Children.Add(EventRow(item));
         if (schedules.Count == 0) scheduleBody.Children.Add(Text("暂无日程", 14, Muted));
-        scheduleBody.Children.Add(Text("明天", 18, Muted, true));
         var tomorrow = EventsOn(today.AddDays(1)).ToList();
+        scheduleBody.Children.Add(Text($"明天（{tomorrow.Count}）", 19, Muted, true));
         foreach (var item in tomorrow) scheduleBody.Children.Add(EventRow(item));
-        if (tomorrow.Count == 0) scheduleBody.Children.Add(Text("明天暂无日程", 14, Muted));
+        if (tomorrow.Count == 0) scheduleBody.Children.Add(Text("明天暂无日程", 16, Muted));
         var dayGrid = new Grid(); dayGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); dayGrid.ColumnDefinitions.Add(new ColumnDefinition());
         dayGrid.Children.Add(date); Grid.SetColumn(scheduleBody, 1); dayGrid.Children.Add(scheduleBody);
         right.Children.Add(Card(dayGrid));
@@ -65,15 +68,15 @@ internal sealed partial class NativeWindow
     {
         var grid = new Grid { Margin = new Thickness(0, 8, 0, 8) };
         grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var heading = Text(caption, 18, bold: true); heading.VerticalAlignment = VerticalAlignment.Center;
+        var heading = Text(caption, 21, bold: true); heading.VerticalAlignment = VerticalAlignment.Center;
         grid.Children.Add(heading); ((FrameworkElement)action).VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(action, 1); grid.Children.Add(action); return grid;
     }
     private UIElement EventRow(DesktopItem item)
     {
         var ongoing = Local(item.StartAtMillis) <= DateTime.Now && Local(item.EndAtMillis) > DateTime.Now;
-        var body = Column(Text(item.Title, 16, bold: true), Text(TimeLabel(item), 13, Muted));
-        if (item.Location.Length > 0) body.Children.Add(Text("@" + item.Location.TrimStart('@'), 13, Muted));
+        var body = Column(Text(item.Title, 19, bold: true), Text(TimeLabel(item), 15, Muted));
+        if (item.Location.Length > 0) body.Children.Add(Text("@" + item.Location.TrimStart('@'), 15, Muted));
         var row = new Border { Padding = new Thickness(14, 10, 10, 10), Margin = new Thickness(0, 0, 0, 14),
             BorderBrush = B(ongoing ? "#E8B841" : item.AccentColor), BorderThickness = new Thickness(4, ongoing ? 1 : 0, ongoing ? 1 : 0, ongoing ? 1 : 0),
             CornerRadius = new CornerRadius(6), Background = ongoing ? B("#FFFAE9") : Paper, Child = body,
@@ -82,27 +85,54 @@ internal sealed partial class NativeWindow
     }
     private UIElement TodoRow(DesktopItem item, bool nested = false)
     {
-        var group = workspace.Document!.Groups.FirstOrDefault(group => group.Id == item.GroupId);
-        var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) }); grid.ColumnDefinitions.Add(new ColumnDefinition());
-        var complete = new CheckBox { IsChecked = item.Completed, IsEnabled = !item.Canceled, VerticalAlignment = VerticalAlignment.Center,
-            ToolTip = item.Completed ? "恢复待办" : "我已完成", Margin = new Thickness(0) };
+        var groups = workspace.Document!.GroupsForItem(item);
+        var group = groups.FirstOrDefault();
+        var overdue = item.DueAtMillis != long.MaxValue && Local(item.DueAtMillis) < DateTime.Now && !item.Completed && !item.Canceled;
+        var ink = overdue ? B(Dark ? "#FFA8A0" : "#AC352D") : Ink;
+        var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) }); grid.ColumnDefinitions.Add(new ColumnDefinition());
+        var complete = TaskToggle(item.Completed, !item.Canceled);
+        complete.ToolTip = item.Completed ? "恢复待办" : "我已完成";
         System.Windows.Automation.AutomationProperties.SetName(complete, (item.Completed ? "恢复待办：" : "完成待办：") + item.Title);
         complete.Checked += (_, _) => Change(document => document.Complete(item.Id));
         complete.Unchecked += (_, _) => Change(document => document.Restore(item.Id));
         grid.Children.Add(complete);
-        var deadline = Text((item.DueAtMillis == long.MaxValue ? "" : "⏰  ") + TimeLabel(item), 13,
-            item.DueAtMillis != long.MaxValue && Local(item.DueAtMillis) < DateTime.Now && !item.Completed ? B(Dark ? "#FFA8A0" : "#AC352D") : Ink, true);
-        deadline.FontFamily = new System.Windows.Media.FontFamily("Century, Microsoft YaHei UI, Segoe UI Emoji");
-        deadline.FontWeight = FontWeights.Bold;
-        var text = Column(Text(item.Title, 15, bold: true), deadline);
-        if (group != null || item.Completed || item.Canceled) text.Children.Add(Text(
-            (group?.Name ?? "") + (item.Canceled ? "  ·  已取消" : item.Completed ? "  ·  已完成" : ""), 12, Muted));
-        if (nested && item.Notes.Length > 0) text.Children.Add(Text(item.Notes, 12, Muted));
+        var heading = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
+        foreach (var tag in groups) {
+            var label = Text(tag.Name, 13, AccentInk(tag.ColorHex)); label.Margin = new Thickness(0);
+            heading.Children.Add(new Border { Background = AccentSurface(tag.ColorHex), CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(0, 3, 8, 3), Child = label });
+        }
+        var titleText = Text(item.Title, 19, ink, true); titleText.Margin = new Thickness(0, 2, 0, 5);
+        heading.Children.Add(titleText);
+        var text = Column(heading);
+        if (item.DueAtMillis != long.MaxValue) {
+            var deadline = Text(TimeLabel(item), 16, overdue ? ink : Forest, true); deadline.Margin = new Thickness(0);
+            var deadlineRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 4) };
+            deadlineRow.Children.Add(AlarmIcon()); deadlineRow.Children.Add(deadline); text.Children.Add(deadlineRow);
+        }
+        var details = new List<string>();
+        if (item.RecurrenceType != "NONE") details.Add("循环任务");
+        if (item.Canceled) details.Add("已取消"); else if (item.Completed) details.Add("已完成");
+        if (details.Count > 0) text.Children.Add(Text(string.Join(" · ", details), 14, Muted));
+        if (item.Notes.Length > 0) text.Children.Add(Text(item.Notes, 14, Muted));
         text.Cursor = System.Windows.Input.Cursors.Hand; text.MouseLeftButtonUp += (_, e) => { Preview(item); e.Handled = true; };
         Grid.SetColumn(text, 1); grid.Children.Add(text);
-        var card = Card(grid, 12); card.Margin = new Thickness(0, 0, 0, 8);
-        card.BorderBrush = B(group?.ColorHex ?? item.AccentColor); card.BorderThickness = new Thickness(8, 0, 0, 0);
-        if (nested) card.Margin = new Thickness(Math.Min(12, item.QuickChecklistDepth ?? 0) * 16, 0, 0, 8);
+        if (nested && workspace.Document.Items.Any(child => child.ParentTodoId == item.Id)) {
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var fold = Action(item.QuickChecklistCollapsed ? "▸" : "▾", () => Change(document => document.ToggleQuickChecklistItem(item.Id)));
+            fold.ToolTip = item.QuickChecklistCollapsed ? "展开子任务" : "收起子任务";
+            System.Windows.Automation.AutomationProperties.SetName(fold, fold.ToolTip.ToString());
+            fold.Width = 28; fold.MinHeight = 28; fold.Padding = new Thickness(3); fold.Margin = new Thickness(8, 0, 0, 0);
+            fold.Background = System.Windows.Media.Brushes.Transparent; fold.BorderThickness = new Thickness(0);
+            Grid.SetColumn(fold, 2); grid.Children.Add(fold);
+        }
+        var layout = new Grid();
+        var stripe = new Border { Width = 5, Background = B(group?.ColorHex ?? item.AccentColor), CornerRadius = new CornerRadius(3),
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 14, 0, 14) };
+        layout.Children.Add(stripe);
+        grid.Margin = new Thickness(18, 18, 18, 18); layout.Children.Add(grid);
+        var card = Card(layout, 0); card.Margin = new Thickness(nested ? Math.Max(0, Math.Min(12, item.QuickChecklistDepth ?? 1) - 1) * 16 : 0, 0, 0, 12);
+        System.Windows.Automation.AutomationProperties.SetAutomationId(card, "Todo.Card." + item.Id);
         return card;
     }
     private void AppendTodos(StackPanel host, IReadOnlyList<DesktopItem> items, bool foldRecurring = false)
@@ -130,16 +160,12 @@ internal sealed partial class NativeWindow
             var group = workspace.Document!.QuickChecklistGroups.FirstOrDefault(group => group.Id == grouping.Key);
             if (group == null) continue;
             var all = workspace.Document.Items.Where(item => item.QuickChecklistGroupId == group.Id).ToList();
-            var title = $"{(string.IsNullOrWhiteSpace(group.Title) ? "快速清单" : group.Title)}   {all.Count(item => item.Completed && !item.Canceled)}/{all.Count(item => !item.Canceled)}";
-            host.Children.Add(Action((group.Collapsed ? "▸  " : "▾  ") + title, () => Change(document => document.ToggleQuickChecklistGroup(group.Id))));
-            if (group.Collapsed) continue;
+            // Import provenance remains stored, but tasks have no extra group container.
             var hidden = new HashSet<long>();
-            foreach (var item in grouping.OrderBy(item => item.QuickChecklistSortOrder))
+            foreach (var item in grouping.OrderBy(item => item.Id))
             {
                 if (item.ParentTodoId is { } parent && hidden.Contains(parent)) { hidden.Add(item.Id); continue; }
                 if (item.QuickChecklistCollapsed) hidden.Add(item.Id);
-                if (all.Any(child => child.ParentTodoId == item.Id)) host.Children.Add(Action(item.QuickChecklistCollapsed ? "▸ 展开子任务" : "▾ 收起子任务",
-                    () => Change(document => document.ToggleQuickChecklistItem(item.Id))));
                 host.Children.Add(TodoRow(item, true));
             }
         }

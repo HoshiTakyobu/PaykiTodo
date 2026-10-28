@@ -25,7 +25,8 @@ internal sealed record QuickChecklistDraftNode(
     string Title,
     string Notes,
     int SourceLine,
-    int SortOrder
+    int SortOrder,
+    int? DueMinuteOfDay = null
 );
 
 internal sealed record QuickChecklistDraft(
@@ -48,6 +49,9 @@ internal static partial class QuickChecklistParser
 
     [GeneratedRegex("^(-+)\\s*(.*)$")]
     private static partial Regex TaskPattern();
+
+    [GeneratedRegex("[,，]\\s*#([^#]*)$")]
+    private static partial Regex TimeSuffix();
 
     [GeneratedRegex("^(-+)(?:#)?(?:\\s.*|$)")]
     private static partial Regex ContinuationPattern();
@@ -100,9 +104,22 @@ internal static partial class QuickChecklistParser
             {
                 var depth = taskMatch.Groups[1].Value.Length;
                 var taskTitle = taskMatch.Groups[2].Value.Trim();
+                var suffix = TimeSuffix().Match(taskTitle);
+                int? dueMinute = null;
+                if (suffix.Success) {
+                    var time = suffix.Groups[1].Value.Trim();
+                    var parts = time.Split(':');
+                    if (!Regex.IsMatch(time, "^[0-9]{1,2}:[0-9]{2}$") || !int.TryParse(parts[0], out var hour) ||
+                        !int.TryParse(parts[1], out var minute) || hour > 23 || minute > 59) {
+                        diagnostics.Add(Error(line.SourceLine, "时间须为 00:00–23:59，例如 - 做作业, #16:00"));
+                        continue;
+                    }
+                    dueMinute = hour * 60 + minute;
+                    taskTitle = taskTitle[..suffix.Index].Trim();
+                }
                 if (taskTitle.Length == 0)
                 {
-                    if (line.SourceLine != prepared.LastOrDefault()?.SourceLine)
+                    if (line.SourceLine != prepared.LastOrDefault()?.SourceLine || suffix.Success)
                         diagnostics.Add(Error(line.SourceLine, "任务内容不能为空"));
                     continue;
                 }
@@ -123,7 +140,8 @@ internal static partial class QuickChecklistParser
                     taskTitle,
                     "",
                     line.SourceLine,
-                    nodes.Count(value => value.ParentTemporaryId == parent?.TemporaryId)
+                    nodes.Count(value => value.ParentTemporaryId == parent?.TemporaryId),
+                    dueMinute
                 );
                 nodes.Add(node);
                 foreach (var stale in lastNodeByDepth.Keys.Where(value => value >= depth).ToList()) lastNodeByDepth.Remove(stale);
@@ -171,9 +189,11 @@ internal static partial class QuickChecklistParser
     private static string ContentFingerprint(string title, IEnumerable<QuickChecklistDraftNode> nodes)
     {
         var normalized = new StringBuilder(title.Trim());
-        foreach (var node in nodes)
+        foreach (var node in nodes) {
             normalized.Append('\n').Append(node.Depth).Append('|').Append(node.ParentTemporaryId ?? 0).Append('|')
                 .Append(node.SortOrder).Append('|').Append(node.Title.Trim()).Append('|').Append(node.Notes.Trim());
+            if (node.DueMinuteOfDay is { } time) normalized.Append("|time=").Append(time);
+        }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized.ToString()))).ToLowerInvariant();
     }
 

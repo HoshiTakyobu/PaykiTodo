@@ -42,7 +42,8 @@ data class QuickChecklistDraftNode(
     val title: String,
     val notes: String = "",
     val sourceLine: Int,
-    val sortOrder: Int
+    val sortOrder: Int,
+    val dueMinuteOfDay: Int? = null
 )
 
 data class QuickChecklistDraft(
@@ -72,6 +73,7 @@ data class QuickChecklistSourceSelection(
 object QuickChecklistParser {
     private val notePattern = Regex("^(-+)#\\s*(.*)$")
     private val taskPattern = Regex("^(-+)\\s*(.*)$")
+    private val timeSuffix = Regex("[,，]\\s*#([^#]*)$")
 
     fun parse(rawText: String): QuickChecklistDraft {
         val preparedLines = rawText.lines().mapIndexed { index, rawLine ->
@@ -127,10 +129,19 @@ object QuickChecklistParser {
             val taskMatch = taskPattern.matchEntire(line.content)
             if (taskMatch != null) {
                 val depth = taskMatch.groupValues[1].length
-                val taskTitle = taskMatch.groupValues[2].trim()
+                val rawTitle = taskMatch.groupValues[2].trim()
+                val suffix = timeSuffix.find(rawTitle)
+                val time = suffix?.groupValues?.get(1)?.trim()
+                val parts = time?.takeIf { it.matches(Regex("[0-9]{1,2}:[0-9]{2}")) }?.split(':')?.map(String::toInt)
+                if (time != null && (parts == null || parts[0] !in 0..23 || parts[1] !in 0..59)) {
+                    diagnostics += error(line.sourceLine, "时间须为 00:00–23:59，例如 - 做作业, #16:00")
+                    return@forEach
+                }
+                val dueMinute = parts?.let { it[0] * 60 + it[1] }
+                val taskTitle = if (suffix != null) rawTitle.substring(0, suffix.range.first).trim() else rawTitle
                 if (taskTitle.isBlank()) {
                     val isLastPhysicalLine = line.sourceLine == preparedLines.lastOrNull()?.sourceLine
-                    if (!isLastPhysicalLine) {
+                    if (!isLastPhysicalLine || suffix != null) {
                         diagnostics += error(line.sourceLine, "任务内容不能为空")
                     }
                     return@forEach
@@ -160,7 +171,8 @@ object QuickChecklistParser {
                     depth = depth,
                     title = taskTitle,
                     sourceLine = line.sourceLine,
-                    sortOrder = mutableNodes.count { it.parentTemporaryId == parent?.temporaryId }
+                    sortOrder = mutableNodes.count { it.parentTemporaryId == parent?.temporaryId },
+                    dueMinuteOfDay = dueMinute
                 )
                 mutableNodes += node
                 lastNodeByDepth.keys.filter { it >= depth }.toList().forEach(lastNodeByDepth::remove)
@@ -197,6 +209,7 @@ object QuickChecklistParser {
                 append(node.title.trim())
                 append('|')
                 append(node.notes.trim())
+                node.dueMinuteOfDay?.let { append("|time=").append(it) }
             }
         }
         return MessageDigest.getInstance("SHA-256")

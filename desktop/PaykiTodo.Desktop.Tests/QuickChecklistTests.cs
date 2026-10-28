@@ -6,6 +6,38 @@ namespace PaykiTodo.Desktop.Tests;
 public sealed class QuickChecklistTests
 {
     [Fact]
+    public void TimedChecklistPersistsDeadlineReminderAndSemanticFingerprint()
+    {
+        var draft = QuickChecklistParser.Parse("- 做作业, #16:00\n-- 阅读，#9:05\n--# 说明\n- 无时间");
+        Assert.False(draft.HasErrors);
+        Assert.Equal(960, draft.Nodes[0].DueMinuteOfDay);
+        Assert.Equal(545, draft.Nodes[1].DueMinuteOfDay);
+        Assert.Equal("做作业", draft.Nodes[0].Title);
+        Assert.Equal("说明", draft.Nodes[1].Notes);
+        Assert.Equal(QuickChecklistParser.Parse("- 做作业，#16:00").SourceFingerprint, QuickChecklistParser.Parse("- 做作业, #16:00").SourceFingerprint);
+        Assert.NotEqual(QuickChecklistParser.Parse("- 做作业, #16:00").SourceFingerprint, QuickChecklistParser.Parse("- 做作业, #17:00").SourceFingerprint);
+        var document = DesktopSnapshotDocument.CreateEmpty(); document.CreateQuickChecklist(draft);
+        var restored = DesktopSnapshotDocument.FromArchiveBytes(document.ToArchiveBytes());
+        var todo = restored.Items.Single(item => item.Title == "做作业");
+        Assert.Equal(DateTime.Today.AddHours(16), DateTimeOffset.FromUnixTimeMilliseconds(todo.DueAtMillis).LocalDateTime);
+        var edit = restored.EditFor(todo.Id)!;
+        Assert.True(edit.ReminderEnabled); Assert.Equal(new[] { 0 }, edit.ReminderOffsets);
+        Assert.Equal(todo.DueAtMillis, Assert.Single(DesktopCalendarTime.Triggers(edit)));
+        Assert.False(restored.EditFor(restored.Items.Single(item => item.Title == "无时间").Id)!.ReminderEnabled);
+    }
+
+    [Theory]
+    [InlineData("24:00")]
+    [InlineData("23:60")]
+    [InlineData("-1:00")]
+    [InlineData("9:5")]
+    [InlineData("")]
+    public void InvalidChecklistTimeIsAnErrorOnItsSourceLine(string time)
+    {
+        var draft = QuickChecklistParser.Parse("标题\n- 任务, #" + time);
+        Assert.Contains(draft.Diagnostics, value => value.SourceLine == 2 && value.Severity == QuickChecklistDiagnosticSeverity.Error);
+    }
+    [Fact]
     public void TitlelessChecklistKeepsHierarchyNotesFingerprintAndArchive()
     {
         const string source = "- 想到就写\n-- 子任务\n--# 说明\n- 第二件事";

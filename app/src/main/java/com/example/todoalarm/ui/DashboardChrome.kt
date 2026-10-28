@@ -228,7 +228,7 @@ internal fun DashboardDrawer(
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_launcher_art_transparent),
+                            painter = painterResource(id = R.drawable.ic_launcher_badged),
                             contentDescription = "应用图标",
                             modifier = Modifier
                                 .size(50.dp)
@@ -2169,7 +2169,7 @@ internal fun LaunchScreen() {
         }
 
         Image(
-            painter = painterResource(id = R.drawable.ic_launcher_art_transparent),
+            painter = painterResource(id = R.drawable.ic_launcher_badged),
             contentDescription = "应用图标",
             modifier = Modifier
                 .align(Alignment.TopCenter)

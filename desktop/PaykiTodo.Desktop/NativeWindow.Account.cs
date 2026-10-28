@@ -197,7 +197,7 @@ internal sealed partial class NativeWindow
         var preview = Text("把今天安排得刚刚好\nPaykiTodo · 09:30 · DDL 2026-10-23", 18);
         void PreviewFont() { var name = choice.SelectedItem?.ToString(); preview.FontFamily = name == "Sarasa UI SC" ? BundledFont : new System.Windows.Media.FontFamily(name == "系统推荐" ? "Microsoft YaHei UI, Segoe UI" : name + ", Microsoft YaHei UI, Segoe UI"); }
         choice.SelectionChanged += (_, _) => PreviewFont(); PreviewFont();
-        dialog.Content = DialogLayout(Column(BrandHeading("主字体", "选择本机字体并预览；问候语保留原来的字体。"), choice, new Border { Padding = new Thickness(16), Background = Paper, Child = preview }),
+        dialog.Content = DialogLayout(Column(BrandHeading("主字体", "用于正文和编辑器；品牌、导航和问候语保持固定。"), choice, new Border { Padding = new Thickness(16), Background = Paper, Child = preview }),
             Action("取消", () => dialog.Close()), Action("完成", () => {
                 var name = choice.SelectedItem?.ToString(); if (name == "系统推荐") name = null;
                 SetInterfaceFont(name); dialog.Close(); FontFamily = InterfaceFont; BuildShell(); Change(document => document.Settings["desktopFontFamily"] = name); Render();

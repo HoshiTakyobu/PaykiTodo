@@ -58,7 +58,7 @@ object DesktopSyncWebAssets {
     @SuppressLint("ResourceType")
     private fun appIconDataUri(context: Context): String {
         return runCatching {
-            val bytes = context.resources.openRawResource(R.drawable.ic_launcher_art_transparent).use { it.readBytes() }
+            val bytes = context.resources.openRawResource(R.drawable.ic_launcher_badged).use { it.readBytes() }
             "data:image/png;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
         }.getOrDefault("")
     }

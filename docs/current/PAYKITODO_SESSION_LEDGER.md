@@ -12,6 +12,12 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+The completed local 1.17.5 / versionCode 397 round implements the original thread's 12-item Android/Windows visual and responsiveness feedback. Fixed Windows brand/navigation outlines, real font weights, colored cards, timed quick checklists, direct imported task presentation and selectable calendar colors are delivered. Phone edits are independent of background sync/reminders/backup completion; a held-network local completion subsequently persisted on Windows through an encrypted snapshot.
+
+229 Android units, Lint, 28 distinct emulator tests, 65 Windows regressions plus isolated UIA and a cross-client bridge, and the final MSI lifecycle checks passed. Signed APK, Debug APK, MSI, portable directory and 18-image preview: `Deliverables/PaykiTodo/1.17.5`. [Validation](VALIDATION_1.17.5.md) records exact hashes, targeted reruns and boundaries. User 0 retains all 646 file hashes; user 10 business tables remain identical. New user 11 holds local fixtures; test server stopped, headless Pixel_8 restored to user 10 home. Local Chinese commit only; public release remains v1.15.18.
+
+### Previous 1.17.3 search and collaboration
+
 The local `1.17.3 / versionCode 395` round hides unauthorized shared search cache on both clients and fixes Android all-day search dates and dormant reminder presentation. Manual CAPTCHA/registration are complete. Actual dedicated 1.17.2 Android/Windows editor invite/accept/RSVP/bidirectional existing-event edits/revocation passed; 1.17.3 viewer access and live search revocation passed. Windows personal snapshot/revision 24, six original personal records/settings and 646 original Android user-0 file hashes remain unchanged. Test user 10 retains its identity and three revoked shared cache rows, all reminders off.
 
 227 Android units, Lint, rebuilt signed APK verification, 57 Windows regressions, one 14-stage UIA flow and MSI install/real 1.17.2 upgrade/repair/payload/installed app/uninstall/user-data checks passed. Packages: `Deliverables/PaykiTodo/1.17.3`; [validation](VALIDATION_1.17.3.md), [native collaboration](NATIVE_COLLABORATION_ACCEPTANCE_20261025.md). Dedicated Windows host/client stopped; interactive Pixel_8 mirror remains. No push, release or deployment this round.
@@ -53,6 +59,7 @@ The local `1.16.21 / versionCode 386` round implements expired-session notificat
 ### 2026-10-18 Actual-operation audit
 
 The user challenged startup/log/component tests being presented as complete UI acceptance. Follow-up uses the user's existing Pixel_8, actual ADB input, visible production WPF OS pointer/keyboard and visible Edge against the real phone service. Added3 Android account/network/concurrency/conflict tests and1 visible12-stage WPF flow; original23 Android/18 Windows/186 unit/Lint/12 server regressions rerun. Test-only changes keep1.16.21/386 and existing artifacts. See INTERACTIVE_VALIDATION_1.16.21.md for precise coverage, failed retries, backup restoration and unverified boundaries. Full OEM/Windows parity is not claimed; no push/publication/production change.
+
 
 ## Initial Product Request
 

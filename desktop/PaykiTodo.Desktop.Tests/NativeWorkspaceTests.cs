@@ -107,7 +107,7 @@ public sealed class NativeWorkspaceTests
                 desktop = new IsolatedDesktop();
                 var app = new System.Windows.Application();
                 var folder = NewDirectory(); var store = new DesktopSecureStore(folder); var document = DesktopSnapshotDocument.CreateEmpty();
-                document.SaveItem(NewItem(false, "论文实验结果整理"));
+                document.SaveItem(NewItem(false, "论文实验结果整理") with { DueAtMillis = Millis(DateTime.Today.AddHours(22)), ReminderEnabled = true, ReminderOffsets = new[] { 0 } });
                 document.SaveItem(NewItem(false, "阅读相关工作"));
                 document.SaveItem(NewItem(true, "讨论实验进展"));
                 document.SaveItem(NewItem(true, "阅读小组") with { StartAtMillis = Millis(DateTime.Today.AddDays(1).AddHours(10)), EndAtMillis = Millis(DateTime.Today.AddDays(1).AddHours(11)) });
@@ -122,6 +122,7 @@ public sealed class NativeWorkspaceTests
                 window.Measure(new System.Windows.Size(1280, 850)); window.Arrange(new Rect(0, 0, 1280, 850)); window.UpdateLayout();
                 var shotFolder = Environment.GetEnvironmentVariable("PAYKI_UI_EVIDENCE") ?? folder;
                 Directory.CreateDirectory(shotFolder);
+                VerifyTypography(window, shotFolder);
                 Screenshot(window, Path.Combine(shotFolder, "windows-board.png"));
                 Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "论文实验结果整理");
                 var completion = Descendants<System.Windows.Controls.CheckBox>(window).Single(control =>
@@ -156,6 +157,7 @@ public sealed class NativeWorkspaceTests
                     var button = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate." + page);
                     button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     window.UpdateLayout();
+                    Screenshot(window, Path.Combine(shotFolder, "windows-page-" + page + ".png"));
                     if (page == "待办") {
                         var group = Descendants<ComboBox>(window).Single(control => control.ItemsSource is IEnumerable<DesktopGroup>);
                         group.ApplyTemplate(); group.UpdateLayout();
@@ -283,7 +285,7 @@ public sealed class NativeWorkspaceTests
         var count = workspace.Document!.Items.Count;
         var canvas = Descendants<Canvas>(window).First(control => control.Tag is DateTime);
         canvas.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
-        Assert.Single(Descendants<Button>(window).Where(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Draft"));
+        Assert.Single(Descendants<Button>(window), button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Draft");
         Assert.Empty(window.OwnedWindows.Cast<Window>());
         var seed = ((DateTime)canvas.Tag).AddHours(9).AddMinutes(15);
         Private("ShowCalendarDraft", canvas, seed);
@@ -577,6 +579,31 @@ public sealed class NativeWorkspaceTests
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
+    private static void VerifyTypography(NativeWindow window, string folder)
+    {
+        var before = NativeUi.FixedLabel("每日看板", NativeUi.Ink).Data.ToString();
+        foreach (var wanted in new[] { "Microsoft YaHei UI", "HYQiHei 60S", "FZXiaoBiaoSong-B05S" }) {
+            var font = Fonts.SystemFontFamilies.FirstOrDefault(value => value.Source == wanted);
+            if (font == null) continue;
+            NativeUi.SetInterfaceFont(font.Source);
+            typeof(NativeWindow).GetMethod("BuildShell", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(window, null);
+            typeof(NativeWindow).GetMethod("Render", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(window, null);
+            window.UpdateLayout();
+            Assert.Equal(before, NativeUi.FixedLabel("每日看板", NativeUi.Ink).Data.ToString());
+            var title = Descendants<TextBlock>(window).Single(text => text.Text == "论文实验结果整理");
+            Assert.True(title.FontSize >= 18);
+            var face = new Typeface(title.FontFamily, title.FontStyle, title.FontWeight, title.FontStretch);
+            Assert.True(face.TryGetGlyphTypeface(out var glyph));
+            Assert.Equal(StyleSimulations.None, glyph.StyleSimulations);
+            Assert.DoesNotContain(Descendants<Button>(window), button => (button.Content as string)?.Contains("本周计划") == true);
+            Screenshot(window, Path.Combine(folder, "windows-font-" + wanted + ".png"));
+        }
+        NativeUi.SetInterfaceFont(null);
+        typeof(NativeWindow).GetMethod("BuildShell", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(window, null);
+        typeof(NativeWindow).GetMethod("Render", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(window, null);
+        window.UpdateLayout();
+    }
+
     private static string NewDirectory() => Path.Combine(Path.GetTempPath(), "PaykiTodo-tests", Guid.NewGuid().ToString("N"));
     internal static long Millis(DateTime time) => new DateTimeOffset(time).ToUnixTimeMilliseconds();
     internal static DesktopItemEdit NewItem(bool isEvent, string title) => new(isEvent, title, "", isEvent ? "研讨室" : "", null,

@@ -12,6 +12,7 @@ internal static class Program
         string? directory = null;
         if (args.Length == 2 && args[0] == "--data-directory") directory = Path.GetFullPath(args[1]);
         else if (args.Length != 0) throw new ArgumentException("Usage: PaykiTodo.exe [--data-directory <directory>]");
+        if (directory != null) DesktopDiagnosticLog.DirectoryPath = directory;
         app.Run(new NativeWindow(profileDirectory: directory));
     }
 }

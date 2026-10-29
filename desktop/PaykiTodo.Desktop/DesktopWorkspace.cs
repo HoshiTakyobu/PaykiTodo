@@ -65,7 +65,8 @@ internal sealed partial class DesktopWorkspace
         var document = same ? saved!.Value.Document : DesktopSnapshotDocument.CreateEmpty();
         var account = result.State with { Revision = same ? saved!.Value.State.Revision : 0,
             Dirty = same && saved!.Value.State.Dirty,
-            VerifiedDataFingerprint = same ? saved!.Value.State.VerifiedDataFingerprint : "" };
+            VerifiedDataFingerprint = same ? saved!.Value.State.VerifiedDataFingerprint : "",
+            SyncBaselineArchive = same ? saved!.Value.State.SyncBaselineArchive : null };
         if (!same && Document?.HasMeaningfulData == true) store.SaveSafetyCopy(Document);
         store.Save(account, document);
         accountGeneration++;
@@ -139,6 +140,8 @@ internal sealed partial class DesktopWorkspace
                 // current local cache, not the copy captured before the request.
                 result.Document.PreserveSharedData(Document!);
                 store.SaveSafetyCopy(Document!);
+                if (result.State.Dirty && result.State.SyncBaselineArchive != null)
+                    store.SaveSafetyCopy(DesktopSnapshotDocument.FromArchiveBytes(result.State.SyncBaselineArchive), "cloud");
             }
             var document = downloadedDocument ? result.Document : Document!;
             store.Save(result.State, document);
@@ -146,12 +149,13 @@ internal sealed partial class DesktopWorkspace
             Document = document;
             SessionExpired = false;
             Notify(result.Message);
+            if (result.State.Dirty) lock (syncRequestLock) syncRequested = true;
         }
         catch (Exception error)
         {
             if (error is CloudSessionExpiredException && generation == accountGeneration && !SessionExpired) { SessionExpired = true; LoginRequired?.Invoke(); }
             if (generation == accountGeneration) Notify(error is CloudRevisionConflictException
-                ? "本机与云端副本不同，未覆盖数据。打开设置→检查云端；较新内容在手机时，请在手机确认保留本机上传，然后电脑恢复云端。"
+                ? "部分修改无法自动合并，未覆盖数据。请在设置中检查云端和本机内容，再确认处理；双方恢复副本会保留。"
                 : "本地数据可继续使用；" + FriendlyError(error));
         }
     }
@@ -254,12 +258,12 @@ internal sealed partial class DesktopWorkspace
                 var document = DesktopSnapshotDocument.FromArchiveBytes(review.Remote.Document.ToArchiveBytes());
                 document.PreserveLocalApiKeys(Document);
                 document.PreserveSharedData(Document);
-                Account = Account with { Revision = revision, Dirty = false, VerifiedDataFingerprint = document.DataFingerprint() }; Document = document; editVersion++;
+                Account = Account with { Revision = revision, Dirty = false, VerifiedDataFingerprint = document.DataFingerprint(), SyncBaselineArchive = document.ToArchiveBytes(false, false) }; Document = document; editVersion++;
                 store.Save(Account, Document); Notify("已恢复云端副本；双方操作前副本已保留。");
             } else {
                 var version = editVersion; var generation = accountGeneration;
                 var snapshot = DesktopSnapshotDocument.FromArchiveBytes(Document.ToArchiveBytes());
-                var result = await CloudAccountSync.SyncAsync(Account with { Revision = revision, Dirty = true }, snapshot);
+                var result = await CloudAccountSync.SyncAsync(Account with { Revision = revision, Dirty = true, SyncBaselineArchive = null }, snapshot);
                 if (generation != accountGeneration || Account == null || Document == null) return;
                 Account = result.State with { Dirty = version != editVersion && !snapshot.HasSamePersonalSyncContent(Document) };
                 store.Save(Account, Document); Notify("本机副本已上传；双方操作前副本已保留。");

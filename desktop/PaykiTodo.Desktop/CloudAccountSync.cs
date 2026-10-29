@@ -21,6 +21,7 @@ internal sealed record CloudAccountState(
 ) {
     public bool LocalAccessLocked { get; init; }
     public string VerifiedDataFingerprint { get; init; } = "";
+    public byte[]? SyncBaselineArchive { get; init; }
 }
 
 internal sealed record CloudAuthenticationResult(CloudAccountState State, long RemoteRevision);
@@ -118,6 +119,16 @@ internal static class CloudAccountSync
         var fingerprint = localDocument.DataFingerprint();
         if (!state.Dirty && state.VerifiedDataFingerprint.Length > 0 && state.VerifiedDataFingerprint != fingerprint)
             state = state with { Dirty = true };
+        DesktopSnapshotDocument? baseline = null;
+        if (state.SyncBaselineArchive != null) {
+            try { baseline = DesktopSnapshotDocument.FromArchiveBytes(state.SyncBaselineArchive); }
+            catch { /* An unreadable baseline cannot authorize a merge. */ }
+        }
+        if (baseline == null && !state.Dirty && state.VerifiedDataFingerprint == fingerprint) {
+            baseline = localDocument;
+            state = state with { SyncBaselineArchive = localDocument.ToArchiveBytes(false, false) };
+        }
+        if (state.Dirty && baseline != null && localDocument.SameSyncContent(baseline)) state = state with { Dirty = false };
         var remoteRevision = await GetRemoteRevisionAsync(state, cancellationToken);
         if (!state.Dirty && state.VerifiedDataFingerprint.Length == 0 && remoteRevision > 0 && localDocument.HasMeaningfulData) {
             var checkedCloud = await DownloadAsync(state, cancellationToken);
@@ -125,17 +136,21 @@ internal static class CloudAccountSync
         }
         if (remoteRevision > state.Revision)
         {
-            if (state.Dirty) throw new CloudRevisionConflictException(remoteRevision);
             var downloaded = await DownloadAsync(state, cancellationToken);
-            downloaded.Document.PreserveLocalApiKeys(localDocument);
-            downloaded.Document.PreserveSharedData(localDocument);
-            var nextState = state with { Revision = downloaded.Revision, Dirty = false, VerifiedDataFingerprint = downloaded.Document.DataFingerprint() };
-            return new CloudSyncResult(nextState, downloaded.Document, $"已拉取云端版本 {downloaded.Revision}");
+            var document = !state.Dirty || localDocument.SameSyncContent(downloaded.Document) ? downloaded.Document
+                : baseline == null ? null : DesktopSnapshotDocument.MergePersonal(baseline, localDocument, downloaded.Document);
+            if (document == null) throw new CloudRevisionConflictException(downloaded.Revision);
+            var pending = !document.SameSyncContent(downloaded.Document);
+            var archive = downloaded.Document.ToArchiveBytes(false, false);
+            document.PreserveLocalApiKeys(localDocument);
+            document.PreserveSharedData(localDocument);
+            var nextState = state with { Revision = downloaded.Revision, Dirty = pending, VerifiedDataFingerprint = document.DataFingerprint(), SyncBaselineArchive = archive };
+            return new CloudSyncResult(nextState, document, pending ? "已自动合并双方修改，正在上传" : $"已拉取云端版本 {downloaded.Revision}");
         }
         if (remoteRevision < state.Revision)
             throw new InvalidOperationException("云端版本低于本机同步记录，已停止同步以避免覆盖");
         if (!state.Dirty)
-            return new CloudSyncResult(state with { VerifiedDataFingerprint = fingerprint }, localDocument, $"{DateTime.Now:HH:mm:ss} 已核对云端版本 {state.Revision} · 本机无待上传修改（其他设备须先上传）");
+            return new CloudSyncResult(state with { VerifiedDataFingerprint = fingerprint, SyncBaselineArchive = state.SyncBaselineArchive ?? localDocument.ToArchiveBytes(false, false) }, localDocument, $"{DateTime.Now:HH:mm:ss} 已核对云端版本 {state.Revision} · 本机无待上传修改（其他设备须先上传）");
 
         var encrypted = SnapshotCrypto.Encrypt(localDocument.ToArchiveBytes(includeSecrets: false, includeShared: false), state.EncryptionSecret);
         using var request = AuthorizedRequest(state, HttpMethod.Put, "/v2/sync/snapshot");
@@ -152,7 +167,7 @@ internal static class CloudAccountSync
         }
         EnsureSuccess(response, result.RootElement);
         var revision = result.RootElement.GetProperty("revision").GetInt64();
-        var uploadedState = state with { Revision = revision, Dirty = false, VerifiedDataFingerprint = fingerprint };
+        var uploadedState = state with { Revision = revision, Dirty = false, VerifiedDataFingerprint = fingerprint, SyncBaselineArchive = localDocument.ToArchiveBytes(false, false) };
         return new CloudSyncResult(uploadedState, localDocument, $"本机修改已上传为版本 {revision}");
     }
 

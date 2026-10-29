@@ -8,6 +8,106 @@ namespace PaykiTodo.Desktop.Tests;
 
 public sealed class SyncReliabilityTests
 {
+    private static System.Text.Json.Nodes.JsonArray Rows(DesktopSnapshotDocument document) =>
+        (System.Text.Json.Nodes.JsonArray)typeof(DesktopSnapshotDocument).GetProperty("Tasks", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(document)!;
+
+    [Fact]
+    public async Task RestartedOfflineCopiesAutomaticallyMergeIndependentEditsAndConverge()
+    {
+        using var server = new SnapshotServer();
+        var firstStore = Store(server.Url); var first = new DesktopWorkspace(firstStore);
+        first.Edit(d => { d.SaveItem(NativeWorkspaceTests.NewItem(false, "A")); d.SaveItem(NativeWorkspaceTests.NewItem(false, "B")); });
+        await first.SyncAsync();
+        var secondStore = Store(server.Url); var second = new DesktopWorkspace(secondStore); await second.SyncAsync();
+        var offline = secondStore.Load()!.Value;
+        offline.Document.Complete(offline.Document.Items.Single(i => i.Title == "B").Id);
+        secondStore.Save(offline.State with { Dirty = true }, offline.Document);
+        first.Edit(d => d.Complete(d.Items.Single(i => i.Title == "A").Id)); await first.SyncAsync();
+        var restarted = new DesktopWorkspace(secondStore); await restarted.SyncAsync(); await first.SyncAsync();
+        Assert.All(first.Document!.Items, i => Assert.True(i.Completed));
+        Assert.All(secondStore.Load()!.Value.Document.Items, i => Assert.True(i.Completed));
+        Assert.False(restarted.Account!.Dirty); Assert.Equal(server.Revision, first.Account!.Revision);
+        Assert.NotNull(secondStore.Load()!.Value.State.SyncBaselineArchive);
+    }
+
+    [Fact]
+    public async Task DelayedDirtyFlagDoesNotTurnCloudCompletionIntoConflictOrRedundantUpload()
+    {
+        using var server = new SnapshotServer();
+        var store = Store(server.Url); var first = new DesktopWorkspace(store);
+        first.Edit(d => d.SaveItem(NativeWorkspaceTests.NewItem(false, "完成"))); await first.SyncAsync();
+        var second = new DesktopWorkspace(Store(server.Url)); await second.SyncAsync();
+        var saved = store.Load()!.Value;
+        store.Save(saved.State with { Dirty = true }, saved.Document);
+        second.Edit(d => d.Complete(d.Items.Single().Id)); await second.SyncAsync();
+        var revision = server.Revision;
+        var reopened = new DesktopWorkspace(store); await reopened.SyncAsync();
+        Assert.True(reopened.Document!.Items.Single().Completed); Assert.False(reopened.Account!.Dirty);
+        Assert.Equal(revision, server.Revision);
+    }
+
+    [Fact]
+    public void PassiveMissedAndSnoozeMergeWithExplicitCompletionInBothDirections()
+    {
+        var baseline = DesktopSnapshotDocument.CreateEmpty();
+        baseline.SaveItem(NativeWorkspaceTests.NewItem(false, "19:30"));
+        var local = DesktopSnapshotDocument.FromArchiveBytes(baseline.ToArchiveBytes());
+        Rows(local)[0]!["missed"] = true; Rows(local)[0]!["missedAtMillis"] = 120000L;
+        Rows(local)[0]!["reminderAtMillis"] = 110000L; Rows(local)[0]!["reminderEnabled"] = false;
+        var remote = DesktopSnapshotDocument.FromArchiveBytes(baseline.ToArchiveBytes()); remote.Complete(remote.Items.Single().Id);
+        foreach (var (a, b) in new[] { (local, remote), (remote, local) }) {
+            var merged = DesktopSnapshotDocument.MergePersonal(baseline, a, b)!;
+            Assert.NotNull(merged); Assert.True(merged.Items.Single().Completed);
+            Assert.False(Rows(merged)[0]!["missed"]!.GetValue<bool>());
+            Assert.False(Rows(merged)[0]!["reminderEnabled"]!.GetValue<bool>());
+            Assert.Equal(110000L, Rows(merged)[0]!["reminderAtMillis"]!.GetValue<long>());
+        }
+    }
+
+    [Fact]
+    public async Task RealSameFieldConflictPreservesBothCopiesAcrossRepeatedPolls()
+    {
+        using var server = new SnapshotServer();
+        var aStore = Store(server.Url); var a = new DesktopWorkspace(aStore);
+        a.Edit(d => d.SaveItem(NativeWorkspaceTests.NewItem(false, "原始"))); await a.SyncAsync();
+        var b = new DesktopWorkspace(Store(server.Url)); await b.SyncAsync();
+        var saved = aStore.Load()!.Value; Rows(saved.Document)[0]!["title"] = "本机修改";
+        aStore.Save(saved.State with { Dirty = true }, saved.Document);
+        b.Edit(d => Rows(d)[0]!["title"] = "云端修改"); await b.SyncAsync();
+        var revision = server.Revision;
+        a = new DesktopWorkspace(aStore); await a.SyncAsync(); await a.SyncAsync();
+        Assert.Equal("本机修改", a.Document!.Items.Single().Title); Assert.True(a.Account!.Dirty);
+        Assert.Equal(revision, server.Revision);
+        Assert.Equal("云端修改", DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret")).Items.Single().Title);
+    }
+
+    [Fact]
+    public void CollidingNewIdsAndDeleteEditRemainConflicts()
+    {
+        var baseline = DesktopSnapshotDocument.CreateEmpty();
+        var a = DesktopSnapshotDocument.FromArchiveBytes(baseline.ToArchiveBytes());
+        var b = DesktopSnapshotDocument.FromArchiveBytes(baseline.ToArchiveBytes());
+        a.SaveItem(NativeWorkspaceTests.NewItem(false, "A")); b.SaveItem(NativeWorkspaceTests.NewItem(false, "B"));
+        // Force the same database-local identity regardless of clock-based allocation.
+        Rows(b)[0]!["id"] = Rows(a)[0]!["id"]!.DeepClone();
+        Assert.Null(DesktopSnapshotDocument.MergePersonal(baseline, a, b));
+        baseline = DesktopSnapshotDocument.FromArchiveBytes(a.ToArchiveBytes());
+        Rows(a).Clear(); b = DesktopSnapshotDocument.FromArchiveBytes(baseline.ToArchiveBytes()); Rows(b)[0]!["title"] = "edited";
+        Assert.Null(DesktopSnapshotDocument.MergePersonal(baseline, a, b));
+    }
+
+    [Fact]
+    public void RepeatedCompletionRetainsFirstTimestamp()
+    {
+        var baseline = DesktopSnapshotDocument.CreateEmpty(); baseline.SaveItem(NativeWorkspaceTests.NewItem(false, "same action"));
+        var a = DesktopSnapshotDocument.FromArchiveBytes(baseline.ToArchiveBytes());
+        var b = DesktopSnapshotDocument.FromArchiveBytes(baseline.ToArchiveBytes());
+        a.Complete(a.Items.Single().Id); b.Complete(b.Items.Single().Id);
+        Rows(a)[0]!["completedAtMillis"] = 10L; Rows(b)[0]!["completedAtMillis"] = 20L;
+        var merged = DesktopSnapshotDocument.MergePersonal(baseline, a, b)!;
+        Assert.Equal(10L, Rows(merged)[0]!["completedAtMillis"]!.GetValue<long>());
+    }
+
     [Fact]
     public async Task SharedEventEditKeepsPersonalSnapshotWhilePersonalSettingsStillSync()
     {

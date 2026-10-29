@@ -64,7 +64,9 @@ class AccountSyncAcceptanceTest {
         coordinator = RemoteSyncCoordinator(app, store, server); replace(coordinator)
         control("""{"outage":false,"holdUpload":false,"holdDownload":false,"release":true}""")
         store.clearRemoteAccount()
-        app.repository.importSnapshot(original.copy(tasks = emptyList(), quickChecklistGroups = emptyList(), planningNotes = emptyList(), planningNodes = emptyList(), planningLineMappings = emptyList()), notify = false)
+        app.repository.importSnapshot(original.copy(tasks = emptyList(), templates = emptyList(), quickChecklistGroups = emptyList(),
+            todoGroupTags = emptyList(), eventCheckIns = emptyList(), recurringInstanceSkips = emptyList(), activityRecords = emptyList(),
+            planningNotes = emptyList(), planningNodes = emptyList(), planningLineMappings = emptyList()), notify = false)
         val result = coordinator.register(username, "Sync fixture", password)
         assertTrue(result.error, result.succeeded)
     }
@@ -159,13 +161,13 @@ class AccountSyncAcceptanceTest {
         screen!!.onActivity { activity -> activity.setContent {
             MaterialTheme {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                    com.example.todoalarm.ui.AccountSettingsPanel(store.currentSettings(), {})
+                    com.example.todoalarm.ui.AccountSettingsPanel(store.currentSettings(), {}, refreshProfileOnOpen = false)
                 }
             }
         } }
         suspend fun click(label: String) {
             repeat(20) {
-                val node = visibleNodes().firstOrNull { it.text?.toString() == label && it.isVisibleToUser }
+                val node = visibleNodes().firstOrNull { it.text?.toString() == label && it.isVisibleToUser && it.isEnabled }
                 if (node != null) { tap(node); delay(400); stage("UI", "Clicked $label"); return }
                 shell("input swipe 540 1900 540 800 400"); delay(150)
             }
@@ -238,16 +240,18 @@ class AccountSyncAcceptanceTest {
         control("""{"holdDownload":false,"release":true}""")
         download.await()
         assertTrue(app.repository.getAllTodos().any { it.title == "download in flight" })
-        assertFalse(app.repository.getAllTodos().any { it.title == "cloud replacement" })
-        assertTrue(store.currentSettings().remoteSyncDirty)
-        stage("S05", "Delayed cloud download refuses to replace new local writes; conflict retained")
+        until { coordinator.syncNow(); !store.currentSettings().remoteSyncDirty }
+        assertTrue(remote().tasks.any { it.title == "download in flight" })
+        assertTrue(remote().tasks.any { it.title == "cloud replacement" })
+        stage("S05", "Delayed cloud download preserves in-flight edits; a subsequent safe merge retains both copies")
 
         val stale = coordinator.inspectCloud()
         add("changed after review")
         assertNotNull(runCatching { coordinator.resolveCloud(stale, false) }.exceptionOrNull())
+        until { coordinator.syncNow(); !store.currentSettings().remoteSyncDirty }
         val reviewed = coordinator.inspectCloud()
         coordinator.resolveCloud(reviewed, false)
-        assertEquals("cloud replacement", app.repository.getAllTodos().single().title)
+        assertEquals(reviewed.snapshot.tasks.map { it.title }.sorted(), app.repository.getAllTodos().map { it.title }.sorted())
         coordinator.restoreNewestSafetyCopy()
         assertTrue(app.repository.getAllTodos().any { it.title == "changed after review" })
         // Restoring a safety copy intentionally queues an automatic upload.
@@ -359,6 +363,65 @@ class AccountSyncAcceptanceTest {
         assertTrue(coordinator.syncNow() is RemoteSyncResult.UpToDate)
     }
 
+    @Test fun delayedDirtyAndIndependentOfflineChangesReconcileAfterRestart() = runBlocking {
+        val first = add("first task")
+        val second = add("second task")
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        coordinator.stop()
+        val base = app.repository.exportSnapshot(store.currentSettings())
+        publish(base.copy(tasks = base.tasks.map { if (it.id == first.id) it.copy(completed = true, completedAtMillis = 123) else it }))
+        // Simulate a queued callback after the previous acknowledged write.
+        store.markRemoteSyncDirty()
+        coordinator = RemoteSyncCoordinator(app, store, server); replace(coordinator)
+        assertTrue(coordinator.syncNow() is RemoteSyncResult.Downloaded)
+        assertTrue(app.repository.getTodo(first.id)!!.completed)
+        assertFalse(store.currentSettings().remoteSyncDirty)
+
+        val nextBase = app.repository.exportSnapshot(store.currentSettings())
+        publish(nextBase.copy(tasks = nextBase.tasks.map { if (it.id == first.id) it.copy(title = "cloud title") else it }))
+        app.repository.importSnapshot(nextBase.copy(tasks = nextBase.tasks.map { if (it.id == second.id) it.copy(completed = true, completedAtMillis = 456) else it }), notify = false)
+        store.markRemoteSyncDirty()
+        coordinator = RemoteSyncCoordinator(app, store, server); replace(coordinator)
+        assertTrue(coordinator.syncNow() is RemoteSyncResult.Downloaded)
+        until { coordinator.syncNow(); !store.currentSettings().remoteSyncDirty }
+        assertEquals("cloud title", remote().tasks.single { it.id == first.id }.title)
+        assertTrue(remote().tasks.single { it.id == second.id }.completed)
+        stage("M01", "Persisted baseline survives restart, delayed dirty allows download, independent offline edits merge and upload automatically")
+    }
+
+    @Test fun snoozeMissedAndCloudCompletionAutomaticallyConverge() = runBlocking {
+        val task = add("completion versus passive missed")
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        coordinator.stop()
+        val base = app.repository.exportSnapshot(store.currentSettings())
+        publish(base.copy(tasks = base.tasks.map { if (it.id == task.id) it.copy(completed = true, completedAtMillis = 123) else it }))
+        app.repository.importSnapshot(base.copy(tasks = base.tasks.map { if (it.id == task.id) it.copy(
+            reminderAtMillis = System.currentTimeMillis() - 10000, missed = true, missedAtMillis = System.currentTimeMillis()) else it }), notify = false)
+        store.markRemoteSyncDirty()
+        assertTrue(coordinator.syncNow() is RemoteSyncResult.Downloaded)
+        until { coordinator.syncNow(); !store.currentSettings().remoteSyncDirty }
+        val result = remote().tasks.single { it.id == task.id }
+        assertTrue(result.completed); assertFalse(result.missed); assertFalse(result.reminderEnabled)
+        stage("M02", "Phone snooze/passive missed and cloud explicit completion converge without a review choice")
+    }
+
+    @Test fun diagnosticLogDuringDownloadIsNotALocalEdit() = runBlocking {
+        val task = add("log-only concurrency")
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        coordinator.stop()
+        val base = app.repository.exportSnapshot(store.currentSettings())
+        publish(base.copy(tasks = base.tasks.map { if (it.id == task.id) it.copy(completed = true, completedAtMillis = 123) else it }))
+        control("""{"holdDownload":true}""")
+        val downloading = async(Dispatchers.IO) { coordinator.syncNow() }
+        until { state().optBoolean("entered") }
+        app.repository.addReminderChainLog(ReminderChainLog(todoId = task.id, chainKey = "fixture", source = "test", stage = "SCHEDULED", status = "OK"))
+        control("""{"holdDownload":false,"release":true}""")
+        assertTrue(downloading.await() is RemoteSyncResult.Downloaded)
+        assertTrue(app.repository.getTodo(task.id)!!.completed)
+        assertFalse(store.currentSettings().remoteSyncDirty)
+        stage("M03", "A reminder diagnostic written during a held cloud download does not block the completion")
+    }
+
     private suspend fun add(title: String): TodoItem {
         val generation = store.remoteChangeGeneration()
         val item = app.repository.addTodo(TodoItem(title = title, dueAtMillis = Long.MAX_VALUE,
@@ -367,7 +430,10 @@ class AccountSyncAcceptanceTest {
         until { store.remoteChangeGeneration() > generation }
         return item
     }
-    private suspend fun until(predicate: suspend () -> Boolean) { repeat(750) { if (predicate()) return; delay(100) }; error("Local sync fixture timeout") }
+    private suspend fun until(predicate: suspend () -> Boolean) {
+        repeat(750) { if (predicate()) return; delay(100) }
+        error("Local sync fixture timeout; tasks=${app.repository.getAllTodos().map { it.title }}; ui=${runCatching { visibleNodes().mapNotNull { it.text?.toString() } }.getOrNull()}; sync=${store.currentSettings().remoteSyncLastError}")
+    }
     private fun replace(value: RemoteSyncCoordinator) {
         val lazy = TodoApplication::class.java.getDeclaredField("remoteSyncCoordinator\$delegate").apply { isAccessible = true }.get(app)
         lazy.javaClass.getDeclaredField("_value").apply { isAccessible = true }.set(lazy, value)

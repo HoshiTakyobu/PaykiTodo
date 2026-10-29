@@ -2,7 +2,13 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current Android fix: 1.17.6 / 398
+## Current local fix: 1.17.7 / 399
+
+Android and Windows persist acknowledged account/server-bound personal snapshots for conservative three-way reconciliation. Independent records and noncompeting settings merge automatically; task lifecycle actions can merge with snooze/passive missed state. Repeated identical completion/cancellation keeps the earliest action time and finished items cannot retain enabled reminders. Competing edits within a task's content/schedule section, opposite explicit actions, delete/edit, new-ID collisions and broken references remain conflicts. No baseline means no automatic choice between divergent legacy copies.
+
+Both sides retain recovery copies before applying merged data and continue uploading remaining local changes with revision checks. No-change callbacks and Android diagnostic writes no longer alone block synchronization. Existing shared-data/account isolation remains. 237 units, 9 account device checks, a live packaged Windows bridge, 71 Windows regressions plus isolated UIA and MSI lifecycle passed within [documented scope](VALIDATION_1.17.7.md). The user's same-signature Release phone upgrade and backed-up production recovery are complete; APK/MSI/portable copies are in `Deliverables/PaykiTodo/1.17.7`.
+
+## Previous Android fix: 1.17.6 / 398
 
 Snapshot export reads related database tables in one transaction so concurrent replacement cannot mix old groups with new tasks. New regression reproduces the previous invalid relationship; nested sync export and checklist archive roundtrips remain valid. Automatic-backup compression/file I/O remains separate from the snapshot read.
 

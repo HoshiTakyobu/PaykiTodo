@@ -407,7 +407,7 @@ class AppSettingsStore(context: Context) {
     fun markRemoteSyncConflict(remoteRevision: Long) {
         preferences.edit()
             .putLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, remoteRevision.coerceAtLeast(0L))
-            .putString(KEY_REMOTE_SYNC_LAST_ERROR, "云端与本机都有更新：请在账号中检查云端并恢复，或确认保留本机上传；操作前会保存恢复副本")
+            .putString(KEY_REMOTE_SYNC_LAST_ERROR, "部分修改无法自动合并，已保留双方数据。请检查云端后选择恢复或保留本机；操作前会保存恢复副本")
             .apply()
         refresh()
     }

@@ -12,6 +12,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+Android 1.17.7/399 and Windows 1.17.7.0 fix recurring whole-snapshot conflicts with persisted acknowledged copies and conservative three-way reconciliation. Independent edits and completion versus snooze/passive missed changes merge; ambiguous divergence or missing baselines remain protected. 237 units, 9 account device cases, 1 live-window bridge, 71 Windows regressions plus isolated UIA and MSI lifecycle passed after documented targeted retries. The user's Release phone was backed up, upgraded with the same certificate, reconciled and verified against production; later automatic upload/restart remained healthy. Original emulator user 0/10 hashes and normal Windows data remain unchanged. Packages: `Deliverables/PaykiTodo/1.17.7`; [validation](VALIDATION_1.17.7.md). No push/public release/server-code deployment; other physical Windows UI was not inspected.
+
+### Previous 1.17.6 snapshot consistency
+
 Android 1.17.6/398 fixes a reproducible mixed-generation database export during concurrent edits. The repository now captures related tables transactionally, without moving automatic-backup file I/O into the read transaction. 229 units, Lint, 31 targeted emulator checks and an existing packaged Windows compatibility check passed. Signed APK/Debug delivery: `Deliverables/PaykiTodo/1.17.6`; Windows remains 1.17.5.0. User 0/10 file hashes are unchanged, test user 11 backed up, fixtures stopped. [Validation](VALIDATION_1.17.6.md). Local commit only; public release remains v1.15.18.
 
 ### Previous 1.17.5 visual and live-sync work

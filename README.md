@@ -22,7 +22,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | Android `v1.17.6`（本地修复版，尚未发布）；Windows `v1.17.5` |
+| 当前源码版本 | Android / Windows `v1.17.7`（本地修复版，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
@@ -33,7 +33,13 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 | 最新 Release APK 下载 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.15.18/PaykiTodo-1.15.18-release.apk> |
 
 
-## 1.17.6 使用变化
+## 1.17.7 使用变化
+
+- 手机和Windows保存已确认的同步副本，自动合并不同事项的改动；完成/取消可以与延后、自动标记错过合并，减少反复整包选择。
+- 同一内容的竞争修改、删除与编辑、冲突编号，以及没有确认基线的旧分歧仍需检查后处理；合并和替换前保留恢复副本。
+- 修复诊断日志与无实际改动的延迟通知造成的同步误报。双端请升级到1.17.7；新版Android签名APK、Windows MSI及便携版均已构建。验证和边界见 [1.17.7验收记录](docs/current/VALIDATION_1.17.7.md)，公开GitHub Release仍为 `v1.15.18`。
+
+### 1.17.6 延续修复
 
 - 修复连续修改时，备份/导出可能混用旧分组与新待办的问题：关联表现在读取自同一个数据库事务。
 - 自动备份仍在后台压缩和写文件；已验证新 Android 与已打开的 Windows 1.17.5 自动同步、持久化及现有冲突保护。

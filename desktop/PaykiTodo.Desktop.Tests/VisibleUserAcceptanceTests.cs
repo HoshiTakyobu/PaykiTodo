@@ -251,9 +251,10 @@ public sealed class VisibleUserAcceptanceTests
                     }
                     Assert.True(workspace.Document.Items.Single(i => i.Title == "Visible expired reminder").Completed, "Physical completion click must persist the task state");
                     Stage("W09", "Expired-account offline timer opens reminder; completion updates local task");
+                    var beforeLogout = workspace.Document.DataFingerprint();
                     await ButtonClick("账号与同步"); await ButtonClick("退出登录"); await ConfirmSystemDialog();
                     Assert.Null(workspace.Document); Assert.Null(new DesktopWorkspace(store).Document);
-                    Assert.Contains(store.Load()!.Value.Document.Items, i => i.Title == "Visible keyboard todo");
+                    Assert.Equal(beforeLogout, store.Load()!.Value.Document.DataFingerprint());
                     Stage("W10", "Actual logout confirmation locks workspace on disk without deleting tasks");
                     Assert.Contains(UI(() => Descendants<TextBlock>(window).Select(text => text.Text).ToList()), text => text == "账号登录");
                     Assert.Contains(UI(() => Descendants<System.Windows.Controls.CheckBox>(window).Select(control => control.Content as string).ToList()), text => text == "记住账号");

@@ -15,6 +15,7 @@ import com.example.todoalarm.data.BackupArchiveCodec
 import com.example.todoalarm.data.BackupSnapshot
 import com.example.todoalarm.data.personalSyncSnapshot
 import com.example.todoalarm.data.withSharedCacheFrom
+import com.example.todoalarm.data.PersonalSnapshotMerge
 import com.example.todoalarm.widget.TodoWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,6 +81,7 @@ class RemoteSyncCoordinator(
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     @Volatile private var accountGeneration = 0L
     private var lastContentAuditAt = 0L
+    private val baselines = SyncBaselineStore(File(app.filesDir, "sync-baselines"))
     private data class Download(val snapshot: BackupSnapshot, val revision: Long)
     data class CloudReview(val snapshot: BackupSnapshot, val revision: Long, val localFingerprint: String, val accountGeneration: Long)
 
@@ -421,9 +423,16 @@ class RemoteSyncCoordinator(
             settings = settingsStore.currentSettings()
         }
 
-        if (settings.remoteSyncDirty && settings.remoteSyncConflictRevision > 0L) {
-            settingsStore.markRemoteSyncConflict(maxOf(remoteRevision, settings.remoteSyncConflictRevision))
-            return RemoteSyncResult.Conflict(remoteRevision)
+        var baseline = baselines.read(serverUrl, settings.remoteSyncUsername, settings.remoteSyncSecret, localRevision)
+        if (baseline == null && !settings.remoteSyncDirty && previousFingerprint == fingerprint) {
+            rememberBaseline(localRevision, localBefore)
+            baseline = localBefore
+        }
+        // Delayed database callbacks can arrive after a completed download. The
+        // flag alone is not an edit: compare acknowledged content including settings.
+        if (settings.remoteSyncDirty && baseline != null && PersonalSnapshotMerge.same(localBefore, baseline)) {
+            settingsStore.markRemoteSyncSuccess(localRevision, generation, fingerprint)
+            settings = settingsStore.currentSettings()
         }
 
         // Older builds may have a clean flag without an acknowledged content hash.
@@ -438,27 +447,37 @@ class RemoteSyncCoordinator(
         }
 
         if (remoteRevision > localRevision) {
-            if (settings.remoteSyncDirty) {
-                settingsStore.markRemoteSyncConflict(remoteRevision)
-                return RemoteSyncResult.Conflict(remoteRevision)
-            }
             val downloaded = downloadAccountSnapshot(serverUrl, accessToken, settings.remoteSyncSecret)
-            val snapshot = downloaded.snapshot
+            val remote = downloaded.snapshot
+            val snapshot = if (!settings.remoteSyncDirty || PersonalSnapshotMerge.same(localBefore, remote)) remote
+                else baseline?.let { PersonalSnapshotMerge.merge(it, localBefore, remote) }
+            if (snapshot == null) {
+                settingsStore.markRemoteSyncConflict(downloaded.revision)
+                return RemoteSyncResult.Conflict(downloaded.revision)
+            }
+            var appliedSuccessfully = false
             app.database.withTransaction {
                 if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return@withTransaction
                 val current = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
-                if (generation != settingsStore.remoteChangeGeneration() || BackupArchiveCodec.contentFingerprint(current) != BackupArchiveCodec.contentFingerprint(localBefore)) {
+                if (!PersonalSnapshotMerge.same(current, localBefore)) {
                     settingsStore.markRemoteSyncDirty()
                     settingsStore.markRemoteSyncConflict(downloaded.revision)
                     return@withTransaction
                 }
                 saveSafetyCopy(current, "before-cloud")
+                if (settings.remoteSyncDirty) saveSafetyCopy(remote, "cloud-before-merge")
                 applyRemoteSnapshot(snapshot)
                 val applied = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
+                val hasLocalChanges = !PersonalSnapshotMerge.same(snapshot, remote)
+                rememberBaseline(downloaded.revision, if (hasLocalChanges) remote else applied)
                 settingsStore.markRemoteSyncSuccess(downloaded.revision, generation, BackupArchiveCodec.dataFingerprint(applied))
+                if (hasLocalChanges) settingsStore.markRemoteSyncDirty()
+                appliedSuccessfully = true
             }
             if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
-            if (settingsStore.currentSettings().remoteSyncDirty) return RemoteSyncResult.Conflict(remoteRevision)
+            if (!appliedSuccessfully) return RemoteSyncResult.Conflict(remoteRevision)
+            app.repository.ensureRecurringInstancesAhead()
+            if (settingsStore.currentSettings().remoteSyncDirty) requestLocalSync()
             return RemoteSyncResult.Downloaded(downloaded.revision)
         }
         if (remoteRevision < localRevision) {
@@ -466,8 +485,13 @@ class RemoteSyncCoordinator(
             return RemoteSyncResult.Failed("云端版本低于本机记录，已停止同步以避免覆盖")
         }
         if (!settings.remoteSyncDirty) {
+            if (baseline == null) rememberBaseline(localRevision, localBefore)
             settingsStore.markRemoteSyncSuccess(localRevision, generation, fingerprint)
             return RemoteSyncResult.UpToDate(localRevision)
+        }
+        if (settings.remoteSyncConflictRevision > 0L) {
+            settingsStore.markRemoteSyncConflict(maxOf(remoteRevision, settings.remoteSyncConflictRevision))
+            return RemoteSyncResult.Conflict(remoteRevision)
         }
 
         val snapshot = localBefore
@@ -478,6 +502,7 @@ class RemoteSyncCoordinator(
             return RemoteSyncResult.Conflict(upload.conflictRevision)
         }
         if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) {
+            rememberBaseline(upload.revision, snapshot)
             settingsStore.markRemoteSyncSuccess(upload.revision, generation, fingerprint)
         }
         return RemoteSyncResult.Uploaded(snapshot.exportedAtMillis, upload.revision)
@@ -506,7 +531,7 @@ class RemoteSyncCoordinator(
             val remote = downloadAccountSnapshot(cloudServerUrl(), token, settings.remoteSyncSecret)
             val local = app.database.withTransaction { app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot() }
             check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已改变，请重新检查" }
-            CloudReview(remote.snapshot, remote.revision, BackupArchiveCodec.contentFingerprint(local), account)
+            CloudReview(remote.snapshot, remote.revision, PersonalSnapshotMerge.fingerprint(local), account)
         }
     }
 
@@ -524,12 +549,13 @@ class RemoteSyncCoordinator(
             val generation = settingsStore.remoteChangeGeneration()
             val local = app.database.withTransaction {
                 val current = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
-                require(BackupArchiveCodec.contentFingerprint(current) == review.localFingerprint) { "本机已有新修改，请重新检查后确认" }
+                require(PersonalSnapshotMerge.fingerprint(current) == review.localFingerprint) { "本机已有新修改，请重新检查后确认" }
                 saveSafetyCopy(current, "local-before-conflict")
                 if (!keepLocal) {
                     check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已退出" }
                     applyRemoteSnapshot(review.snapshot)
                     val applied = app.repository.exportSnapshot(settingsStore.currentSettings()).personalSyncSnapshot()
+                    rememberBaseline(review.revision, applied)
                     settingsStore.markRemoteSyncSuccess(review.revision, generation, BackupArchiveCodec.dataFingerprint(applied))
                 }
                 current
@@ -542,6 +568,7 @@ class RemoteSyncCoordinator(
                     error("云端又有更新，上传已停止；请重新检查")
                 }
                 if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) {
+                    rememberBaseline(result.revision, local)
                     settingsStore.markRemoteSyncSuccess(result.revision, generation, BackupArchiveCodec.dataFingerprint(local))
                     if (settingsStore.currentSettings().remoteSyncDirty) requestLocalSync()
                 }
@@ -589,9 +616,13 @@ class RemoteSyncCoordinator(
         val merged = snapshot.withSharedCacheFrom(sharedCache)
         app.repository.importSnapshot(merged, notify = false)
         settingsStore.replaceAll(merged.settings.withRemoteAccountFrom(current))
-        app.repository.ensureRecurringInstancesAhead()
         app.repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
         TodoWidgetProvider.notifyWidgetDataChanged(app)
+    }
+
+    private fun rememberBaseline(revision: Long, snapshot: BackupSnapshot) {
+        val settings = settingsStore.currentSettings()
+        baselines.write(cloudServerUrl(), settings.remoteSyncUsername, settings.remoteSyncSecret, revision, snapshot)
     }
 
     private fun AppSettings.withRemoteAccountFrom(current: AppSettings): AppSettings = copy(

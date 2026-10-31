@@ -1,5 +1,11 @@
 # Project Status
 
+## 2026-11-01 unpublished history verified
+
+远端83ff5cf之后的60个提交已在隔离副本脱敏并接回main，阶段归档HEAD为83e2a45；保留阶段顺序、作者/日期和恢复bundle。全部快照与消息复扫、127对变化blob及完整差异空白检查通过；最终469个实现/资源/工具/CI文件与已验收1.17.11完全一致，只有历史文档变化，未重建APK。详见[历史审计记录](PUBLIC_HISTORY_AUDIT_20261101.md)。
+
+Android1.17.11/403、Windows1.17.11.0、Room34保持。当前仅待循环课程绝对提醒选择及对应实现、新增提交复核和最终授权push；公开Release仍v1.15.18，远端main未改变，原目标未完成。下方历史阶段的未清理描述不覆盖本节。
+
 ## Current Baseline
 
 - 2026-11-01更新阶段已实施并验收：Android1.17.11/403、Windows1.17.11.0、Room34。两端稳定Release检查、手机系统下载与签名核对、桌面后台/灰度/增量重建及启动切换回退已实现，见[1.17.11验收](VALIDATION_1.17.11.md)。

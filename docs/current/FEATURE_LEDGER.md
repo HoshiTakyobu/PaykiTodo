@@ -2,6 +2,10 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
+## 2026-11-01 history audit
+
+60个未推送提交的文件与消息已脱敏并逐一复核，完整阶段历史和恢复bundle保留，最终实现/资源/工具/CI469文件与已验收1.17.11相同，见[审计](PUBLIC_HISTORY_AUDIT_20261101.md)。循环绝对提醒仍等待归属选择与相应实现，最终push尚未执行；下面“全部历史清理未做”仅描述旧阶段。
+
 ## Current update stage: 1.17.11 / 403
 
 双端稳定Release检查和手动入口完成；手机DownloadManager状态恢复/取消、正确APK与签名/包名/版本核对、系统安装入口完成。Windows实现稳定灰度、后台签名资产校验、变化文件增量及完整回退、基础启动器/独立版本目录/nonce确认/失败回退，MSI和便携目录包含后续增量基线。验收、失败修正和真实线上/手机安装边界见[1.17.11验收](VALIDATION_1.17.11.md)。尚待循环绝对提醒选择、全部未公开历史处理及授权推送。下面1.17.10规划阶段的“更新器待完成”只描述当时状态。

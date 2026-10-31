@@ -1,5 +1,7 @@
 # AI Recognition Verification
 
+Historical verification of the 1.8.x saved-document flow. Current 1.17.10+ planning opens a transient Daily Board draft, uses explicit local or optional AI recognition, and confirms editable candidates before importing without a new document. See [current input contract](planning-input/INPUT_CONTRACT_20261101.md) and [1.17.10 validation](VALIDATION_1.17.10.md); the old call-chain line numbers below are historical references.
+
 ## Scope
 
 This document verifies the PaykiTodo Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, clear local syntax should be handled locally first, and any AI result must still enter the preview-first import flow.

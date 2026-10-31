@@ -1,5 +1,17 @@
 # Session Handoff
 
+## 2026-11-01 未推送历史清理完成，继续剩余规划规则与最终推送
+
+按实际c8079df/Android1.17.11/403/Windows1.17.11.0/Room34恢复。最新完整bundle已验证且未覆盖旧备份；在隔离裸仓库重写远端83ff5cf之后的60个提交，保留路径/模式/作者/日期/顺序，接回main后的归档HEAD为83e2a45，更新功能提交为092afab，规划为6f8d24d。全部新快照及消息复扫无禁止参考/凭据特征命中，已识别地址无残留；URL复核保留合法来源/许可证/命名空间及测试语法。完整60提交差异通过git diff --check。
+
+- 127对变化blob按明确策略复核；最终仅6份历史文档变化，469个源码/资源/服务器/工具/CI文件与已验收1.17.11的Git对象完全一致。没有新构建，不重复旧套件。最新APK仍app/build/outputs/apk/debug/PaykiTodo-1.17.11-debug.apk；MSI/最终payload和交付目录见VALIDATION_1.17.11。
+- 审计证据、策略和完整映射在Scratch/PaykiTodo/history-scrub-20261101，仅私有保存；原始历史和最新bundle在Backups/PaykiTodo/unpublished-before-scrub-20261101。原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md哈希不变。首次候选漏掉裸域名，补查后第二候选通过；候选和原始记录均保留。
+- 循环绝对提醒仍未收到归属选择；当前定位报错并保留原文，不能复制给每次实例。本轮再次呈现最终两项选择，等待答复。先完成这个语义与对应验收，再复查新增提交并执行已授权main推送。
+- 远端main实查仍83ff5cf，公开Release仍v1.15.18；没有push/tag/Release/部署，原七项目标未完成。用户持续恢复指令有效，不新建goal，也不再次请求恢复许可。
+- 模拟器及真实手机、用户资料、更新签名私钥和已验收成品均未改动。下方所有“历史清理尚未开始”的段落是各旧阶段状态。
+
+公开范围与恢复说明见[历史审计记录](PUBLIC_HISTORY_AUDIT_20261101.md)。
+
 ## 2026-11-01 1.17.11 更新链路已实施，继续原七项目标
 
 核对起点5d54c96，保留预升版本和原未提交两行说明/历史Prompt。Android1.17.11/403、Windows1.17.11.0、Room34；两端GitHub稳定版本检查、手机DownloadManager/持久状态/取消/签名与版本校验/系统安装、Windows签名清单/稳定灰度/后台delta重建/full回退/独立启动器/nonce确认与启动失败回退完成。MSI及便携构建写入实际增量基线。详见VALIDATION_1.17.11和WINDOWS_UPDATE_PROTOCOL。

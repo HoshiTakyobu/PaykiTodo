@@ -81,11 +81,16 @@ internal sealed partial class DesktopSnapshotDocument
         Settings["planningAiProviders"] = new JsonArray(providers.Select(provider => provider.DeepClone()).ToArray());
         Settings["planningAiEnabled"] = true;
     }
-    public void AddReport(string content, string provider, bool weekly)
+    public void AddReport(string content, string provider, bool weekly, DesktopReportContext? context = null)
     {
         var reports = root["aiReports"]!.AsArray(); var now = DateTimeOffset.Now;
-        reports.Add(new JsonObject { ["id"] = NextId(reports), ["type"] = weekly ? "WEEKLY" : "DAILY", ["generatedAtMillis"] = now.ToUnixTimeMilliseconds(),
-            ["periodStartMillis"] = new DateTimeOffset(DateTime.Today.AddDays(weekly ? -6 : 0)).ToUnixTimeMilliseconds(),
-            ["periodEndMillis"] = now.ToUnixTimeMilliseconds(), ["content"] = content, ["providerName"] = provider, ["isLocalFallback"] = false });
+        context ??= ReportContext(weekly, now);
+        // Time-based identities do not reset to 1 after expiry emptied the array.
+        var id = Math.Max(NextId(reports), now.ToUnixTimeMilliseconds() * 1024 + System.Security.Cryptography.RandomNumberGenerator.GetInt32(1024));
+        reports.Add(new JsonObject { ["id"] = id, ["type"] = weekly ? "WEEKLY" : "DAILY", ["generatedAtMillis"] = now.ToUnixTimeMilliseconds(),
+            ["periodStartMillis"] = new DateTimeOffset(context.Start).ToUnixTimeMilliseconds(),
+            ["periodEndMillis"] = new DateTimeOffset(context.End).ToUnixTimeMilliseconds() - 1,
+            ["content"] = content, ["providerName"] = provider, ["isLocalFallback"] = false });
+        PurgeExpiredReports(includeWeekly: true);
     }
 }

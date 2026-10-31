@@ -24,6 +24,7 @@ internal sealed partial class DesktopSnapshotDocument
     {
         this.root = root;
         EnsureShape();
+        ReportsPrunedOnRead = PurgeExpiredReports() > 0;
     }
 
     public static DesktopSnapshotDocument CreateEmpty()
@@ -80,7 +81,8 @@ internal sealed partial class DesktopSnapshotDocument
     public byte[] ToArchiveBytes(bool includeSecrets = true, bool includeShared = true)
     {
         root["exportedAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var snapshot = includeSecrets && includeShared ? root : (JsonObject)root.DeepClone();
+        var snapshot = (JsonObject)root.DeepClone();
+        DesktopReportPolicy.RemoveExpired(snapshot, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         if (!includeShared) StripSharedData(snapshot);
         if (!includeSecrets && snapshot["settings"]?["planningAiProviders"] is JsonArray providers)
             foreach (var provider in providers.OfType<JsonObject>()) provider.Remove("apiKey");
@@ -111,6 +113,7 @@ internal sealed partial class DesktopSnapshotDocument
     {
         var data = (JsonObject)root.DeepClone();
         StripSharedData(data);
+        DesktopReportPolicy.RemoveExpired(data, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         data.Remove("exportedAtMillis"); data.Remove("settings"); data.Remove("reminderChainLogs");
         static JsonNode? Canonical(JsonNode? node) => node switch {
             JsonObject obj => new JsonObject(obj.OrderBy(pair => pair.Key, StringComparer.Ordinal)

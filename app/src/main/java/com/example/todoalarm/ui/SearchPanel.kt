@@ -78,6 +78,17 @@ internal fun SearchPanel(
     var errorText by remember { mutableStateOf<String?>(null) }
     val safeQuery = query.trim()
 
+    LaunchedEffect(rawResult.aiReports) {
+        val reports = rawResult.aiReports
+        while (true) {
+            val next = reports.filter { it.type == com.example.todoalarm.data.AiReportType.DAILY }
+                .minOfOrNull { com.example.todoalarm.data.AiReportPolicy.remainingMillis(it) } ?: break
+            delay(next.coerceIn(1, 60_000))
+            val visible = reports.filterNot { com.example.todoalarm.data.AiReportPolicy.isExpired(it) }
+            if (visible != reports) { rawResult = rawResult.copy(aiReports = visible); break }
+        }
+    }
+
     LaunchedEffect(safeQuery) {
         errorText = null
         if (safeQuery.isBlank()) {

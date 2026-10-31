@@ -2,10 +2,10 @@
 
 ## Current Baseline
 
-- 当前源码及本地阶段构建：Android `1.17.8 / versionCode 400`、Windows `1.17.8.0`，Room33。完成Windows设置左对齐、中文字体与12—22px字号预览、离线使用说明；其余2026-10-31体验更新仍在进行。
-- Android237单测及Lint通过（0错误/134警告/30提示）；Windows最终71项通过、2项环境夹具跳过，另1条14阶段隔离UIA通过；MSI真实1.17.7升级、修复、文件哈希、已安装EXE、卸载及用户数据保留通过。
-- 新成品在 `Deliverables/PaykiTodo/1.17.8`，含Debug APK、MSI、完整便携目录。没有1.17.8签名Release，也未升级真实手机；`desktop/dist`保持旧版。详见 [1.17.8验证](VALIDATION_1.17.8.md)。
-- 用户已授权整轮完成后推送；公开Release实查仍为v1.15.18。起始54个未推送提交的历史初筛发现待清理内容，尚未推送。规划语法讨论记录在 [p2a-session](planning-input/p2a-session/PLAN.md)。
+- 当前源码与本地成品：Android `1.17.9 / versionCode 401`、Windows `1.17.9.0`，Room33。报告共用提示规则和前后关联，日报生成满168小时过期；之前1.17.8的设置、中文字体/字号与离线说明继续保留。
+- 242 Android单测、Lint（0错误/134警告/30提示）、4项独立模拟器检查通过；Windows75项不同回归及另1条14阶段UIA通过，2项未启用联动夹具。新EXE实际启动验证、MSI构建与482文件校验通过，本阶段未重复MSI生命周期。
+- 成品在 `Deliverables/PaykiTodo/1.17.9`，含Debug、MSI与完整便携目录；无新签名Release、未升级真实手机，`desktop/dist`仍旧。见 [1.17.9验收](VALIDATION_1.17.9.md)。模拟器user0/10共794个文件哈希不变，user11测试数据另存备份；当前停在user10主页，应用已停止，模拟器恢复暂停。
+- 整轮七项需求仍进行中：统一规划、更新机制、所有未推送历史审计及最终推送待完成。公开Release仍为v1.15.18，尚未推送；用户已授权整轮完成后推送。规划决策见 [讨论](planning-input/p2a-session/PLAN.md)。
 
 ## Previous completed baseline: 1.17.7
 

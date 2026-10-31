@@ -85,6 +85,13 @@ class TodoApplication : Application() {
                 SafeStartupGuard.markStartupSuccessful(applicationContext)
             }
         }
+        applicationScope.launch {
+            while (true) {
+                try { com.example.todoalarm.alarm.AiReportExpiryJobService.monitor(this@TodoApplication) }
+                catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (error: Exception) { CrashLogger.recordNonFatal(error); delay(60_000) }
+            }
+        }
         remoteSyncCoordinator.start()
         calendarCollaboration.start()
         com.example.todoalarm.sync.AccountExpiryNotifier.schedule(this)

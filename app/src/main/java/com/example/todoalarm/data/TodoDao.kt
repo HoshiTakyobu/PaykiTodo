@@ -933,16 +933,17 @@ interface TodoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAiReports(reports: List<AiReport>): List<Long>
 
-    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
-    fun observeAiReports(limit: Int): Flow<List<AiReport>>
+    @Query("SELECT * FROM ai_reports WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis) ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
+    fun observeAiReports(limit: Int, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): Flow<List<AiReport>>
 
-    @Query("SELECT * FROM ai_reports WHERE type = :type ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
-    fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>>
+    @Query("SELECT * FROM ai_reports WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis) AND type = :type ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
+    fun observeAiReportsByType(type: AiReportType, limit: Int, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): Flow<List<AiReport>>
 
     @Query(
         """
         SELECT * FROM ai_reports
-        WHERE generatedAtMillis BETWEEN :startMillis AND :endMillis
+        WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis)
+        AND generatedAtMillis BETWEEN :startMillis AND :endMillis
         AND (
             :query = ''
             OR content LIKE '%' || :query || '%'
@@ -956,13 +957,13 @@ interface TodoDao {
         query: String,
         startMillis: Long,
         endMillis: Long,
-        limit: Int
-    ): Flow<List<AiReport>>
+        limit: Int, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): Flow<List<AiReport>>
 
     @Query(
         """
         SELECT * FROM ai_reports
-        WHERE type = :type
+        WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis)
+        AND type = :type
         AND generatedAtMillis BETWEEN :startMillis AND :endMillis
         AND (
             :query = ''
@@ -978,25 +979,25 @@ interface TodoDao {
         query: String,
         startMillis: Long,
         endMillis: Long,
-        limit: Int
-    ): Flow<List<AiReport>>
+        limit: Int, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): Flow<List<AiReport>>
 
-    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC")
-    suspend fun getAllAiReports(): List<AiReport>
+    @Query("SELECT * FROM ai_reports WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis) ORDER BY generatedAtMillis DESC, id DESC")
+    suspend fun getAllAiReports(dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): List<AiReport>
 
-    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
-    suspend fun getRecentAiReports(limit: Int): List<AiReport>
+    @Query("SELECT * FROM ai_reports WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis) ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
+    suspend fun getRecentAiReports(limit: Int, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): List<AiReport>
 
-    @Query("SELECT * FROM ai_reports WHERE type = :type ORDER BY generatedAtMillis DESC, id DESC")
-    suspend fun getAiReportsByType(type: AiReportType): List<AiReport>
+    @Query("SELECT * FROM ai_reports WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis) AND type = :type ORDER BY generatedAtMillis DESC, id DESC")
+    suspend fun getAiReportsByType(type: AiReportType, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): List<AiReport>
 
-    @Query("SELECT * FROM ai_reports WHERE id = :id LIMIT 1")
-    suspend fun getAiReportById(id: Long): AiReport?
+    @Query("SELECT * FROM ai_reports WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis) AND id = :id LIMIT 1")
+    suspend fun getAiReportById(id: Long, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): AiReport?
 
     @Query(
         """
         SELECT * FROM ai_reports
-        WHERE type = :type
+        WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis)
+        AND type = :type
         AND periodStartMillis = :periodStartMillis
         AND periodEndMillis = :periodEndMillis
         ORDER BY generatedAtMillis DESC, id DESC
@@ -1006,8 +1007,7 @@ interface TodoDao {
     suspend fun getAiReportForPeriod(
         type: AiReportType,
         periodStartMillis: Long,
-        periodEndMillis: Long
-    ): AiReport?
+        periodEndMillis: Long, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): AiReport?
 
     @Query("SELECT * FROM ai_reports WHERE generatedAtMillis < :cutoffMillis ORDER BY generatedAtMillis ASC")
     suspend fun getAiReportsBefore(cutoffMillis: Long): List<AiReport>
@@ -1015,22 +1015,32 @@ interface TodoDao {
     @Query(
         """
         SELECT * FROM ai_reports
-        WHERE content LIKE '%' || :query || '%'
-        OR providerName LIKE '%' || :query || '%'
+        WHERE (type != 'DAILY' OR generatedAtMillis > :dailyCutoffMillis)
+        AND (content LIKE '%' || :query || '%'
+        OR providerName LIKE '%' || :query || '%')
         ORDER BY generatedAtMillis DESC, id DESC
         LIMIT :limit
         """
     )
-    suspend fun searchAiReports(query: String, limit: Int): List<AiReport>
+    suspend fun searchAiReports(query: String, limit: Int, dailyCutoffMillis: Long = AiReportPolicy.dailyCutoff()): List<AiReport>
 
     @Query("DELETE FROM ai_reports WHERE id = :id")
     suspend fun deleteAiReport(id: Long)
 
-    @Query("DELETE FROM ai_reports WHERE generatedAtMillis < :cutoffMillis")
+    @Query("DELETE FROM ai_reports WHERE type = 'WEEKLY' AND generatedAtMillis <= :cutoffMillis")
     suspend fun purgeAiReportsBefore(cutoffMillis: Long): Int
 
     @Query("DELETE FROM ai_reports")
     suspend fun clearAiReports()
+
+    @Query("SELECT MIN(generatedAtMillis) FROM ai_reports WHERE type = 'DAILY'")
+    fun observeOldestDailyReportTime(): Flow<Long?>
+
+    @Query("SELECT * FROM ai_reports WHERE type = 'DAILY' AND generatedAtMillis <= :cutoffMillis")
+    suspend fun getExpiredDailyReports(cutoffMillis: Long): List<AiReport>
+
+    @Query("DELETE FROM ai_reports WHERE type = 'DAILY' AND generatedAtMillis <= :cutoffMillis")
+    suspend fun purgeExpiredDailyReports(cutoffMillis: Long): Int
 
     // Kept only so pre-1.15.2 backups containing historical records remain restorable.
     @Insert(onConflict = OnConflictStrategy.REPLACE)

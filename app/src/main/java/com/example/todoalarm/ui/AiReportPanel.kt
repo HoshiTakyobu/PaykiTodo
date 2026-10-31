@@ -105,6 +105,17 @@ internal fun AiReportPanel(
     }
     val reports by reportFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
+    LaunchedEffect(selectedReport) {
+        val report = selectedReport ?: return@LaunchedEffect
+        if (report.type == AiReportType.DAILY) {
+            while (!com.example.todoalarm.data.AiReportPolicy.isExpired(report)) {
+                kotlinx.coroutines.delay(com.example.todoalarm.data.AiReportPolicy.remainingMillis(report).coerceIn(1, 60_000))
+            }
+            selectedReport = null
+            pendingDelete = null
+        }
+    }
+
     LaunchedEffect(targetReportSerial, targetReportId) {
         val target = targetReportId?.let { id ->
             reports.firstOrNull { it.id == id } ?: onGetReport(id)

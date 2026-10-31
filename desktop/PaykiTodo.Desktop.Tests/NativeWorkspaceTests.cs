@@ -153,6 +153,7 @@ public sealed class NativeWorkspaceTests
                 Assert.Equal(Visibility.Visible, searchHint.Visibility);
                 Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "账号与同步");
                 Assert.DoesNotContain(Descendants<System.Windows.DependencyObject>(window), control => control.GetType().Name.Contains("WebView"));
+                ReportTests.VerifyOpenReportExpiry(window, workspace, store);
                 foreach (var page in new[] { "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) {
                     var button = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate." + page);
                     button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

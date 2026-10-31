@@ -10,6 +10,7 @@ internal sealed partial class DesktopSnapshotDocument
     {
         var data = (JsonObject)root.DeepClone();
         StripSharedData(data);
+        DesktopReportPolicy.RemoveExpired(data, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         data.Remove("exportedAtMillis"); data.Remove("reminderChainLogs");
         if (data["settings"]?["planningAiProviders"] is JsonArray providers)
             foreach (var provider in providers.OfType<JsonObject>()) provider.Remove("apiKey");

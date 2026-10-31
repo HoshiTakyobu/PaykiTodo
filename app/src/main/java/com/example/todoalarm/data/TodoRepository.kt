@@ -62,9 +62,9 @@ class TodoRepository(
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
     fun observePlanningNotesWithAnnouncementHints(): Flow<List<PlanningNote>> = todoDao.observePlanningNotesWithAnnouncementHints()
-    fun observeAiReports(limit: Int): Flow<List<AiReport>> = todoDao.observeAiReports(limit)
+    fun observeAiReports(limit: Int): Flow<List<AiReport>> = todoDao.observeAiReports(limit).withDailyExpiry()
     fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>> {
-        return todoDao.observeAiReportsByType(type, limit)
+        return todoDao.observeAiReportsByType(type, limit).withDailyExpiry()
     }
     fun observeAiReportsFiltered(
         type: AiReportType?,
@@ -74,7 +74,7 @@ class TodoRepository(
         limit: Int
     ): Flow<List<AiReport>> {
         val safeQuery = query.trim()
-        return if (type == null) {
+        return (if (type == null) {
             todoDao.observeAiReportsFiltered(
                 query = safeQuery,
                 startMillis = startMillis,
@@ -89,7 +89,7 @@ class TodoRepository(
                 endMillis = endMillis,
                 limit = limit
             )
-        }
+        }).withDailyExpiry()
     }
     fun observeRecentReminderChainLogs(limit: Int = 80): Flow<List<ReminderChainLog>> {
         return todoDao.observeRecentReminderChainLogs(limit)
@@ -126,6 +126,19 @@ class TodoRepository(
         return todoDao.getTotalCheckInMinutesInRange(startMillis, endMillis)
     }
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
+
+    internal suspend fun reportContext(date: LocalDate, weekly: Boolean, serverUrl: String): AiReportContext = database.withTransaction {
+        val calendars = todoDao.getCalendars().associateBy { it.id }
+        val items = todoDao.getAllTodos().filter { item ->
+            if (!item.calendarId.startsWith("shared:")) true
+            else calendars[item.calendarId]?.let { calendar ->
+                calendar.shareMode == "SHARED" && calendar.sharedRole.uppercase() in setOf("OWNER", "EDITOR", "VIEWER") &&
+                    calendar.sharedServerUrl.trimEnd('/').equals(serverUrl.trimEnd('/'), ignoreCase = true)
+            } == true
+        }
+        AiReportContext.build(items, todoDao.getAllEventCheckIns(), date, weekly)
+    }
+
     suspend fun getAllQuickChecklistGroups(): List<QuickChecklistGroup> = todoDao.getAllQuickChecklistGroups()
 
     suspend fun createQuickChecklist(draft: QuickChecklistDraft): QuickChecklistGroup {
@@ -206,7 +219,8 @@ class TodoRepository(
             oldCompletedTodos = todoDao.getOldCompletedTodos(oldCompletedCutoff).size,
             emptyPlanningNotes = todoDao.getEmptyPlanningNotes().size,
             staleDraftNodes = todoDao.getStaleDraftPlanningNodes(staleDraftCutoff).size,
-            expiredAiReports = expiredAiReportCutoff?.let { todoDao.getAiReportsBefore(it).size } ?: 0,
+            expiredAiReports = (todoDao.getExpiredDailyReports(AiReportPolicy.dailyCutoff(now)).size +
+                (expiredAiReportCutoff?.let { cutoff -> todoDao.getAiReportsBefore(cutoff).count { it.type == AiReportType.WEEKLY } } ?: 0)),
             overdueTodosWithoutReminder = todoDao.getOverdueTodosWithoutReminder(
                 cutoffMillis = overdueWithoutReminderCutoff,
                 noDueDateMillis = NO_DUE_DATE_MILLIS
@@ -219,10 +233,6 @@ class TodoRepository(
         val oldCompletedCutoff = now - Duration.ofDays(30).toMillis()
         val oldCompleted = todoDao.getOldCompletedTodos(oldCompletedCutoff)
         val emptyNotes = todoDao.getEmptyPlanningNotes()
-        val expiredAiReportCutoff = retention.days?.let { days ->
-            now - Duration.ofDays(days.toLong()).toMillis()
-        }
-
         val deletedTodos = deleteItemsByIds(oldCompleted.map { it.id }).size
         val deletedNotes = emptyNotes.map { it.id }.distinct().also { ids ->
             if (ids.isNotEmpty()) {
@@ -230,7 +240,7 @@ class TodoRepository(
                 todoDao.deletePlanningNotesByIds(ids)
             }
         }.size
-        val deletedReports = expiredAiReportCutoff?.let { todoDao.purgeAiReportsBefore(it) } ?: 0
+        val deletedReports = purgeAiReportsOlderThan(retention)
 
         if (deletedTodos > 0 || deletedNotes > 0 || deletedReports > 0) {
             notifyItemsChanged()
@@ -2246,12 +2256,13 @@ class TodoRepository(
     }
 
     suspend fun saveAiReport(report: AiReport): Long {
+        if (AiReportPolicy.isExpired(report)) return report.id
         return todoDao.insertAiReport(report).also { notifyItemsChanged() }
     }
 
     suspend fun saveAiReports(reports: List<AiReport>): List<Long> {
         if (reports.isEmpty()) return emptyList()
-        return todoDao.insertAiReports(reports).also { notifyItemsChanged() }
+        return todoDao.insertAiReports(reports.filterNot { AiReportPolicy.isExpired(it) }).also { notifyItemsChanged() }
     }
 
     suspend fun getAllAiReports(): List<AiReport> = todoDao.getAllAiReports()
@@ -2273,12 +2284,21 @@ class TodoRepository(
         notifyItemsChanged()
     }
 
-    suspend fun purgeAiReportsOlderThan(retention: AiReportRetention): Int {
-        val days = retention.days ?: return 0
-        val cutoffMillis = System.currentTimeMillis() - days.toLong() * 24L * 60L * 60L * 1000L
-        val deleted = todoDao.purgeAiReportsBefore(cutoffMillis)
+    fun observeOldestDailyReportTime(): Flow<Long?> = todoDao.observeOldestDailyReportTime()
+
+    suspend fun purgeExpiredDailyReports(now: Long = System.currentTimeMillis()): Int {
+        val deleted = todoDao.purgeExpiredDailyReports(AiReportPolicy.dailyCutoff(now))
         if (deleted > 0) notifyItemsChanged()
         return deleted
+    }
+
+    suspend fun purgeAiReportsOlderThan(retention: AiReportRetention): Int {
+        val daily = purgeExpiredDailyReports()
+        val weekly = retention.days?.let {
+            todoDao.purgeAiReportsBefore(System.currentTimeMillis() - it * 86_400_000L)
+        } ?: 0
+        if (weekly > 0) notifyItemsChanged()
+        return daily + weekly
     }
 
     // Read related tables from one committed state while local edits and
@@ -2380,7 +2400,7 @@ class TodoRepository(
             todoDao.insertPlanningNodes(restoredNodes)
         }
             if (snapshot.aiReports.isNotEmpty()) {
-                todoDao.insertAiReports(snapshot.aiReports)
+                todoDao.insertAiReports(snapshot.aiReports.filterNot { AiReportPolicy.isExpired(it) })
             }
         }
         if (notify) notifyItemsChanged()

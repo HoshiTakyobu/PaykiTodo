@@ -6,7 +6,7 @@ internal sealed partial class DesktopSnapshotDocument
 {
     public void ReplaceWith(DesktopSnapshotDocument document) => root = (JsonObject)document.root.DeepClone();
     public JsonObject Settings => root["settings"]!.AsObject();
-    public IReadOnlyList<JsonObject> Reports => root["aiReports"]!.AsArray().OfType<JsonObject>().ToList();
+    public IReadOnlyList<JsonObject> Reports => root["aiReports"]!.AsArray().OfType<JsonObject>().Where(report => !DesktopReportPolicy.IsExpired(report, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())).ToList();
     public bool HiddenOnBoard(long id) => FindTask(id)?["hiddenFromBoard"]?.GetValue<bool>() == true;
     public long SaveGroup(long? id, string name, string color)
     {

@@ -26,7 +26,7 @@ internal object BackupArchiveCodec {
     private const val MAX_ENTRY_BYTES = 32 * 1024 * 1024
 
     fun write(snapshot: BackupSnapshot, output: OutputStream) {
-        val snapshotBytes = snapshot.toJson().toString(2).toByteArray(StandardCharsets.UTF_8)
+        val snapshotBytes = snapshot.withoutExpiredDailyReports().toJson().toString(2).toByteArray(StandardCharsets.UTF_8)
         val manifestBytes = JSONObject().apply {
             put("format", ARCHIVE_FORMAT)
             put("archiveVersion", ARCHIVE_VERSION)
@@ -53,7 +53,7 @@ internal object BackupArchiveCodec {
             readArchive(buffered)
         } else {
             val jsonBytes = buffered.readLimited(MAX_ENTRY_BYTES)
-            backupSnapshotFromJson(JSONObject(jsonBytes.toString(StandardCharsets.UTF_8).trimStart('\uFEFF')))
+            backupSnapshotFromJson(JSONObject(jsonBytes.toString(StandardCharsets.UTF_8).trimStart('\uFEFF'))).withoutExpiredDailyReports()
         }
     }
 
@@ -69,13 +69,13 @@ internal object BackupArchiveCodec {
     }
 
     internal fun contentFingerprint(snapshot: BackupSnapshot): String {
-        val stableSnapshot = snapshot.copy(exportedAtMillis = 0L)
+        val stableSnapshot = snapshot.withoutExpiredDailyReports().copy(exportedAtMillis = 0L)
         return stableSnapshot.toJson().toString().toByteArray(StandardCharsets.UTF_8).sha256()
     }
 
     internal fun dataFingerprint(snapshot: BackupSnapshot): String {
         // Device presentation and diagnostic logs are not user-data edits.
-        val json = snapshot.copy(exportedAtMillis = 0L, reminderChainLogs = emptyList()).toJson()
+        val json = snapshot.withoutExpiredDailyReports().copy(exportedAtMillis = 0L, reminderChainLogs = emptyList()).toJson()
         json.remove("settings")
         // SQL row order is not part of the synchronized data. Sort table rows,
         // while keeping ordered values inside each row (for example offsets).
@@ -130,7 +130,7 @@ internal object BackupArchiveCodec {
         val payload = snapshotBytes ?: error("备份包缺少 backup.json")
         val expectedHash = manifest.optString("payloadSha256").lowercase(Locale.ROOT)
         require(expectedHash.isNotBlank() && expectedHash == payload.sha256()) { "备份包校验失败，文件可能不完整" }
-        return backupSnapshotFromJson(JSONObject(payload.toString(StandardCharsets.UTF_8)))
+        return backupSnapshotFromJson(JSONObject(payload.toString(StandardCharsets.UTF_8))).withoutExpiredDailyReports()
     }
 
     private fun ZipOutputStream.writeEntry(name: String, bytes: ByteArray, timestamp: Long) {

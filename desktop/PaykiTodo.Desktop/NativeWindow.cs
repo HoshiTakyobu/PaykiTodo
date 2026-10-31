@@ -26,6 +26,7 @@ internal sealed partial class NativeWindow : Window
     private TextBlock status = Text("", 12, Muted);
     private TextBox search = Input();
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(3) };
+    private readonly DispatcherTimer reportExpiryTimer = new();
     private bool syncTickRunning;
     private readonly Dictionary<string, Button> navigationButtons = new();
     private string page = "每日看板";
@@ -60,6 +61,14 @@ internal sealed partial class NativeWindow : Window
         };
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && calendarDraft != null) { ClearCalendarDraft(); e.Handled = true; } };
         this.workspace.Changed += OnWorkspaceChanged;
+        reportExpiryTimer.Tick += (_, _) => {
+            reportExpiryTimer.Stop();
+            try { this.workspace.ExpireReports(); }
+            catch (Exception error) { this.workspace.Notify(DesktopWorkspace.FriendlyError(error)); }
+            if (page == "AI 报告") Render();
+            ScheduleReportExpiry();
+        };
+        ScheduleReportExpiry();
         timer.Tick += async (_, _) => {
             if (syncTickRunning) return;
             syncTickRunning = true;
@@ -68,7 +77,7 @@ internal sealed partial class NativeWindow : Window
             finally { syncTickRunning = false; }
             ReviewCountdowns();
         }; timer.Start();
-        Closed += (_, _) => { timer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
+        Closed += (_, _) => { timer.Stop(); reportExpiryTimer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
         Loaded += async (_, _) => { if (workspace == null) reminders = new DesktopReminders(this, this.workspace, OpenItemDetails); await this.workspace.SyncAsync(); };
         Render();
     }
@@ -124,9 +133,18 @@ internal sealed partial class NativeWindow : Window
         InputBindings.Add(new System.Windows.Input.KeyBinding(new NativeCommand(ShowUsageGuide), new System.Windows.Input.KeyGesture(System.Windows.Input.Key.F1)));
     }
 
+    private void ScheduleReportExpiry()
+    {
+        reportExpiryTimer.Stop();
+        if (workspace.Document?.NextDailyReportExpiry is not { } expiry) return;
+        reportExpiryTimer.Interval = TimeSpan.FromMilliseconds(Math.Clamp(expiry - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), 1, 60_000));
+        reportExpiryTimer.Start();
+    }
+
     private void OnWorkspaceChanged()
     {
         if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(OnWorkspaceChanged); return; }
+        ScheduleReportExpiry();
         status.Text = workspace.Status;
         if (workspace.Document == null) {
             editingPlanning = false;

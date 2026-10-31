@@ -1346,7 +1346,7 @@ private fun AiReportPreferencesPanel(
             }
         )
         CompactDropdownSetting(
-            title = "报告保留时长",
+            title = "周报保留时长",
             value = draft.retention.label,
             options = AiReportRetention.entries.map { it.label },
             onSelect = { label ->
@@ -1357,7 +1357,7 @@ private fun AiReportPreferencesPanel(
                     )
                 )
             },
-            summary = "超过保留期的 AI 日报 / 周报会在生成新报告后自动清理；选“永久”则不自动删除。"
+            summary = "日报从生成时刻起固定保留 168 小时，到期自动删除。此选项只控制周报；“永久”也不会延长日报。"
         )
         if (draft.reportTimeInvalid) {
             Text("时间格式需要是 HH:mm，例如 22:00。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

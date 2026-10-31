@@ -9,15 +9,15 @@ internal object PersonalSnapshotMerge {
     private val ignored = setOf("exportedAtMillis", "reminderChainLogs")
 
     fun same(left: BackupSnapshot, right: BackupSnapshot): Boolean =
-        stable(left.personalSyncSnapshot().toJson()) == stable(right.personalSyncSnapshot().toJson())
+        stable(left.personalSyncSnapshot().withoutExpiredDailyReports().toJson()) == stable(right.personalSyncSnapshot().withoutExpiredDailyReports().toJson())
 
     fun fingerprint(snapshot: BackupSnapshot): String = java.security.MessageDigest.getInstance("SHA-256")
-        .digest(stable(snapshot.personalSyncSnapshot().toJson()).toByteArray()).joinToString("") { "%02x".format(it) }
+        .digest(stable(snapshot.personalSyncSnapshot().withoutExpiredDailyReports().toJson()).toByteArray()).joinToString("") { "%02x".format(it) }
 
     fun merge(base: BackupSnapshot, local: BackupSnapshot, remote: BackupSnapshot): BackupSnapshot? = runCatching {
-        val b = base.personalSyncSnapshot().toJson()
-        val l = local.personalSyncSnapshot().toJson()
-        val r = remote.personalSyncSnapshot().toJson()
+        val b = base.personalSyncSnapshot().withoutExpiredDailyReports().toJson()
+        val l = local.personalSyncSnapshot().withoutExpiredDailyReports().toJson()
+        val r = remote.personalSyncSnapshot().withoutExpiredDailyReports().toJson()
         val result = JSONObject(l.toString())
         for (key in keys(b, l, r) - ignored) {
             val bv = b.opt(key); val lv = l.opt(key); val rv = r.opt(key)

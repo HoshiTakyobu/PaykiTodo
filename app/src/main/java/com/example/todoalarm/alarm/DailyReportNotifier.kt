@@ -69,6 +69,7 @@ object DailyReportNotifier {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setTimeoutAfter(if (weekly) 0 else com.example.todoalarm.data.AiReportPolicy.DAILY_LIFETIME_MILLIS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

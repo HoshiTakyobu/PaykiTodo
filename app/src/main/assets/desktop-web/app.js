@@ -2356,7 +2356,7 @@ function renderAiReportStatus() {
     return;
   }
   const runtime = data.runtime || {};
-  const reports = data.recentReports || [];
+  const reports = (data.recentReports || []).filter(report => report.type !== 'DAILY' || report.generatedAtMillis + 604800000 > Date.now());
   const draft = state.aiConfigDraft;
   const successText = runtime.lastSuccessAtMillis
     ? reportTypeLabel(runtime.lastSuccessType) + ' · ' + formatDateTimeLabel(runtime.lastSuccessAtMillis)
@@ -2367,7 +2367,7 @@ function renderAiReportStatus() {
   const failure = runtime.lastFailureMessage || runtime.lastAiFailureMessage || '';
   const healthClass = runtime.lastFailureMessage ? 'danger' : runtime.lastSuccessAtMillis ? 'success' : 'neutral';
   const reportRows = reports.length ? reports.map(report => ''
-    + '<article class="report-history-row">'
+    + '<article class="report-history-row" data-report-expires="' + (report.type === 'DAILY' ? Number(report.generatedAtMillis) + 604800000 : '') + '">'
     +   '<div class="report-history-icon ' + (report.isLocalFallback ? 'local' : 'ai') + '">' + (report.type === 'WEEKLY' ? '周' : '日') + '</div>'
     +   '<div class="report-history-main">'
     +     '<div class="report-history-title"><strong>' + escapeHtml(report.type === 'WEEKLY' ? 'AI 周报' : 'AI 日报') + '</strong><span>' + escapeHtml(formatDateTimeLabel(report.generatedAtMillis)) + '</span></div>'
@@ -2385,7 +2385,7 @@ function renderAiReportStatus() {
     +     '<article class="report-config-card"><div><strong>启用 AI 调用</strong><p>规划台识别和 AI 日报按下面的顺序尝试可用源，全部失败时日报使用本地模板。</p></div><label class="report-switch"><input type="checkbox" data-ai-global-enabled ' + (draft.enabled ? 'checked' : '') + ' /><span>' + (draft.enabled ? '已启用' : '未启用') + '</span></label></article>'
     +     '<article class="report-config-card report-schedule-card"><div><strong>日报</strong><p>每天设定时间生成。</p></div><label class="report-switch"><input type="checkbox" data-ai-field="dailyReportEnabled" ' + (draft.dailyReportEnabled ? 'checked' : '') + ' /><span>启用</span></label><input type="time" data-ai-field="dailyReportTime" value="' + escapeHtml(draft.dailyReportTime) + '" /></article>'
     +     '<article class="report-config-card report-schedule-card"><div><strong>周报</strong><p>每周日设定时间生成。</p></div><label class="report-switch"><input type="checkbox" data-ai-field="weeklyReportEnabled" ' + (draft.weeklyReportEnabled ? 'checked' : '') + ' /><span>启用</span></label><input type="time" data-ai-field="weeklyReportTime" value="' + escapeHtml(draft.weeklyReportTime) + '" /></article>'
-    +     '<article class="report-config-card report-retention-card"><div><strong>报告保留时长</strong><p>生成新报告后自动清理超过保留期的记录。</p></div><select data-ai-field="retention">' + retentionOptions + '</select></article>'
+    +     '<article class="report-config-card report-retention-card"><div><strong>周报保留时长</strong><p>日报固定保留168小时，到期删除；此选项只控制周报。</p></div><select data-ai-field="retention">' + retentionOptions + '</select></article>'
     +   '</div>'
     +   '<div class="ai-provider-section-head"><div><h3>AI 源</h3><p>支持添加多个 OpenAI 兼容服务；测试连接只发送一条固定消息，不做并发探测或自动重试。</p></div><button type="button" class="ghost mini" data-ai-provider-add="true">添加 AI 源</button></div>'
     +   '<div class="ai-provider-list">' + (draft.providers.length
@@ -6115,3 +6115,11 @@ bindReviewImportControls();
 bindAiReportControls();
 syncTopbar();
 startCurrentTimeIndicator();
+
+// Remove expired summaries without replacing an in-progress AI settings draft.
+window.setInterval(() => {
+  document.querySelectorAll('[data-report-expires]').forEach(row => {
+    const expiry = Number(row.getAttribute('data-report-expires'));
+    if (expiry > 0 && expiry <= Date.now()) row.remove();
+  });
+}, 1000);

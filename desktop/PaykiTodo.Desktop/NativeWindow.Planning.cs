@@ -60,6 +60,7 @@ internal sealed partial class NativeWindow
     private UIElement ReportsPage()
     {
         var body = Column(Row(Action("生成日报", () => GenerateReport(false), true), Action("生成周报", () => GenerateReport(true)), Action("AI 服务配置", AiSettings)));
+        body.Children.Add(Text("日报从生成时刻起保留 168 小时，到期自动移除。周报沿用保留设置。", 13, Muted));
         var reports = workspace.Document!.Reports.OrderByDescending(report => report["generatedAtMillis"]?.GetValue<long>() ?? 0).ToList();
         foreach (var report in reports) {
             var heading = (report["type"]?.GetValue<string>() == "WEEKLY" ? "每周回顾" : "每日回顾") + " · " + Local(report["generatedAtMillis"]?.GetValue<long>()).ToString("yyyy-MM-dd HH:mm");

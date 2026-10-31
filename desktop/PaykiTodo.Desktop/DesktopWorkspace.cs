@@ -31,7 +31,7 @@ internal sealed partial class DesktopWorkspace
         }
         Account = saved?.State;
         Document = saved?.Document ?? this.store.LoadDocument();
-        if (Document != null) Status = "已打开本地数据";
+        if (Document != null) { ExpireReports(); Status = "已打开本地数据"; }
     }
 
     public void Edit(Action<DesktopSnapshotDocument> change)

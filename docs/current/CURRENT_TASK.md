@@ -1,6 +1,18 @@
 # Current Task
 
-## 2026-11-01 双端单次提醒复制缺陷已修复
+## 2026-11-01 当前任务：1.17.13终验、交付与审计后推送
+
+原七项产品需求已实施，循环绝对提醒不再等待选择。按决策014，本轮沿最后单一推荐方案后用户继续执行全课Start>=absolute最近实例唯一归属，相等本次、并列输入顺序；相对每次，窗口外提前物化，中间补齐不跳过，有限范围无目标整批拒绝，不复制或自动重新分配。具体实现见[说明](planning-input/RECURRING_ABSOLUTE_IMPLEMENTATION_20261101.md)。
+
+Android1.17.13/405、Windows1.17.13.0、Room34。270单测、Lint0错误/137警告/30信息、三种Android构建通过；64设备条目63通过、1旧跨端fixture条件跳过，本轮17新增全部通过。Windows62不同检查、LAN模拟HTTP实际DOM9/9和node--check通过。APK元数据/Release同证书/资产与源码、494交付文件及完整/增量更新验签重建已核，原user0 646/646和user10 148/148哈希相同、测试停止/user10主页/原暂停恢复，详见[1.17.13验收](VALIDATION_1.17.13.md)。
+
+本轮验收、成品和数据保护已结束。剩余依序：最终文档和中文功能提交，再单独归档目标；复扫全部新增快照与消息、核对忽略路径/真实远端，按既有授权只push main并实查远端HEAD一致，最后才完成原goal。当前未push/Release/上传/部署，公开Release仍v1.15.18。
+
+原未跟踪历史Prompt、恢复bundle、认证、私钥、旧成品与失败证据保持。仅user11合成测试，最终已停止应用/测试、回user10主页并恢复原暂停；真实手机和普通Windows资料未动。不重复运行无新变化的成功套件，不重问已确认语法或创建新goal。
+
+下方是历史轮次；其待定项、旧版本及下一步只描述当时状态，不作为当前任务清单。
+
+## 历史阶段：2026-11-01 双端单次提醒复制缺陷已修复
 
 Android1.17.12/404也已完成单次转循环、全部/后续/整课编辑及远期实例的提醒保护，258单测、Lint0错误、42项数据库检查通过，Debug及同证书Release交付，见[Android验收](VALIDATION_ANDROID_1.17.12.md)。Windows1.17.12.0原51项检查和484文件MSI/便携成品保持，Room34。该缺陷不依赖新规划语法选择，不能据此声称循环文本绝对提醒归属已确定。
 
@@ -8,19 +20,19 @@ Android1.17.12/404也已完成单次转循环、全部/后续/整课编辑及远
 
 循环绝对提醒的双端具体入口、窗口外实例和编辑/补齐风险已只读核对，见[实施定位](planning-input/RECURRING_ABSOLUTE_IMPLEMENTATION_20261101.md)。两种分支仍待用户选择；本文中的建议不能取代用户确认。
 
-## 2026-11-01 历史清理完成，等待循环绝对提醒归属并准备最终推送
+## 历史阶段：2026-11-01 历史清理完成，等待循环绝对提醒归属并准备最终推送
 
 60个未推送提交已保留阶段历史完成脱敏，接回main的归档HEAD为83e2a45；全部新快照/消息和127对变化blob通过复核，完整基线差异空白检查通过。最终469个实现/资源/工具/CI文件与已验收1.17.11相同，没有新APK，详情见[历史审计](PUBLIC_HISTORY_AUDIT_20261101.md)。原始bundle、私有证据及未跟踪历史Prompt保持。
 
 循环课程的绝对提醒仍待最终答复：只提醒一次并归属该绝对时刻之后最近一次课程，或循环只允许提前分钟、绝对提醒另建单次事项。未答复不能自动选推荐项；当前定位报错保留原文。完成相关实现与验收后再审计新增提交、复核远端并按既有授权push main。原目标未完成，没有push/Release/部署，不重做已通过的1.17.8—1.17.11模块。
 
-## 2026-11-01 更新阶段完成，继续原七项目标
+## 历史阶段：2026-11-01 更新阶段完成，继续原七项目标
 
 1.17.11/403、Windows1.17.11.0、Room34已实现两端GitHub检查、手机持久下载和APK身份校验、Windows后台/灰度/实际文件增量及启动切换回退。最终验证与边界见[VALIDATION_1.17.11](VALIDATION_1.17.11.md)，成品在Deliverables/PaykiTodo/1.17.11。测试仅使用独立资料和模拟发布，没有真实手机升级或公开新Release。
 
 接下来完成循环绝对提醒归属（本轮再次提供简短选择，等待答复），在恢复副本保护下清理全部未推送提交的内容与消息、复核最终文档，然后执行已授权源码推送。历史初筛及恢复材料保持私有。不得把当前树干净当作历史清理完成，不推送含原始私有历史的恢复引用。原goal保持未完成，用户恢复执行指令持续有效。
 
-## 2026-11-01 临时规划主体已实施，原七项目标继续
+## 历史阶段：2026-11-01 临时规划主体已实施，原七项目标继续
 
 Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未提交规划代码。三端每日看板临时输入、本地/可选AI、可编辑预览、确认事务导入、父子与课程多时段、旧文档含归档只读、绝对提醒备份同步和无截止滚动已实施。254Android单测/Lint、12项设备检查、Windows90回归+1独立14阶段UIA和5段LAN模拟HTTP浏览器流程通过；成品含Debug、同证书签名Release、MSI和完整便携目录，见Deliverables/PaykiTodo/1.17.10及VALIDATION_1.17.10。原user0 646/646、user10 148/148哈希相同。
 
@@ -28,15 +40,15 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 
 下一步：完成循环绝对提醒归属选择、实现双端GitHub更新与Windows真实后台/灰度/增量链路，随后清理全部未公开历史并执行已授权推送。整体任务不暂停、不标记完成。
 
-## 2026-11-01 恢复原七项实施目标
+## 历史阶段：2026-11-01 恢复原七项实施目标
 
 用户明确要求按启动提示词和三份配套文档继续原任务，撤销此前仅为更换模型的暂停请求。接手核对HEAD a25aac6、Android1.17.9/401、Windows1.17.9.0、Room33；原未提交文档整理说明和历史Prompt保留。规划输入实现进行中，源码暂升1.17.10/402、Windows1.17.10.0、Room34用于新绝对提醒字段；尚无本轮构建验收成品，不能把新增代码算作完成。#备注顺序和跨午夜缺省已确认并记录决策012/013。更新机制、完整历史审计和最终授权推送仍待完成，整体goal未完成。
 
-## 2026-11-01 用户交接指令
+## 历史阶段：2026-11-01 用户交接指令
 
 本轮只整理交接文档，用户明确要求交接完成后暂停自动目标以更换模型。整体工作未完成。下一模型获得恢复指令后从 [整体实施指南](MODEL_HANDOFF_20261101.md) 开始，不重做已验证的设置/字体/报告阶段；下方原七项范围继续有效。
 
-## 进行中：2026-10-31 双端体验与公开发布
+## 历史阶段：进行中：2026-10-31 双端体验与公开发布
 
 执行 [完整清单](EXPERIENCE_UPDATE_20261031.md)，保留全部7项需求及用户追加的循环/每周多时段规划语法要求。
 
@@ -44,7 +56,7 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 
 下一步实现每日看板统一输入/可编辑预览/确认入库，推进双端GitHub更新及桌面后台/灰度增量机制。最后核对文档，处理全部未推送历史中的私有信息与第三方参考残留，再执行已授权推送。整体目标未完成，不应标记complete。
 
-## Completed: 1.17.7 / 399 双端同步冲突恢复，2026-10-29
+## 历史阶段：Completed: 1.17.7 / 399 双端同步冲突恢复，2026-10-29
 
 接续指定会话 `01a187ab-3592-7cf1-a762-9b389ebf4fa7`，从 `63fc037` 修复真实手机反复陷入整包冲突的问题。双方持续联网，但手机延后/自动错过与电脑明确完成/取消被整包冲突锁住。双端现保存已确认快照，自动合并独立改动和可判定的任务状态，继续保护真正冲突；无内容变化的 dirty 与诊断日志不再造成误报。
 
@@ -52,13 +64,13 @@ Android 1.17.7/399、Windows 1.17.7.0 已构建并完成针对性验证。真实
 
 237 Android单测、9项账号设备用例及1项跨端实时流程、71 Windows回归和1条14阶段UIA、MSI生命周期/用户数据保留检查通过。初次失败、复验与边界见 [VALIDATION_1.17.7.md](VALIDATION_1.17.7.md)。安装包和说明在 `Deliverables/PaykiTodo/1.17.7`；本地中文提交，不推送或发布。此轮无剩余开发/恢复步骤，其他电脑需使用新版安装包。下方为历史任务。
 
-## Completed: Android 1.17.6 / 398 后台备份快照一致性
+## 历史阶段：Completed: Android 1.17.6 / 398 后台备份快照一致性
 
 从 `9e4ff78` 接续并发审查，已用真实 Room 测试复现并修复旧分组与新待办混合导出的问题。快照多表读取现在使用同一事务，兼容已有同步事务，自动备份压缩/文件写入仍在后台。
 
 229 单测、Lint、31 项针对性模拟器检查及 1 项正式 Windows 兼容检查通过；Debug/签名 Release/AndroidTest 构建、签名与升级证书校验、正常冷启动均完成。新 Android APK 在 `Deliverables/PaykiTodo/1.17.6`，Windows 沿用 1.17.5；原 user 0/10 全部文件哈希一致。见 [VALIDATION_1.17.6.md](VALIDATION_1.17.6.md)。本地中文提交，不推送或公开发布。下方为历史轮次。
 
-## Completed: 1.17.5 / 397 双端体验与后台同步
+## 历史阶段：Completed: 1.17.5 / 397 双端体验与后台同步
 
 2026-10-28 继续补验：正式 Windows EXE 已打开时，能自动接收手机完成操作、更新可见列表并持久化，联合本地测量 5092 毫秒；两端各新增 1 项定向检查通过。只改测试与记录，原应用版本和交付包不变，详见[实时窗口补验](VALIDATION_1.17.5_LIVE_SYNC.md)。
 
@@ -66,13 +78,13 @@ Android 1.17.7/399、Windows 1.17.7.0 已构建并完成针对性验证。真实
 
 Debug/签名 Release/MSI/便携成品及 18 图预览已交付至 `G:\Workspace\Deliverables\PaykiTodo\1.17.5`。229 Android 单测、28 项不同模拟器检查、67 项不同 Windows/桥接/UIA 检查及 MSI 生命周期通过；失败后的定向复测、数据保留和实际边界见 [VALIDATION_1.17.5.md](VALIDATION_1.17.5.md)。按项目规则作中文本地提交，不推送或公开发布。下方为历史轮次。
 
-## Completed: Windows 1.17.4.0 multi-computer session recovery
+## 历史阶段：Completed: Windows 1.17.4.0 multi-computer session recovery
 
 The Windows client previously reused `DeviceId` from the encrypted workspace during login. Copying `%LOCALAPPDATA%\PaykiTodo` to another computer therefore caused the second login to replace the first computer's session, even though the cloud service supports multiple devices. Windows now persists a separate installation identity, the server allocates a new device when a reused ID has a different machine name/platform, and authentication failures retain server error codes. Safe diagnostics record endpoint host, status, error code, token expiry timestamps and hashed device identity without credentials or token values.
 
 Validation: 60 desktop tests (57 passed, 3 skipped) and 13 server tests pass. The Windows `1.17.4.0` self-contained MSI still needs to be rebuilt and installed separately; no production server deployment was performed in this source round.
 
-## Completed: 1.17.3 / 395 search access and Android calendar presentation
+## 历史阶段：Completed: 1.17.3 / 395 search access and Android calendar presentation
 
 Manual CAPTCHA and second-account registration are complete. The dedicated 1.17.2 native Android/Windows workflow passed editor invitation, acceptance, RSVP, bidirectional existing-event edits and revocation. Inspection exposed revoked titles in search, dormant reminder rules in details and incorrect all-day search dates; 1.17.3 fixes these issues. The same identities passed viewer acceptance, correct details/search and automatic removal from already-open Android search after revocation.
 
@@ -82,21 +94,21 @@ Original Android user 0 has 646/646 unchanged files. User 10 retains its dedicat
 
 This authorized implementation and acceptance round is complete. OEM long-idle/lock-screen/vibration, full Windows physical-input acceptance and wider availability/subscription/meeting-resource services remain explicit boundaries in [the audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md); do not start expanding scope or rerunning successful suites solely on another continuation.
 
-## Previous: 1.17.2 shared-save fix and 1.17.1 audit
+## 历史阶段：Previous: 1.17.2 shared-save fix and 1.17.1 audit
 
 1.17.2 fixed unnecessary personal uploads from normal shared-event saves and preserved concurrent shared edits during personal downloads. Its initial single-account packaged create test and artifacts remain in [VALIDATION_1.17.2.md](VALIDATION_1.17.2.md). The original audit's two-account and packaged existing-event gaps were subsequently resolved by the native flow above. The emulator visibility issue was corrected by attaching scrcpy to the existing headless AVD without losing the registration form; the user then completed verification.
 
-## Completed: existing server shared-calendar rollout, 2026-10-25
+## 历史阶段：Completed: existing server shared-calendar rollout, 2026-10-25
 
 The user's requested whole-task completion includes production deployment. The existing account server now runs the current cloud and calendar modules; four additive tables preserve the original accounts, devices, sessions and personal snapshots. Remote and local recovery copies exist. Linux 21-test suite, public dedicated-account calendar read/write/CAS/authentication checks and unchanged personal snapshot checks passed. See [rollout evidence and scope](PRODUCTION_CALENDAR_ROLLOUT_20261025.md). No new client build; Android remains 1.17.1/393, Windows 1.17.1.0. Native two-account/window/OEM workflows were not rerun in this rollout.
 
-## Completed locally: 1.17.1 / 393 participant controls and complete details
+## 历史阶段：Completed locally: 1.17.1 / 393 participant controls and complete details
 
 Both clients implement accepted-member participant selection, organizer/participant response details, current-account RSVP initialization/refresh and server-authorized PRIVATE projections. Ordinary cancel writes nothing; calendar changes reset selection, edits preserve existing response authority, new occurrences start unanswered and independent copies drop invitations. Confirmed response and pending/in-flight edits are both retained safely during sync conflicts. Source access and all-day notification dates are rechecked.
 
 Debug/signed Release APK, self-contained Windows output, Chinese MSI and22 selected actual-control images exist. Passed222 Android units,12 data plus18 distinct UI tests,55 Windows regressions plus one 14-stage isolated UIA flow,21 server tests and MSI lifecycle/data-preservation checks. See [VALIDATION_1.17.1.md](VALIDATION_1.17.1.md). That local build round did not deploy production; the subsequent requested rollout is recorded above. Source and client artifacts remain frozen.
 
-## Completed locally: 1.17.0 / 392 calendar and account update
+## 历史阶段：Completed locally: 1.17.0 / 392 calendar and account update
 
 Implement the [calendar update contract](CALENDAR_UPDATE_CONTRACT.md) on Android and native Windows. Improve the calendar body, create/adjust workflows, multiple calendars, recurrence, all-day reminders, details/copy, event/display timezones and calendar collaboration. Keep current single strong-reminder delivery and queue; opening a reminder must resolve the complete current item detail.
 
@@ -106,19 +118,19 @@ Update versioned data/backup compatibility together with both clients. Preserve 
 
 Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33` are built and locally verified. New Debug/signed Release APK, self-contained EXE, Chinese MSI and actual component screenshots exist. Validation: 216 Android units, 25 distinct emulator tests, 51 Windows regressions plus one 14-stage isolated UIA flow, 21 server tests and MSI install/upgrade/repair/uninstall/data preservation. See [VALIDATION_1.17.0.md](VALIDATION_1.17.0.md) for exact scope and paths. Sharing still requires a server update; no push, public release or production deployment was made.
 
-## Completed: 1.16.26 / 391 日历复核与 Windows 安装包
+## 历史阶段：Completed: 1.16.26 / 391 日历复核与 Windows 安装包
 
 按[REQUEST_2026-10-23_REAUDIT.md](REQUEST_2026-10-23_REAUDIT.md)重新审计原始反馈，补齐循环作用域/日期锚点、全天/跨日/多时段、日历颜色及窗口交互、Windows本机OCR和手机纪念询问；中文MSI已完成实际安装、升级、修复、启动、卸载及数据保留验证。
 
 当前Android `1.16.26 / 391`、Windows `1.16.26.0`、Room32，Debug/签名Release/MSI及便携目录均已构建。193 Android单测、13设备用例、38 Windows回归及1条14阶段隔离控件流程通过。逐项证据和明确边界见[VALIDATION_1.16.26.md](VALIDATION_1.16.26.md)。本轮本地交付已完成，不推送发布；办公室实际环境、手机OEM与物理拖动全链路不被本机测试替代。下方为历史完成记录。
 
-## Completed: 1.16.25 / 390 两端体验反馈
+## 历史阶段：Completed: 1.16.25 / 390 两端体验反馈
 
 按照 [REQUEST_2026-10-23.md](REQUEST_2026-10-23.md) 完成独立多日历、两步网格创建、字体自定义、倒数日保留规则与完成询问、重复待办折叠、设置重排、Android 名称纠正及相关两端逻辑。开始基线为 `6f3800f / 1.16.24 / 389`，下方是历史已完成轮次，不能替代本轮验收。
 
 最终实现与验证见 [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md)。新版Debug/签名Release/Windows成品均已构建，原模拟器业务数据保留。按项目规则本地中文提交，不推送或发布。
 
-## Completed: 1.16.24 / 389 字体、日历与真实客户端验收
+## 历史阶段：Completed: 1.16.24 / 389 字体、日历与真实客户端验收
 
 需求见 [REQUEST_2026-10-22_TYPOGRAPHY.md](REQUEST_2026-10-22_TYPOGRAPHY.md)。从 6005a10 恢复未提交修改，按最终批注完成无衬线标题/正文/导航/用户名、手机抽屉加粗、Windows 搜索和账号顺序、一体清单图标、参考日历主体与蓝色交互。清刻本悦宋仅用于问候；补修 Windows 辅助功能完成/恢复持久化，以及提醒/日历深色对比度。
 
@@ -126,7 +138,7 @@ Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33` are built and 
 
 本轮要求的本地实现和验收已收尾；不推送或发布。真机 OEM 长待机/锁屏/振动、物理键鼠全链路和既有 Windows 功能差异仍是后续边界，不作为本轮已通过事项。
 
-## Completed: 2026-10-22 七项修复 / 1.16.23
+## 历史阶段：Completed: 2026-10-22 七项修复 / 1.16.23
 
 - 上一完成轮次为 main / 8bbb136、1.16.22 / 387；恢复会话时已有未提交的 1.16.23 / 388 修改。当前 Room31 不变，需求见 [REQUEST_2026-10-22.md](REQUEST_2026-10-22.md)。
 - 自动续传传输期间的新写入，核对遗漏的本机变化，阻止旧副本差异在后续自动轮询中绕过确认；独立副本完成状态传播、断网恢复和冲突副本保留已验证。
@@ -136,7 +148,7 @@ Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33` are built and 
 - 原 Pixel_8 数据恢复后 531/531 文件匹配，26 个新增运行文件保留；本次接续只读复核和文档收尾，不再重建安装包或改写用户数据。文档与代码按项目规则中文提交，不推送、发布或修改生产。
 - 剩余边界：真机 OEM 长待机/锁屏/振动、厂商语音识别、Windows 完整真实账号验证与既有功能差异。没有替用户决定真实冲突数据取舍；手机较新而电脑仍旧时按 [同步恢复说明](SYNC_RECOVERY_1.16.23.md)检查。
 
-## Completed: 1.16.22 / 387 Windows 排版与不干扰测试 (2026-10-19)
+## 历史阶段：Completed: 1.16.22 / 387 Windows 排版与不干扰测试 (2026-10-19)
 
 - 从 main / 429f6da、1.16.21 / 386、Room31 开始；上一轮实际操作验收已提交。
 - 统一原生 WPF 导航、字体层次、控件对齐、编辑流程、各页面与弹窗；保留原看板图片、问候字体和品牌色。公共弹窗和托盘必须使用 PaykiTodo 原图标。
@@ -147,7 +159,7 @@ Android `1.17.0 / versionCode 392`, Windows `1.17.0.0`, Room `33` are built and 
 - 修复实际渲染发现的日期/时间文字裁切和窄窗口规划按钮越界，增加可视区域断言；账号、AI 和隐私弹窗也覆盖排版/取消检查。不是仅换配色，也不宣称手机所有功能已在 Windows 对齐。
 - 默认不再接管用户系统输入；物理命中/键盘全链路需另行安排。保留已有 OEM、Windows 农历/OCR/多时段创建及账号验证 E2E 的明确缺口，不算作已通过。
 
-## Previous: 1.16.21 / 386 implementation and scoped interactive acceptance (2026-10-18)
+## 历史阶段：Previous: 1.16.21 / 386 implementation and scoped interactive acceptance (2026-10-18)
 
 The implementation round for [REQUEST_2026-10-17.md](REQUEST_2026-10-17.md) landed at main / 30c3176 from 856e714, Room 31. This is not a claim of complete cross-platform parity or all-scenario acceptance. Expired accounts retain offline editing/reminders and dirty data; explicit logout locks local access. Both clients provide encrypted credential memory and confirmed conflict recovery. Android adds persisted network sync jobs and notifications, cross-client checklists allow no title, settings use neutral surfaces, and native WPF fixes drafts, layout and calendar overlaps.
 
@@ -163,7 +175,7 @@ The implementation round for [REQUEST_2026-10-17.md](REQUEST_2026-10-17.md) land
 - Scope, failures and remaining boundaries: [INTERACTIVE_VALIDATION_1.16.21.md](INTERACTIVE_VALIDATION_1.16.21.md). No fresh product APK/EXE; only AndroidTest rebuilt. Original emulator files restored with19/19 SHA-256 matches, network/temporary permissions restored and test server stopped.
 - Remaining: OEM long-idle/lock-screen, timed redelivery, upgrade/time-change full E2E, Windows login/EXE entry full E2E and documented parity gaps. Android calendar modification save was not confirmed; creation/detail were. Do not describe these as passed.
 
-## v1.16.20 Completed Work (2026-09-23)
+## 历史阶段：v1.16.20 Completed Work (2026-09-23)
 
 User request resumed from session `01a05c72-896d-7831-afd4-0a2dc093ccec`:
 
@@ -186,11 +198,11 @@ That completed round used source version `1.16.20 / 385`; the public GitHub Rele
 - Windows reminders require the client to remain running; physical-device Android reminder and widget behavior still needs OEM-specific testing.
 - AI calls were tested with controlled parsing and local test servers, not with a paid provider account.
 
-## Previous Active Focus
+## 历史阶段：Previous Active Focus
 
 The `v1.16.19 / versionCode 384` round closes the remaining cross-client history restoration gap from the `v1.16.18` quick-checklist validation. LAN Web and the independent Windows client now expose restoration for ordinary historical todos and quick-checklist subtrees. This remains a local validation round and does not publish a GitHub Release.
 
-## v1.16.19 Checklist
+## 历史阶段：v1.16.19 Checklist
 
 - [x] Administrator timestamps are emitted as epoch values and formatted in the visitor's browser timezone.
 - [x] The quick checklist parser handles a title, arbitrary dash-depth nesting, visible `--#` notes, validation, and Enter prefix continuation.
@@ -207,7 +219,7 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 - [x] Focused parser/repository/migration/backup/server/Windows tests and emulator instrumentation pass.
 - [x] Documentation, final build verification, sensitive-data scan, and focused commit are complete.
 
-## v1.16.19 Verification Evidence
+## 历史阶段：v1.16.19 Verification Evidence
 
 1. `:app:testDebugUnitTest`, `:app:connectedDebugAndroidTest`, `node --check`, `dotnet test`, `dotnet build`, and the 12-test server suite passed during implementation.
 2. Room migration metadata covers database `31`, and backup compatibility tests cover older archives without checklist fields.
@@ -215,21 +227,21 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 4. Final verification after the `1.16.19 / 384` metadata update: 185 Android unit tests, 18 emulator instrumentation tests, Android Lint, Debug/AndroidTest/Release assembly, 12 server tests, JavaScript syntax, 5 Windows tests, and Windows self-contained publish all passed. Release APK v2 signature verification passed with the expected RSA-2048 signer.
 5. The current Debug APK was installed on `emulator-5554` / Android 14, package `com.paykitodo.app` reported `versionName=1.16.19` and `versionCode=384`, and the app launched successfully. Physical-device OEM reminder/widget behavior remains outside this round.
 
-## Completed `v1.16.14` Scope
+## 历史阶段：Completed `v1.16.14` Scope
 
 1. Allowed Cloudflare's required `about:blank` and `about:srcdoc` internal documents in the Android Turnstile WebView.
 2. Added restrictive CSP entries for the Turnstile iframe, internal documents, and the Cloudflare Insights script injected by the private proxy.
 3. Suppressed duplicate delivery of one Turnstile token and kept AndroidView callbacks connected to the current Compose state after recomposition.
 4. Raised Android and Windows application metadata to `1.16.14 / versionCode 379`.
 
-## Validation For `v1.16.14`
+## 历史阶段：Validation For `v1.16.14`
 
 1. `python -m unittest server.test_paykitodo_cloud_server -v`: 9 tests passed.
 2. `:app:testDebugUnitTest` and `:app:lintDebug` passed; Debug and Release APKs were assembled.
 3. Azure service restarted successfully; public `/healthz` returned `200`, and the public challenge CSP contains the required `about:blank` / `about:srcdoc` entries.
 4. The emulator installed and launched `PaykiTodo-1.16.14-debug.apk` without a crash and rendered the Turnstile widget. A final successful token assertion remains pending on a physical device because Cloudflare challenges are intermittent in this emulator; the observed 401 is the documented Private Access Token probe.
 
-## Completed `v1.16.13` Scope
+## 历史阶段：Completed `v1.16.13` Scope
 
 1. Added the existing Turnstile production hostname to the widget without replacing the owner's widget or removing its local development hosts.
 2. Retrieved and validated the existing Secret without displaying or committing it, then stored it in Azure `/etc/paykitodo/cloud.env`.
@@ -237,14 +249,14 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 4. Added an Android WebView response-field fallback for WebViews that render Cloudflare success but omit the parent callback.
 5. Raised Android and Windows application metadata to `1.16.13 / versionCode 378`.
 
-## Validation For `v1.16.13`
+## 历史阶段：Validation For `v1.16.13`
 
 1. `python -m unittest server.test_paykitodo_cloud_server -v`: 9 tests passed.
 2. `:app:testDebugUnitTest`, `:app:assembleDebug`, and `:app:assembleRelease`: passed.
 3. Public `/healthz` returned `200`; `/v2/auth/challenge` returned a real Turnstile widget; a dummy registration token was rejected with `403 human_verification_failed`.
 4. The final rebuilt APK was not installed on the emulator because `emulator-5554` disconnected; the earlier emulator session displayed Cloudflare `Success!` before this callback fallback was added.
 
-## Completed `v1.16.12` Scope
+## 历史阶段：Completed `v1.16.12` Scope
 
 1. Normal reminder acknowledgement, completion, notification retention, and stale-alarm rejection no longer erase the dispatch ledger for the current trigger.
 2. Reminder ledger reset remains limited to deliberate todo or event rescheduling, schedule rebuilding, item replacement, or deletion across both Android and LAN Desktop Web writes.
@@ -253,7 +265,7 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 5. No periodic synthetic prompt traffic was added because it would disguise automated behavior and attempt to evade provider safeguards.
 6. Raised Android and Windows application metadata to `1.16.12 / versionCode 377`.
 
-## Validation For `v1.16.12`
+## 历史阶段：Validation For `v1.16.12`
 
 1. `python -m unittest server.test_paykitodo_cloud_server -v`: 8 tests passed.
 2. `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, and `:app:assembleRelease` passed; Lint reported 0 errors and 125 non-blocking warnings.
@@ -264,7 +276,7 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 7. The signed release build is local-only in this round; no GitHub Release or push was performed.
 8. Windows publish completed; the known `WindowsBase` 4.0/5.0 WebView2/WPF warning is non-fatal.
 
-## Completed `v1.16.10` Scope
+## 历史阶段：Completed `v1.16.10` Scope
 
 1. Reminder polling now passes the exact trigger timestamp into `ReminderForegroundService`, so receiver and polling paths share one dispatch identity.
 2. New reminder scheduling no longer creates the old `+2s` backup alarm; application startup cancels legacy backup PendingIntents.
@@ -273,13 +285,13 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 5. AI reports remain AI-first with an explicit local-template fallback; no synthetic periodic anti-detection traffic was added.
 6. Raised Android and Windows application metadata to `1.16.10 / versionCode 375`.
 
-## Validation For `v1.16.10`
+## 历史阶段：Validation For `v1.16.10`
 
 1. Server integration tests and Android unit tests passed before the version bump.
 2. The deployed cloud source now exposes `/healthz` and `/v2/auth/challenge`; the production environment still needs the owner's Turnstile Site Key and Secret Key before a real widget can appear.
 3. Run Android Lint, Debug/Release assembly, and emulator smoke tests after the final metadata update.
 
-## Completed `v1.16.9` Scope
+## 历史阶段：Completed `v1.16.9` Scope
 
 1. Android login, registration, and password recovery can obtain a Turnstile token from the configured challenge page.
 2. The cloud service verifies the token against Cloudflare before processing authentication requests; missing configuration keeps existing deployments compatible.
@@ -287,26 +299,26 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 4. Added safe public/private configuration templates and kept the Turnstile Secret Key out of Android and Git.
 5. Raised Android and Windows application metadata to `1.16.9 / versionCode 374`.
 
-## Validation For `v1.16.9`
+## 历史阶段：Validation For `v1.16.9`
 
 1. Passed the 7-test server integration suite, Android unit tests, Android Lint, and Debug/Release APK assembly.
 2. On `emulator-5554` / `Pixel_8`, installed and launched the Debug APK; package metadata reported `1.16.9 / versionCode 374`, and the account UI was visible without a fatal crash.
 3. The emulator did not have an authenticated test session, so a real scheduled reminder could not be triggered through the app. The service-start fallback remains covered by the production catch path and requires authenticated controlled runtime testing for end-to-end full-screen evidence.
 
-## Completed `v1.16.8` Scope
+## 历史阶段：Completed `v1.16.8` Scope
 
 1. Empty authenticated devices now initialize local sync revision at `0`, so an existing cloud snapshot is downloaded.
 2. Devices with local data continue to upload to an empty cloud account or enter explicit conflict protection when the cloud already has data.
 3. Added regression tests for empty-device download, local-data conflict, and local-data upload initialization.
 4. Raised Android and Windows application metadata to `1.16.8 / versionCode 373`.
 
-## Completed `v1.16.7` Scope
+## 历史阶段：Completed `v1.16.7` Scope
 
 1. Removed all migration-package actions from the unauthenticated surface; export and import remain available after login in `设置 -> 数据与备份`.
 2. Updated the Debug-to-Release migration instructions so both operations require an authenticated account session.
 3. Raised Android and Windows application metadata to `1.16.7 / versionCode 372`.
 
-## Validation For `v1.16.7`
+## 历史阶段：Validation For `v1.16.7`
 
 1. Passed `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and signed `assembleRelease`.
 2. Verified on `emulator-5554` that the unauthenticated screen contains no migration explanation, export action, or import action; authenticated `设置 -> 数据与备份` remains the migration entry point.
@@ -314,7 +326,7 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 4. Passed PowerShell syntax checks for the ignored local release-build and administrator-credential helpers without rotating production credentials.
 5. Passed `git diff --check` and verified `user/`, signing files, environment files, and server database patterns are ignored.
 
-## Completed `v1.16.5` Scope
+## 历史阶段：Completed `v1.16.5` Scope
 
 1. Caught system-level failures when Android rejects a background foreground-service start and published a normal reminder notification fallback instead of crashing the process.
 2. Preserved full-screen reminder intent behavior during the notification fallback and recorded the rejection/fallback result in the reminder chain logs.
@@ -324,7 +336,7 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 6. Added `-Rotate` to the ignored administrator credential helper; the default mode reads credentials and rotation mode writes a new password and restarts `paykitodo-cloud.service`.
 7. Raised Android and Windows application metadata to `1.16.5 / versionCode 370`.
 
-## Validation For `v1.16.5`
+## 历史阶段：Validation For `v1.16.5`
 
 1. Run `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and signed `assembleRelease`.
 2. Verify the login page on the Android emulator in light and dark themes, including migration buttons and scroll behavior.
@@ -332,7 +344,7 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 4. Verify creating an already-started calendar event with a past reminder saves successfully and does not schedule the missed trigger.
 5. Parse the administrator helper with PowerShell without running `-Rotate`; do not rotate the production credential during build verification.
 
-## Completed `v1.16.4` Scope
+## 历史阶段：Completed `v1.16.4` Scope
 
 1. Moved Android login and registration network work to `Dispatchers.IO` so the authentication action does not block the UI thread.
 2. Refreshed the ViewModel authentication signal immediately after successful login or registration, so the app opens the daily board without requiring a restart or a polling tick.
@@ -340,7 +352,7 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 4. Added `docs/current/ANDROID_RELEASE_UI_AUDIT_1.16.3.md` with UI-tree evidence scope and residual physical-device risks.
 5. Restored the final build configuration to the HTTPS cloud endpoint; the local cleartext endpoint used for isolated emulator testing is not part of the final build.
 
-## Completed `v1.16.2` Scope
+## 历史阶段：Completed `v1.16.2` Scope
 
 1. Added migration-package export/import actions to the unauthenticated login surface, so a user can preserve local data before uninstalling a Debug-signed build and restore it after installing a Release-signed build.
 2. Stopped the phone LAN service explicitly on account logout and blocked secondary entry points, reminders, and widgets from exposing data without a valid session.
@@ -348,14 +360,14 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 4. Changed automatic backup output to one latest archive updated on data changes, with cleanup of legacy timestamped archives.
 5. Raised Android and Windows application metadata to `1.16.2 / versionCode 367`.
 
-## Completed `v1.16.1` Scope
+## 历史阶段：Completed `v1.16.1` Scope
 
 1. Unauthenticated `/admin` requests render a PaykiTodo-owned login page instead of returning a `WWW-Authenticate` challenge.
 2. Added cookie-based administrator sessions with logout and preserved CSRF checks for state-changing actions.
 3. Kept valid Basic Auth as a non-challenging compatibility path for scripts and tests.
 4. Raised Android and Windows application metadata to `1.16.1 / versionCode 366`.
 
-## Completed `v1.16.0` Scope
+## 历史阶段：Completed `v1.16.0` Scope
 
 1. Added the account registration, login, token refresh, device, versioned encrypted snapshot, conflict, and administrator APIs on loopback port `18766`.
 2. Added Android account UI and encrypted local account credentials while preserving Room as the local authority and `18765` as the separate LAN browser path.
@@ -364,14 +376,14 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 5. Deployed the cloud API and administrator page behind the private HTTPS reverse proxy; the origin stays loopback-only on `18766`, with the existing phone LAN `18765` path unchanged.
 6. Verified public health, account registration/authentication, administrator access, administrator CSRF protection, account disable/enable, and device revocation.
 
-## Completed `v1.15.22` Scope
+## 历史阶段：Completed `v1.15.22` Scope
 
 1. Split desktop todo and event creation buttons and made their visibility tab-specific.
 2. Reflowed the desktop header so navigation stays left while creation and connection controls stay right without narrow-window overlap.
 3. Matched the Desktop Web current-time line to the phone calendar's full-width red line and current-day marker convention.
 4. Added minute-aligned indicator refresh, fixed mini-calendar selection geometry, centered week headers, and one-second selected-column feedback.
 
-## Completed `v1.15.21` Scope
+## 历史阶段：Completed `v1.15.21` Scope
 
 1. Added signed Release and Debug build tooling using the same source with separate signing/build types.
 2. Added `.paykibak` ZIP migration archives with checksums, legacy JSON import compatibility, and secret exclusion.
@@ -386,12 +398,12 @@ The `v1.16.19 / versionCode 384` round closes the remaining cross-client history
 11. Reflowed the accessibility overlay actions into a primary row and an optional second row, with single-line button labels and compact padding for narrow phones.
 12. Revalidated retained-notification clicks so completed, canceled, or missing items only clear stale notifications instead of opening previews.
 
-## Latest Public Release Baseline
+## 历史阶段：Latest Public Release Baseline
 
 1. `v1.15.18` remains the latest GitHub Release and public APK.
 2. The `1.16.0` source and local APKs are not published until the user explicitly requests a release.
 
-## Next Validation
+## 历史阶段：Next Validation
 
 1. Install `1.16.4` Release on a physical device and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
 2. Verify the single reminder switch and the event/intermediate/final todo action layouts on a physical phone.

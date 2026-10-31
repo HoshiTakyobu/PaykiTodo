@@ -1,24 +1,24 @@
-请继续PaykiTodo尚未完成的原七项任务，工作目录G:\Workspace\Project\PaykiTodo。
+请继续PaykiTodo原七项目标的最终收尾，工作目录G:\Workspace\Project\PaykiTodo。
 
-先读AGENTS.md，执行恢复基线检查，再读当前PROJECT_STATUS、CURRENT_TASK、SESSION_HANDOFF顶部，然后按顺序读：
+先读AGENTS.md并执行恢复基线检查，再读当前PROJECT_STATUS、CURRENT_TASK、SESSION_HANDOFF顶部，然后按顺序读：
 1. docs/current/MODEL_HANDOFF_20261101.md
 2. docs/current/planning-input/INPUT_CONTRACT_20261101.md
 3. docs/current/IMPLEMENTATION_MAP_20261101.md
 
-当前Android1.17.12/404、Windows1.17.12.0、Room34。最近Android功能提交2e83d17、目标归档3e3b5c2；文档更新后的HEAD以实际git为准。公开Release仍v1.15.18，未push/创建Release/上传/部署。
+当前源码及已验收成品Android1.17.13/405、Windows1.17.13.0、Room34；本轮起点d765f14，最终提交/远端以实际git为准。公开Release仍v1.15.18，尚未push/创建Release/上传/部署。1.17.13本地验收、成品和数据保护已完成，具体数量/条件跳过与成品见VALIDATION_1.17.13，实际push前不标整目标完成。
 
-已完成并验收：1.17.8设置/中文字体/字号/离线帮助，1.17.9共同报告prompt与168小时日报期限，1.17.10每日看板临时规划/本地及AI/编辑预览/事务导入/父子和课程多时段/旧文档只读，1.17.11双端GitHub更新与Windows签名后台/灰度/增量/启动回退，1.17.12双端现有实例绝对提醒保护。不要重做这些模块。
+已完成模块：1.17.8设置/中文字体/字号/离线帮助，1.17.9共同报告prompt与168小时日报期限，1.17.10每日看板临时规划/本地及AI/编辑预览/事务导入/父子与课程多时段/旧文档只读，1.17.11双端GitHub更新及Windows签名后台/灰度/增量/启动回退，1.17.12双端现有实例提醒保护。不要重做这些模块。
 
-原60个未公开提交已清理；之后复扫到3e3b5c2的65提交/1710blob/167已分类URL，零未解决命中、零已识别地址残留。保留完整恢复bundle；本次文档及任何后续新增提交仍要全量复扫，最后按既有授权只push审计后的main，不推恢复引用或强改公开历史。
+1.17.13已实现循环课程绝对提醒唯一归属。决定来源是本轮按最后单一推荐方案后用户继续执行，决策014不伪写数字选项回复。每个不同绝对时刻只存到整门课程所有时段中最近Start>=absolute的合法实例，相等本次，并列按输入时段顺序。相对分钟每次，过去不补响，有限范围无目标报错整批拒绝；窗口外拥有者提前生成、补齐覆盖中间课程；取消/改单次/共同字段修改不自动重新分配或复制。Room34事项字段保持，模板不存单次绝对时刻。三端预览支持显示和修改后重算，LAN冻结原session日期并保护账号代际。
 
-唯一剩余产品选择：循环文本中的绝对提醒，是只提醒一次并归属该时刻之后最近课程，还是循环只允许提前分钟、绝对提醒由用户另写单次事项。只收到“继续”不是选项答案；仍未明确选择时保留候选诊断/原文，不自动决定、不复制到全部实例。标题、时间简写、提醒默认/关闭、分号后#、跨午夜补日期、层级/引号、循环写法/范围等已确认，不重复问。
+不要回退到旧两分支等待，不重复问标题/提醒/分号后#、跨午夜补日期、层级/引号、循环/范围。270Android单测/Lint0错误/三种构建通过；64设备条目63通过、1旧跨端fixture条件跳过（本轮17新增全通过）；Windows62不同检查、LAN模拟HTTP实际DOM9/9及node--check通过。剩余为最终文档、中文功能提交及独立目标归档、全量审计和已授权main推送，无新变化不重复成功套件。
 
-收到选择后仅实施所选分支，先按AGENTS升相关版本，针对真实解析/数据/窗口外实例/修改作用域/事务/补齐做验收，同轮更新文档和中文功能提交，再独立归档目标。最终复核新增历史、忽略路径、成品与真实远端后执行已授权源码推送。创建Release/上传安装包/部署另按实际授权处理。
+原60未公开提交已清理；最近复扫至d765f14，66提交/1715blob/167已分类URL，零未解决命中。新增功能、归档及文档提交须继续全量复扫，最后只push审计后的main，不force、不push --all、不推恢复引用。完成实际push并实查远端HEAD一致后才把原goal标complete。创建Release/上传安装包/部署不是源码push。
 
-用户已经明确恢复原目标，原暂停只为换模型。不要再次请求恢复许可，不新建goal替代，不把部分完成标为整体完成。原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保持，不git add .或混入新提交。
+用户已经恢复原目标，不再次请求恢复许可，不新建goal替代。原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留，不git add .或混入提交。
 
-最新Debug/同证书Release及WindowsMSI/完整便携目录在Deliverables/PaykiTodo/1.17.12，具体仓库路径和真实payload见验收。不要拿旧desktop/dist或单个EXE冒充当前Windows成品。
+本轮APK路径app/build/outputs/apk/debug/PaykiTodo-1.17.13-debug.apk及对应签名Release，MSI desktop/installer-output/PaykiTodo-1.17.13-windows-x64.msi，真实payload desktop/obj/installer/1.17.13-15bbf1bf1431488690872e90c2ae6327/payload。新交付目录Deliverables/PaykiTodo/1.17.13共494文件，SHA256.json覆盖其余493；便携484文件、完整更新482条目/增量4条目验签和重建已核对，Release与1.17.12证书一致。旧成品保留，不用旧desktop/dist或单个EXE冒充当前成品。
 
-复用无窗口Pixel_8/emulator-5554：原user0和user10受保护，user11专用测试。最后user10主页、应用停止、qemu PID20332暂停；先核对AVD/PID/线程状态再恢复，不因ADB等待重启/清空。原user0 646/646与user10 148/148哈希相同，先备份且最后再比对恢复。Windows测试用独立桌面/资料，不占全局输入，不动真实手机。
+复用无窗口Pixel_8/emulator-5554，仅user11测试后已停应用/测试、回user10主页，核身份后qemu PID20332恢复原暂停。原user0 646/646与user10 148/148逐文件SHA256完全相同，零增删改；user11 after218文件保留。前后备份在Backups/PaykiTodo/planning-absolute-1.17.13。不要因ADB等待重启或清空。Windows用独立桌面/资料，不占全局输入，不动真实手机。
 
-保留旧文档、备份、认证、私钥、失败证据和未提交源码，不删除/搬迁用户资料。旧1.17.9交接正文已留在Git历史与Backups/PaykiTodo/handoff-docs-20261101-3e3b5c2，不当当前基线。
+保留旧文档、备份、认证、私钥、失败证据和未提交源码，不删除或搬迁用户资料。

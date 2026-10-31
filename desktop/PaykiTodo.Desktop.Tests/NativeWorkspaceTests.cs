@@ -265,6 +265,63 @@ public sealed class NativeWorkspaceTests
         Exercise(false); Assert.True(workspace.Document!.HasSamePersonalSyncContent(before));
         Exercise(true); Assert.Single(workspace.Document!.Items.Where(i => i.Title == "在预览修改的待办"));
         Assert.Equal(before.PlanningNotes.Count, workspace.Document.PlanningNotes.Count);
+        var beforeAbsolute = DesktopSnapshotDocument.FromArchiveBytes(workspace.Document.ToArchiveBytes());
+        var tomorrow = DateTime.Today.AddDays(1);
+        void ExerciseAbsolute(bool commit)
+        {
+            Descendants<Button>(window).Single(b => System.Windows.Automation.AutomationProperties.GetAutomationId(b) == "Navigate.每日看板").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            window.UpdateLayout();
+            Exception? failure = null; var stage = 0; var started = DateTime.UtcNow;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+            timer.Tick += (_, _) => {
+                var dialog = window.OwnedWindows.Cast<Window>().FirstOrDefault(w => w.Title is "输入规划" or "确认规划");
+                try {
+                    if (DateTime.UtcNow - started > TimeSpan.FromSeconds(8)) throw new TimeoutException("循环绝对提醒预览没有完成");
+                    if (dialog == null) return;
+                    if (stage == 0) {
+                        Descendants<TextBox>(dialog).Single(i => i.AcceptsReturn).Text = $"每日绝对课程,每天[09:00>10:00,15:00>16:00],({tomorrow:yyyy-MM-dd} 10:00);";
+                        stage = 1; Descendants<Button>(dialog).Single(b => b.Content as string == "识别").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    } else if (dialog.Title == "确认规划") {
+                        Assert.False(workspace.Document!.Items.Any(i => i.Title == "每日绝对课程"));
+                        var ownership = Descendants<TextBlock>(dialog).Single(text => System.Windows.Automation.AutomationProperties.GetAutomationId(text).StartsWith("Planning.AbsoluteOwnership."));
+                        Assert.Contains($"时段2 · {tomorrow:yyyy-MM-dd} 15:00", ownership.Text);
+                        var inputs = Descendants<TextBox>(dialog).ToArray();
+                        inputs[3].Text = $"({tomorrow:yyyy-MM-dd} 08:00)";
+                        Assert.Contains($"时段1 · {tomorrow:yyyy-MM-dd} 09:00", ownership.Text);
+                        inputs[1].Text = "每天[11:00>12:00,15:00>16:00]";
+                        Assert.Contains($"时段1 · {tomorrow:yyyy-MM-dd} 11:00", ownership.Text);
+                        inputs[4].Text = $"截至{DateTime.Today:yyyy-MM-dd}";
+                        Assert.Equal("", ownership.Text);
+                        Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("之后在循环范围内没有日程"));
+                        inputs[4].Clear();
+                        Assert.Contains($"时段1 · {tomorrow:yyyy-MM-dd} 11:00", ownership.Text);
+                        inputs[0].Text = "预览修改的绝对课程";
+                        dialog.UpdateLayout(); Screenshot(dialog, Path.Combine(folder, "windows-transient-absolute-preview.png"));
+                        timer.Stop();
+                        var primary = Descendants<Button>(dialog).Single(b => b.Content as string == (commit ? "确认导入" : "取消"));
+                        primary.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        if (commit) {
+                            var count = workspace.Document!.Items.Count;
+                            primary.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            Assert.Equal(count, workspace.Document.Items.Count);
+                        }
+                    }
+                } catch (Exception error) { failure = error; timer.Stop(); dialog?.Close(); }
+            };
+            timer.Start();
+            try { Descendants<Button>(window).Single(b => b.Content as string == "输入规划").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
+            finally { timer.Stop(); }
+            Assert.Null(failure);
+        }
+        ExerciseAbsolute(false); Assert.True(workspace.Document.HasSamePersonalSyncContent(beforeAbsolute));
+        ExerciseAbsolute(true);
+        var absoluteOwner = Assert.Single(workspace.Document.Items.Where(item => item.Title == "预览修改的绝对课程" && workspace.Document.EditFor(item.Id)!.AbsoluteReminderTimes.Count > 0));
+        Assert.Equal(tomorrow.AddHours(11), DesktopCalendarTime.Wall(absoluteOwner.StartAtMillis!.Value, ""));
+        Assert.Equal(new[] { Millis(tomorrow.AddHours(8)) }, workspace.Document.EditFor(absoluteOwner.Id)!.AbsoluteReminderTimes);
+        Assert.All(workspace.Document.Items.Where(item => item.Title == "预览修改的绝对课程" && item.Id != absoluteOwner.Id), item => {
+            Assert.Empty(workspace.Document.EditFor(item.Id)!.AbsoluteReminderTimes); Assert.False(workspace.Document.EditFor(item.Id)!.ReminderEnabled);
+        });
+        Assert.Equal(before.PlanningNotes.Count, workspace.Document.PlanningNotes.Count);
     }
 
     private static void Screenshot(Window window, string path)

@@ -274,6 +274,16 @@ class DesktopSyncCoordinator(
     }
 
     private suspend fun previewTransientPlanning(json: JSONObject): JSONObject {
+        if (json.has("candidates")) {
+            val sessionId = json.getString("sessionId")
+            val preview = synchronized(planningPreviews) { planningPreviews[sessionId] } ?: error("预览已失效，请重新识别")
+            val guard = { settingsStore.hasValidRemoteSession() && preview.expiresAt > System.currentTimeMillis() &&
+                preview.generation == app.remoteSyncCoordinator.currentAccountGeneration() && preview.token == settingsStore.currentSettings().desktopSyncToken }
+            check(guard()) { "预览或连接已失效，请重新识别" }
+            val candidates = TransientPlanningWeb.readEdits(json.getJSONArray("candidates"), preview.candidates, preview.now)
+            check(guard()) { "预览或连接已失效，请重新识别" }
+            return TransientPlanningWeb.toJson(com.example.todoalarm.data.TransientPlanningResult(candidates, emptyList())).put("sessionId", sessionId)
+        }
         val text = json.getString("text")
         require(text.isNotBlank() && text.length <= 200_000) { "请填写规划内容（最多20万字）" }
         val generation = app.remoteSyncCoordinator.currentAccountGeneration()

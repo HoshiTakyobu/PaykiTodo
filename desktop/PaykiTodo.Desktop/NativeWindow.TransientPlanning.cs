@@ -47,6 +47,7 @@ internal sealed partial class NativeWindow
             body.Children.Add(Action("填入示例", () => raw.Text = "- 准备出行\n  - 买车票, 18:00;\n  - 收拾行李;\n- 高等数学, @教学楼201, 每周[周一 08:00>09:40, 周三 14:00>15:40], (10,0);"));
             body.Children.Add(Text("逗号分字段，@地点，单时间点是DDL，>时段是日程。省略提醒默认(5,0)，()关闭。#备注放在结束分号后直到行尾。", 13, Muted));
             body.Children.Add(Text("Enter：无顶层分号进入子级，有分号保持本级。Shift+Tab减少一级缩进。循环可用每天/每N天/每周/每N周/每月/每年[时段]，范围可省略。", 13, Muted));
+            body.Children.Add(Text("循环中的绝对时刻只提醒一次，归属该时刻之后最近开始的一次课程；提前分钟仍按每次课程提醒。", 13, Muted));
             body.Children.Add(error);
         }
         async Task Recognize()
@@ -94,6 +95,8 @@ internal sealed partial class NativeWindow
                 var group = Choice(new[] { new PlanningChoice(null, "默认分组") }.Concat(workspace.Document!.Groups.Select(g => new PlanningChoice(g.Id.ToString(), g.Name))), candidate.GroupId?.ToString());
                 var calendar = Choice(workspace.Document.Calendars.Where(c => c.ShareMode != "SHARED").Select(c => new PlanningChoice(c.Id, c.Name)), candidate.CalendarId);
                 var validation = Text("", 13, B("#AF3A32"));
+                var ownership = Text("", 13, Muted);
+                System.Windows.Automation.AutomationProperties.SetAutomationId(ownership, "Planning.AbsoluteOwnership." + candidate.Id);
                 TransientPlanningCandidate Read()
                 {
                     var expression = string.Join(',', new[] { time.Text, reminders.Text, range.Text }.Where(t => !string.IsNullOrWhiteSpace(t)));
@@ -106,9 +109,18 @@ internal sealed partial class NativeWindow
                     if (updated.Validate() is { } invalid) throw new InvalidOperationException(invalid); return updated;
                 }
                 drafts.Add(Read);
-                foreach (var input in new[] { name, time, location, reminders, range, notes }) input.TextChanged += (_, _) => { try { _ = Read(); validation.Text = ""; } catch (Exception exception) { validation.Text = exception.Message; } };
+                void UpdatePreview()
+                {
+                    try {
+                        var updated = Read(); validation.Text = "";
+                        ownership.Text = string.Join("\n", updated.AssignAbsoluteReminders().Select(assignment =>
+                            $"绝对提醒 {assignment.ReminderAt:yyyy-MM-dd HH:mm} → 时段{assignment.SlotIndex + 1} · {assignment.StartAt:yyyy-MM-dd HH:mm} 开始（只提醒一次）"));
+                    } catch (Exception exception) { validation.Text = exception.Message; ownership.Text = ""; }
+                }
+                foreach (var input in new[] { name, time, location, reminders, range, notes }) input.TextChanged += (_, _) => UpdatePreview();
+                UpdatePreview();
                 body.Children.Add(Column(check, Text("标题"), name, Text("DDL / 起止 / 循环时间（可清空）"), time, Text("地点"), location,
-                    Text("提醒：空白默认(5,0)，()关闭"), reminders, Text("生效范围（可省略）"), range, Text("备注"), notes, Text("父事项"), parent, Text("分组"), group, Text("日历"), calendar, validation));
+                    Text("提醒：空白默认(5,0)，()关闭"), reminders, ownership, Text("生效范围（可省略）"), range, Text("备注"), notes, Text("父事项"), parent, Text("分组"), group, Text("日历"), calendar, validation));
                 if (candidate.Slots.Any(s => s.RecurrenceType != "NONE")) body.Children.Add(Text("多个时段共用课程字段；未写截止即持续循环，近期实例滚动生成。月末/闰日采用月末日期。", 13, Muted));
             }
             body.Children.Add(error);

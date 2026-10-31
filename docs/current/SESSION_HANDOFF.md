@@ -1,6 +1,19 @@
 # Session Handoff
 
-## 2026-11-01 当前交接指南消除旧待做指令
+## 2026-11-01 1.17.13终验与推送收尾
+
+从d765f14恢复，Android1.17.13/405、Windows1.17.13.0、Room34已实施全课循环绝对提醒唯一归属：Start>=absolute最近实例，相等本次、并列输入顺序，相对每次，过去不补响，窗口外提前物化和中间缺口补齐。决定来源为本轮按最后单一推荐方案后用户继续执行，决策014不伪写数字选项回复。三端可编辑归属预览；取消/改单次/系列共同字段不自动重新分配或复制，1.17.12实例保护保持。
+
+- 270Android单测零失败/跳过；Lint0错误/137警告/30信息；Debug/AndroidTest/签名Release构建通过。64不同设备条目中63通过（53数据+5Compose+5Web）、1旧跨端fixture条件跳过，本轮新增12数据/2Compose/3Web全部通过，android-device.log耗时56.164s。Runner的OK(64 tests)包含assumption跳过，不能计作64通过。首轮编译字符串插值错误已修正，失败日志保留。
+- Windows62项不同检查通过（60针对检查，含13新增数据回归与真实WPF预览，另2实际包）。首轮UI测试等待布局失败及复验保留，重跑不重复计数。
+- APK1.17.13/405、包名、同1.17.12Release证书、三类资产与源码字节一致已核对。Deliverables/PaykiTodo/1.17.13共494文件，SHA256.json覆盖其余493，便携484；完整更新ZIP482条目/增量4条目验签和重建匹配。新MSI、真实payload及路径见[验收](VALIDATION_1.17.13.md)，不是旧desktop/dist。LAN实际DOM模拟HTTP9/9首轮通过，node--check通过；3张截图重采不累计检查数，不能冒称真实LAN网络或未来公开升级已实测。
+- 无窗口emulator-5554/Pixel_8仅user11测试。最终原user0 646/646与user10 148/148逐文件SHA256完全相同，零增删改；user11 after218文件保留备份。已停user11应用/测试、回user10主页，核身份后qemu PID20332恢复原Suspend，353线程Wait Suspended。备份Backups/PaykiTodo/planning-absolute-1.17.13，证据Scratch/PaykiTodo/planning-absolute-1.17.13/android-evidence-summary.json。真实手机未动。
+- 原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留且排除提交；不git add .。原历史清理及恢复bundle保持，最新复扫d765f14为66提交/1715blob/167已分类URL，零未解决命中，新增功能/归档/文档还须复扫。
+- 远端main实查仍83ff5cf，公开Release仍v1.15.18；尚未push/Release/上传/部署，原目标未完成。本轮验收/成品/数据保护均已结束；下一步最终文档、中文功能提交与独立目标归档、全量审计、已授权main推送并核实远端；无需再问旧两分支或恢复许可，不新建goal，无新变化不重复成功套件。
+
+下方所有旧“待用户选择/待实现/暂停/下一步”是历史阶段状态，不能覆盖本节。当前交接三文档已同步实际1.17.13规则与收尾入口。
+
+## 历史阶段：2026-11-01 当前交接指南消除旧待做指令
 
 恢复核对3e3b5c2、Android1.17.12/404、Windows1.17.12.0、Room34及原未跟踪Prompt。审查发现MODEL_HANDOFF、IMPLEMENTATION_MAP和START_NEXT_MODEL虽在顶部追加新状态，正文仍称1.17.9为实际基线、规划/更新器不存在，并要求重问已确认的备注/跨午夜。本轮将三份文档整理为当前实际入口、七项状态、唯一待选规则和剩余执行顺序；旧版完整副本在Backups/PaykiTodo/handoff-docs-20261101-3e3b5c2，Git历史也保留。
 
@@ -8,7 +21,7 @@
 
 循环文本绝对提醒仍需要明确选择，候选校验保持；原目标未完成，未push/发布/部署。后续模型读更新后的三份指南，不按旧1.17.9交接重做已完成模块。
 
-## 2026-11-01 Android循环单次提醒保护完成
+## 历史阶段：2026-11-01 Android循环单次提醒保护完成
 
 从02e32c5恢复，Android升1.17.12/404、Room34，Windows保持已验收1.17.12.0。首次循环生成不继承绝对时刻，单次转循环保留原ID拥有者；全部/后续/整课修改按日期锚点匹配实例保留提醒，不因新ID复制或丢失。仍有效的已生成远期日期保留；无提醒实例改名不误关其他纯绝对拥有者，显式关闭按所选范围生效。待办编辑纳入事务，生成失败回滚。新循环文本归属仍待明确选择，当前候选校验保持，不能把“继续”解释为选项。
 
@@ -18,7 +31,7 @@
 - 原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留且不得混入提交。清理后的历史及原bundle保持；新增功能和单独目标归档须完整复扫。未push/tag/Release/上传/部署，公开Release仍v1.15.18，原七项目标未完成。
 - 下一步等待用户选择循环绝对提醒只响一次并归属之后最近课程，或循环只允许提前分钟；再实施所选分支、验收、审计新增提交及远端后执行既有授权main推送。不重做1.17.8—1.17.11，不新建goal或重复请求恢复许可。
 
-## 2026-11-01 Windows循环单次提醒保护完成
+## 历史阶段：2026-11-01 Windows循环单次提醒保护完成
 
 从b9bbaac恢复，独立修复Windows补齐/系列编辑复制绝对提醒，以及选择其他实例只改名关闭拥有者提醒的问题。Windows1.17.12.0，Android仍1.17.11/403、Room34；所选范围内显式关闭提醒仍生效，原实例时刻、相对规则和备份保留。51个不同检查通过（49相关回归含14新增、另2实际包启动/nonce）；3个补齐和10个系列编辑用例先复现失败，重跑不重复计数。
 
@@ -26,11 +39,11 @@
 - 构建用已验证微软签名缓存；成品检查在构建后运行。未重复MSI生命周期/完整UIA/Android套件；没有用户数据、真实手机或模拟器操作。最新APK仍app/build/outputs/apk/debug/PaykiTodo-1.17.11-debug.apk，没有新APK。
 - 规划候选仍拒绝循环绝对时刻，未选择任何待定分支；下一步需要用户答复一次归属或只允许提前分钟，再实现/验证并审计全部新增提交后授权push。原60提交清理及恢复bundle保留，原未跟踪Prompt保持。没有push/tag/Release/部署，原目标未完成。
 
-## 2026-11-01 循环绝对提醒实施定位
+## 历史阶段：2026-11-01 循环绝对提醒实施定位
 
 恢复核对b9bbaac，Android1.17.11/403、Windows1.17.11.0、Room34；仅有原未跟踪历史Prompt。只读核对双端候选校验、导入、循环模板和现有验收；未收到最终归属选择，产品仍保留报错。若选只提醒一次，必须在整门课所有时段中唯一分配，并处理窗口外目标、补齐和共同字段编辑时的复制；现有Room34事项字段可复用。具体分支和验收入口见[实施定位](planning-input/RECURRING_ABSOLUTE_IMPLEMENTATION_20261101.md)，其中建议边界不是用户确认。未改源码/版本/运行数据，无新APK或重复测试，未push/Release/部署；原目标未完成。下一步需要用户回复所选规则，再实施并复核新增提交。
 
-## 2026-11-01 未推送历史清理完成，继续剩余规划规则与最终推送
+## 历史阶段：2026-11-01 未推送历史清理完成，继续剩余规划规则与最终推送
 
 按实际c8079df/Android1.17.11/403/Windows1.17.11.0/Room34恢复。最新完整bundle已验证且未覆盖旧备份；在隔离裸仓库重写远端83ff5cf之后的60个提交，保留路径/模式/作者/日期/顺序，接回main后的归档HEAD为83e2a45，更新功能提交为092afab，规划为6f8d24d。全部新快照及消息复扫无禁止参考/凭据特征命中，已识别地址无残留；URL复核保留合法来源/许可证/命名空间及测试语法。完整60提交差异通过git diff --check。
 
@@ -42,7 +55,7 @@
 
 公开范围与恢复说明见[历史审计记录](PUBLIC_HISTORY_AUDIT_20261101.md)。
 
-## 2026-11-01 1.17.11 更新链路已实施，继续原七项目标
+## 历史阶段：2026-11-01 1.17.11 更新链路已实施，继续原七项目标
 
 核对起点5d54c96，保留预升版本和原未提交两行说明/历史Prompt。Android1.17.11/403、Windows1.17.11.0、Room34；两端GitHub稳定版本检查、手机DownloadManager/持久状态/取消/签名与版本校验/系统安装、Windows签名清单/稳定灰度/后台delta重建/full回退/独立启动器/nonce确认与启动失败回退完成。MSI及便携构建写入实际增量基线。详见VALIDATION_1.17.11和WINDOWS_UPDATE_PROTOCOL。
 
@@ -53,7 +66,7 @@
 - 下一步：循环绝对提醒仅一次归属仍待答复（本轮提供两个选择），然后完整未推送历史清理及授权push；公开Release实查仍v1.15.18。没有push/tag/Release/部署，整体goal未完成。现有规划解析不要重做，下面“更新未实现/交接后暂停”均属历史。
 - 未提交文档说明和历史Prompt保持独立；原始副本在Backups/PaykiTodo/unpublished-before-scrub-20261101。新的更新文件由本轮提交，不能git add .把原Prompt混入。
 
-## 2026-11-01 临时规划主体已实施，原七项目标继续
+## 历史阶段：2026-11-01 临时规划主体已实施，原七项目标继续
 
 Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未提交规划代码。三端每日看板临时输入、本地/可选AI、可编辑预览、确认事务导入、父子与课程多时段、旧文档含归档只读、绝对提醒备份同步和无截止滚动已实施。254Android单测/Lint、12项设备检查、Windows90回归+1独立14阶段UIA和5段LAN模拟HTTP浏览器流程通过；成品含Debug、同证书签名Release、MSI和完整便携目录，见Deliverables/PaykiTodo/1.17.10及VALIDATION_1.17.10。原user0 646/646、user10 148/148哈希相同。
 
@@ -64,11 +77,11 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 - 本轮数据恢复副本：Backups/PaykiTodo/planning-1.17.10/before-20261101-010237和after-lan-verification；证据Scratch/PaykiTodo/planning-1.17.10。模拟器复用emulator-5554/Pixel_8/PID20332，无窗口；当前安装1.17.10Debug，user11执行测试，最终恢复user10主页，应用/测试停止，核实Pixel_8后PID20332恢复暂停。
 - 原有未提交Document organization follow-up两行和docs/goals/PaykiTodo_规划台实现Prompt.md保留，不混入规划功能提交。最新整体状态见PROJECT_STATUS和VALIDATION_1.17.10。
 
-## 2026-11-01 新模型恢复执行
+## 历史阶段：2026-11-01 新模型恢复执行
 
 用户明确要求按启动提示词和三份配套文档继续原任务，撤销此前仅为更换模型的暂停请求。接手核对HEAD a25aac6、Android1.17.9/401、Windows1.17.9.0、Room33；原未提交文档整理说明和历史Prompt保留。规划输入实现进行中，源码暂升1.17.10/402、Windows1.17.10.0、Room34用于新绝对提醒字段；尚无本轮构建验收成品，不能把新增代码算作完成。#备注顺序和跨午夜缺省已确认并记录决策012/013。更新机制、完整历史审计和最终授权推送仍待完成，整体goal未完成。
 
-## 2026-11-01：用户要求切换模型，交接后暂停自动执行
+## 历史阶段：2026-11-01：用户要求切换模型，交接后暂停自动执行
 
 用户因模型成本要求先写完整指导文档，交给下一模型实现；并明确答复“暂停，交给新模型继续”。本轮仅整理文档，没有继续开发更新或规划功能，代码版本仍为Android1.17.9/401、Windows1.17.9.0、Room33，最近功能提交87240cd。文档提交位于其后，恢复时仍需核对git。
 
@@ -80,7 +93,7 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 - 原有未提交两行历史整理补充与未跟踪历史规划Prompt继续保留。新交接文档不覆盖这两项；它们不是新语法来源。本次分离补充的patch在Scratch/PaykiTodo/experience-20261031/model-handoff-preexisting.patch。
 - 运行环境沿用下方已验证报告阶段：没有活动构建/测试任务；Pixel_8无窗口、user10主页、应用停止，qemu最后20332处于暂停。先核对状态再恢复，勿因ADB查询等待盲目重启。
 
-## Previous coding stage: 1.17.9 reports verified
+## 历史阶段：Previous coding stage: 1.17.9 reports verified
 
 - Recheck git/version on resume. Report-stage base was730e3fa; current source/build Android1.17.9/401, Windows1.17.9.0, Room33. Full seven-item goal remains active; do not mark complete from this stage.
 - Shared report-system asset drives Android/Windows AI reports. Both use Monday–Sunday weeks, bounded previous/current/upcoming evidence, recurrence/bundle/parent relations and actual check-in slices. No invented completion rate, unsupported medical inference or treating plans as completed actions. Daily reports expire inclusively at generation+604800000ms; weekly retention remains independent. Read/search/detail/export/restore/merge guards, Android app monitor/persisted job, Windows startup/timer cleanup and live-open UI expiry are implemented.
@@ -93,7 +106,7 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 - PublicRelease remainsv1.15.18; origin/main last checked83ff5cf. Initial scan of54older unpublished commits found historical forbidden references and private URL review hits; details remain private in scratch/history-audit-private.json. Current clean tree does not authorize pushing uncleared history. Preserve recoverable local history and incremental work when sanitizing.
 - Preserve the pre-existing two-line document-placement note in this handoff and untracked docs/goals/PaykiTodo_规划台实现Prompt.md separately. Historical Prompt does not override current grammar. Prior handoff patch is saved at Scratch/PaykiTodo/experience-20261031/reports-preexisting-handoff.patch; do not stage it with the report feature commit.
 
-## Previous stage: 1.17.8 settings, fonts and usage guide
+## 历史阶段：Previous stage: 1.17.8 settings, fonts and usage guide
 
 - Full seven-item user goal remains active. Do not mark it complete from this stage. Starting HEAD was77e9555 (54 local commits ahead of origin/main); current source Android1.17.8/400, Windows1.17.8.0, Room33. Recheck actual git/version before continuing.
 - Completed Windows settings same-surface categories/left alignment, Chinese and English font matching,12—22px transactional preview/persistence, responsive large-font calendar/time fields, and offline usage guide in Settings/F1. Android snapshots preserve desktopFontSize. README and desktop guide now describe actual current source and published version separately.
@@ -106,7 +119,7 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 - Prior document-placement handoff addition and untracked docs/goals/PaykiTodo_规划台实现Prompt.md remain pre-existing local work. The latter is historical and must not override the new user syntax. Keep these changes separate from the feature commit. Ask_Why skill is used only for grammar decisions; no delegated agents were started.
 - Current verification root:Scratch/PaykiTodo/experience-20261031. Final MSI evidence:installer/install-e6f921e114f343358d78a9481d1ac973/result.json and installed-app/*.trx. All exec sessions observed in this stage finished; there is no build to restart on resume.
 
-## Current: completed 1.17.7 account-sync conflict recovery, 2026-10-29
+## 历史阶段：Current: completed 1.17.7 account-sync conflict recovery, 2026-10-29
 
 - Requested thread `01a187ab-3592-7cf1-a762-9b389ebf4fa7` failed before edits. This round starts from `63fc037`, Android 1.17.6/398 and Windows 1.17.5.0; final source/artifacts are Android 1.17.7/399 and Windows 1.17.7.0, Room 33. Recheck status/log/version on resume.
 - Acknowledged snapshots enable conservative three-way merging, completion versus snooze/passive missed resolution and repeated terminal-action convergence. Independent records/settings can merge; competing task content edits, opposite actions, delete/edit, ID collisions, broken references and divergent legacy copies without a baseline remain protected. Diagnostic writes/no-change callbacks do not create false user changes. Merges retain safety copies and continue CAS upload. No schema/protocol deployment was required.
@@ -118,7 +131,7 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 - Delivery: `G:\Workspace\Deliverables\PaykiTodo\1.17.7` with Release/Debug APKs, MSI and full Windows-portable directory, guide and hashes. Repo artifacts: `app/build/outputs/apk/release/PaykiTodo-1.17.7-release.apk`, `app/build/outputs/apk/debug/PaykiTodo-1.17.7-debug.apk`, `desktop/installer-output/PaykiTodo-1.17.7-windows-x64.msi`, `desktop/dist/PaykiTodo.exe`. No new visual preview.
 - Local Chinese focused commit only, no push/tag/release/server-code deployment. Published GitHub Release remains v1.15.18. Preserve pre-existing document-organization edits below and the untracked historical Planning Desk prompt; it is excluded from this feature commit. Other Windows device polling was observed server-side; its physical UI was not inspected or upgraded. This round's implementation and phone recovery are complete; OEM background reminder and broad physical-input coverage remain limits.
 
-## Previous: completed Android 1.17.6 / 398 snapshot consistency, 2026-10-28
+## 历史阶段：Previous: completed Android 1.17.6 / 398 snapshot consistency, 2026-10-28
 
 - Continued from `9e4ff78`. The original 12-item work remains complete; this later audit reproduced a new concurrent export bug: old group ID 1 with a task referencing replaced group ID 2. Repository snapshot reads now share one Room transaction, while automatic-backup encoding/file I/O stays with its caller. Existing nested sync transactions remain supported.
 - Android is 1.17.6/398, Room 33; Windows stays 1.17.5.0. Passed: 229 units, Lint 0 errors/134 warnings/30 informational, 24 data + 6 account + 1 live Android checks and 1 packaged Windows compatibility check. New regression failed before the fix and passes afterward. Signed Release, Debug and AndroidTest builds and release upgrade certificate equality passed.
@@ -130,7 +143,7 @@ Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未
 
 Document organization follow-up, 2026-10-29: the historical Planning Desk implementation prompt was moved from `Notes/paykitodo` to `docs/goals/PaykiTodo_规划台实现Prompt.md`. The machine-local deployment journal is now in ignored `user/maintenance/`; raw rollout and completion receipts are under `G:\Workspace\Scratch\PaykiTodo`. Third-party research and workspace cleanup history remain outside the product tree. Only document placement and links changed; Android 1.17.6/398 and Windows 1.17.5.0, existing APKs and the published v1.15.18 baseline are unchanged. No app build, runtime testing, deployment, push or publication was performed.
 
-## Previous: completed 1.17.5 / 397, 2026-10-28
+## 历史阶段：Previous: completed 1.17.5 / 397, 2026-10-28
 
 - Continuation follow-up: [live-window sync](VALIDATION_1.17.5_LIVE_SYNC.md) now proves the already-open 1.17.5.0 packaged EXE receives an Android ViewModel completion automatically, updates the visible list and persists it. Local joint measurement 5092 ms, no manual sync/relogin. Two new targeted tests passed; cumulative emulator 29 and Windows/bridge/UIA 68. No product-source change, version bump or application rebuild. Original artifact hashes remain authoritative.
 - Follow-up evidence: `Scratch/PaykiTodo/live-sync-20261028/run-2`; test backup `Backups/PaykiTodo/before-live-sync-20261028-173459/user-11.tar`. Both first-attempt and passing evidence retained. Normal Windows profile hashes unchanged; test EXE/server stopped and emulator restored to user 10 home. Only emulator was connected; physical-phone and production-network limits remain. `Invoke-DesktopAcceptance.ps1 -TestFilter` allows targeted isolated checks without rerunning the full suite.
@@ -145,14 +158,14 @@ Document organization follow-up, 2026-10-29: the historical Planning Desk implem
 - Local fixture ports 19443/19444 are stopped. Windows test processes and MSI test installation are closed/uninstalled. First failed installer acceptance appended test messages to ordinary diagnostics only; this history was retained. New test diagnostics and `--data-directory` logs use the chosen isolated profile.
 - Finish state: local Chinese feature commit only; no push/tag/publication/server deployment. Published GitHub Release remains v1.15.18. Do not repeat successful tests/builds without a new change or concern. OEM background/lock-screen/vibration and production-network latency remain outside these results. Below is historical context.
 
-## Previous: Windows 1.17.4.0 multi-computer session recovery, 2026-10-27
+## 历史阶段：Previous: Windows 1.17.4.0 multi-computer session recovery, 2026-10-27
 
 - Windows source is now `1.17.4.0`; Android remains `1.17.4 / versionCode 396`. The desktop client stores a DPAPI-protected `installation-identity.bin` beside the workspace and uses it for login. A copied `cloud-workspace.bin` therefore cannot silently reuse the original computer's device ID; machine-name changes also rotate the local installation identity.
 - The server login path keeps the old device active when a reused ID arrives with a different device name/platform, assigning a new generated ID. Existing same-device logins continue to rotate only that device's session. The server's 13-test suite and desktop's 60-test suite pass (57 passed, 3 skipped).
 - `CloudSessionExpiredException` now distinguishes expired refresh tokens, invalid access tokens and revoked devices. `%LOCALAPPDATA%\PaykiTodo\diagnostics.log` records safe status/error/expiry details only; it never records passwords, access tokens or refresh tokens. The other computer's old log is not present in this workspace, so an exact historical cause cannot be proven from local files alone.
 - MSI `PaykiTodo-1.17.4-windows-x64.msi` is built at `desktop/installer-output/PaykiTodo-1.17.4-windows-x64.msi` (80,090,176 bytes; SHA-256 `29830769257C8CC7B9F5C1C160BA17F5DE2187FA42DFE6EEE65E8D0B4ACB80E2`). The portable output `desktop/dist/PaykiTodo.exe` is file version `1.17.4.0` with SHA-256 `04f56a9d2b86d1d785284a78551976a73f9ee8d31048cdfbbb78e6c2a61026f8`. Copies and notes are in `G:\Workspace\Deliverables\PaykiTodo\1.17.4`; do not delete the existing `1.17.3` artifact.
 
-## Previous: completed 1.17.4 / 396 local-write responsiveness, 2026-10-27
+## 历史阶段：Previous: completed 1.17.4 / 396 local-write responsiveness, 2026-10-27
 
 - Baseline was clean `1.17.3 / 395`; the current source is bumped to `1.17.4 / versionCode 396`.
 - Root cause found: repository change callbacks synchronously called widget refresh, `markRemoteSyncDirty()` / sync scheduling, and shared-calendar scheduling on the caller thread; enabled auto-backup also exported and wrote a full archive from the ViewModel coroutine without switching to I/O.
@@ -161,7 +174,7 @@ Document organization follow-up, 2026-10-29: the historical Planning Desk implem
 - Latest APK rebuilt in this round: `app/build/outputs/apk/debug/PaykiTodo-1.17.4-debug.apk`. Signed Release APK, Windows package and full instrumentation were not rebuilt in this round.
 - The dedicated emulator user 10 remains active. The manual smoke test created one synthetic `latency test` history entry; original user 0 and production data were not touched.
 
-## Previous: completed 1.17.3 search access and native collaboration, 2026-10-25
+## 历史阶段：Previous: completed 1.17.3 search access and native collaboration, 2026-10-25
 
 - 2026-10-26 documentation follow-up: rechecked the original calendar/account requirements and current delivery. Corrected `CALENDAR_UPDATE_CONTRACT.md`, which still called 1.17.1 current and omitted the completed native collaboration follow-up. Source/packages stay 1.17.3/395, all three delivered installer hashes still match, and no product tests/builds/deployment were repeated.
 - Source and rebuilt packages: Android `1.17.3 / 395`, Windows `1.17.3.0`, Room 33. Starting commit `4bed7d1`; verify status/version/log on resume. Both-client search permission filtering and Android all-day/reminder presentation are complete. [Validation](VALIDATION_1.17.3.md) has final hashes, results and limits.
@@ -175,7 +188,7 @@ Document organization follow-up, 2026-10-29: the historical Planning Desk implem
 - Latest APKs: `app/build/outputs/apk/debug/PaykiTodo-1.17.3-debug.apk`, `app/build/outputs/apk/release/PaykiTodo-1.17.3-release.apk`; MSI `desktop/installer-output/PaykiTodo-1.17.3-windows-x64.msi`; portable `desktop/dist/PaykiTodo.exe` needs the full directory. Verified copies/hash notes: `G:\Workspace\Deliverables\PaykiTodo\1.17.3`. Older artifacts/previews stay intact. No push/public release/server deployment; published Release is v1.15.18.
 - No remaining work in this fix/acceptance round. Boundaries remain OEM reminders, full Windows physical-input E2E and broader availability/subscription/meeting-resource features. Historical sections below describe their own date/version; their pending CAPTCHA/two-account claims are superseded by this section.
 
-## Previous acceptance audit, 2026-10-25
+## 历史阶段：Previous acceptance audit, 2026-10-25
 
 - Resumed the interrupted final review against clean `f7f1590`, Android 1.17.1/393, Windows 1.17.1.0 and Room 33. No product code, client build, production deployment or release changed. See [final audit](CALENDAR_ACCEPTANCE_AUDIT_20261025.md).
 - Read the completed 222-unit XML, 24 targeted Android device results, 55 Windows regression TRX and one 14-stage isolated UIA result. These are repeated subsets of existing coverage, not newly added distinct tests. Read existing server rollout evidence; no new multi-account invitation was sent.
@@ -183,14 +196,14 @@ Document organization follow-up, 2026-10-29: the historical Planning Desk implem
 - Core calendar/account implementation and deployment are complete in their recorded scope. Production two-account Android/Windows invite/accept/edit/respond/revoke remains unverified; organizer is currently the calendar owner, participants must be accepted calendar members, and cross-member availability scheduling, subscription-source management and meeting-resource services are not implemented as complete workflows. Do not describe this as exhaustive feature or platform acceptance.
 - Next useful verification is the native two-account collaboration flow, followed by physical-device reminder checks; review actual fixture availability and invitation authorization before execution. Do not rerun successful suites or redeploy merely because another continuation starts. No new APK: keep using the existing 1.17.1 files and preview listed below.
 
-## Completed production rollout, 2026-10-25
+## 历史阶段：Completed production rollout, 2026-10-25
 
 - Existing account server now provides current `/v3` calendar and invitation interfaces; original environment, service configuration, accounts and personal snapshots are preserved. Four new calendar tables initialized successfully, deployed source hashes match local modules, service is active and public health returns 200.
 - Remote Linux 21-test suite plus public dedicated-account refresh, calendar create/read/write/rename, stale revision 409, unauthenticated access 401, self-invitation rejection and personal-snapshot preservation checks passed. Turnstile still rejects invalid tokens. See [rollout record](PRODUCTION_CALENDAR_ROLLOUT_20261025.md) for exact limits and retained synthetic fixture.
 - Private recovery copies: `Backups/PaykiTodo/cloud-calendar-20261025T062856Z/`; execution evidence: `Scratch/PaykiTodo/cloud-rollout-20261025/`. Dedicated test Windows profile's session was normally refreshed and saved after backing up the old DPAPI file; its existing archive is preserved. No production second-account invitations, native windows or emulator manipulation this round.
 - Client source and artifacts remain Android 1.17.1/393 and Windows 1.17.1.0; no new APK/MSI build or GitHub publication. Continue from verified repository state and actual server status. Do not repeat this deployment or rotate credentials without a new reason.
 
-## Completed locally 2026-10-25: 1.17.1 participants, details and response refresh
+## 历史阶段：Completed locally 2026-10-25: 1.17.1 participants, details and response refresh
 
 - Baseline: Android `1.17.1 / 393`, Windows `1.17.1.0`, Room 33; verify source version, git status and latest commit on resume. Source and generated artifacts are frozen after local verification.
 - Both clients provide named participant selection, organizer/response details, current RSVP initialization, PRIVATE projection, source/permission guards and independent copy/occurrence semantics. RSVP keeps current confirmed response while preserving dirty/CAS state; in-flight membership changes have a recoverable candidate. Android detail messages survive refresh; all-day notification dates use event timezone.
@@ -200,7 +213,7 @@ Document organization follow-up, 2026-10-29: the historical Planning Desk implem
 - Preview: `G:\Workspace\Deliverables\PaykiTodo\1.17.1\界面预览.html`, 22 actual-control images with synthetic data. Current evidence: `G:\Workspace\Scratch\PaykiTodo\calendar-1.17.1`; final Windows package directory is `windows-installer-final-rsvp/install-cfa43b1c46f246578f57f4efbd9dbde0`. Four participant images were recaptured after a tests-only fixture-name change; product hashes stayed identical.
 - Keep personal encrypted snapshots separate from permission-controlled shared transport. Do not reopen finished participant work or rerun tests without a new change/failure/concern. The subsequent requested production rollout is completed above; retain the authorization boundary for any future push/publication/deployment. Native cross-device invitations, OEM and full physical-input Windows behavior remain outside this rollout's verification.
 
-## Previous local baseline: 1.17.0 calendar and account update
+## 历史阶段：Previous local baseline: 1.17.0 calendar and account update
 
 - Historical baseline: Android `1.17.0 / 392`, Windows `1.17.0.0`, Room `33`. Implementation, migration, local builds and verification are complete. Verify actual source version, git status and latest commit on resume.
 - Requirements: [CALENDAR_UPDATE_CONTRACT.md](CALENDAR_UPDATE_CONTRACT.md). Both clients need calendar body/create-adjust/multiple-calendar/recurrence/all-day-reminder/detail-copy/timezone/collaboration updates, plus login server selection and compact account controls.

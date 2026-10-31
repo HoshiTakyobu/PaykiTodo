@@ -157,7 +157,16 @@ internal fun TransientPlanningDialog(
                             PlanningPreviewChoice("分组", draft.groupId, listOf(null to "默认分组") + groups.map { it.id to it.name }, !busy) { update(draft.copy(groupId = it)) }
                             PlanningPreviewChoice("日历", draft.calendarId, calendars.filter { it.shareMode != "SHARED" }.map { it.id to it.name }, !busy) { update(draft.copy(calendarId = it)) }
                             built[index].second?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                            if (built[index].first?.slots?.any { it.recurrence.isRecurring } == true) Text("多个时段共用课程字段；未写截止即持续循环。预览只显示首次时段，后续滚动生成。月末和闰日按实际月份末日处理。", style = MaterialTheme.typography.bodySmall)
+                            if (built[index].first?.slots?.any { it.recurrence.isRecurring } == true) {
+                                Text("多个时段共用课程字段；未写截止即持续循环。相对分钟每次提醒，绝对时刻只提醒一次。月末和闰日按实际月份末日处理。", style = MaterialTheme.typography.bodySmall)
+                                built[index].first?.takeIf { it.reminderMode != PlanningReminderMode.DISABLED }?.let { candidate ->
+                                    runCatching { assignPlanningAbsoluteReminders(candidate.slots, candidate.absoluteReminderTimes) }.getOrNull()?.forEach { owner ->
+                                        val startLabel = owner.occurrenceStartAt.toString().replace('T', ' ')
+                                        val reminders = owner.absoluteReminderTimes.joinToString("、") { it.toString().replace('T', ' ') }
+                                        Text("只提醒一次：$reminders → ${startLabel}的课程", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
                         }
                     }
                     Spacer(Modifier.height(24.dp))

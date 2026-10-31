@@ -1,42 +1,46 @@
-# 循环绝对提醒：实施入口与待确认分支
+# 循环绝对提醒：已实施规则与验收入口
 
-本次仅定位实现，未改变产品行为。基线Android1.17.11/403、Windows1.17.11.0、Room34；历史审计说明提交为b9bbaac。用户尚未选择下列两种语义，不能将任何一项写成已确认或提前撤销现有校验。
+Android1.17.13/405、Windows1.17.13.0、Room34已实现全课唯一归属。本轮按最后单一推荐方案后用户继续执行，决定来源见决策014，不伪写数字选项回复。旧两分支定位保留在Git历史，不能继续作为等待用户选择的执行指令。
 
-后续Windows1.17.12已独立修复现有实例绝对提醒在补齐/系列修改时被复制或误关的问题，见[验收](../VALIDATION_1.17.12.md)。这项保护不负责分配新循环文本中的绝对时刻，两种语法分支仍待选择；以下定位基线是修复前状态。
+## 当前规则
 
-Android后续也升至1.17.12/404、Room34，修复单次转循环、全部/后续/整课编辑和远期实例的绝对提醒保护。生成新实例清空绝对字段，旧实例重建按日期锚点匹配新ID；显式关闭按范围生效，无提醒实例改名不误关其他拥有者，待办修改失败事务回滚。258单测、42项数据库设备检查及Debug/同证书Release交付见[Android验收](../VALIDATION_ANDROID_1.17.12.md)。这些已有实例保护仍不决定新规划文本的归属。
+- 对每个不同绝对时刻，在整门课所有输入时段的合法实例中选择Start>=absolute的最近一个，相等归本次，同一最早开始时刻按输入时段顺序。
+- 重复时刻去重，同一拥有者合并；相对分钟针对每次，绝对只针对拥有者。触发重合不重复派发，过去时刻保留不补响。
+- 查询完整循环和生效范围，不受初始生成窗口约束；窗口外目标提前物化，后续补齐不跳过中间课程。
+- 有限范围无目标则定位报错、保留原文、整批拒绝，不造范围外实例或隐含待办。
+- 取消、单次改期、时段后续或整课共同字段修改不自动重新分配或复制。1.17.12实例提醒保护继续生效，显式关闭按所选范围执行。
+- 沿用Room34的reminderAbsoluteTimesCsv事项字段、备份与同步合同；循环模板不存单次绝对时刻。
 
-## 当前行为
+## Android实现
 
-Android `TransientPlanningCandidate.validate` 与Windows同名候选的`Validate`拒绝循环日程混用绝对提醒，保留原文及定位诊断。普通单次事项的绝对提醒、混合相对提醒和无DDL绝对提醒已实现；已有Room34字段`reminderAbsoluteTimesCsv`贯穿事项、备份与同步。LAN复用Android解析与导入。
+data/PlanningAbsoluteAssignment.kt的assignPlanningAbsoluteReminders统一分配slotIndex、occurrenceStartAt与该拥有者的absoluteReminderTimes。先按周期跳转，再复用calendarRecurrenceDates匹配，覆盖DAILY/WEEKLY/MONTHLY_DAY/YEARLY_DATE，月末/闰日沿用CLAMP；查询没有将100年窗口当截止。
 
-## 选择一：归属最近一次课程，只提醒一次
+data/TransientPlanningInput.kt候选允许循环绝对提醒并校验合法目标。TodoRepository.importTransientPlanning在整门课分配后按时段生成，不把绝对字段复制到每次实例；createCalendarEventFromDraftTransaction的additionalDates提前物化远期拥有者并重算触发时间。ensureRecurringInstancesAhead从max(today, templateStart)检查缺口，排除existing/skips，不从最新远期实例推进。
 
-必须在整门课程所有时段的实例中选择一个目标。不能逐时段独立选择，也不能把同一绝对时刻复制到所有循环实例。
+ui/TransientPlanningDialog.kt展示归属，编辑后重算。普通直接创建无归属循环草稿仍提示从规划预览确认所属实例，不能绕过唯一归属流程。
 
-主要改动入口：
+## Windows实现
 
-- Android `data/TransientPlanningInput.kt`候选校验；`TodoRepository.importTransientPlanning`的EVENT导入分支；`calendarRecurrenceDates`及`buildItemFromTemplate`用于查询/生成。当前导入通过每个slot生成事项后统一复制`absolutes`，这一处理在移除校验前必须改为按目标实例分配。
-- Android `RecurringTaskTemplate`当前没有绝对提醒字段；应优先利用目标事项已有绝对提醒字段，防止滚动补齐将绝对时刻当成重复规则。
-- Windows `TransientPlanningInput.cs`候选校验；`DesktopTransientPlanning.cs`导入；`DesktopSnapshotDocument.SaveItemCore`持久化；`DesktopRecurrence.cs`的`ShiftEdit`、`SyncRecurringTemplate`、`EnsureRecurringInstances`、`SaveRecurringItem`及`SaveSeriesContent`。
-- Windows补齐先查系列中已占用的实例日期；目标在当前生成窗口之外时，须提前物化正确实例并保留系列锚点，不能因为仅扫描当前窗口而丢掉远期提醒。
+TransientPlanningCandidate.AssignAbsoluteReminders通过DesktopSnapshotDocument.NextPlanningOccurrence在全课时段中选择唯一目标。DesktopRecurrence.CreateRecurringOccurrence复用实际生成匹配器；DesktopTransientPlanning确认导入分开保存相对规则和单次绝对字段，窗口外提前生成。混合内部NONE候选直接用本次initial，避免series=null选中已有同刻单次事项。
 
-建议实施边界，仍需与用户所选语义一致：提醒恰等于开始时归属该实例；同一绝对时刻多个时段同时开始时，以输入时段顺序确定唯一目标；有截止范围且没有之后实例时定位报错，不编造范围外事项。已过去绝对提醒保留且不补响。单次改期保留绝对时刻，取消目标后不擅自重新分配。仅修改标题/地点等共用字段时，不把一个实例的绝对时刻扩散到其他实例。
+NativeWindow.TransientPlanning.cs提供可编辑预览与实时归属说明。现有系列/整课保存、补齐和提醒重算沿用1.17.12保护，确认仍在本地事务中执行。
 
-关键验收：
+## LAN实现
 
-1. 周一08:00及周三14:00课程，周二12:00绝对提醒只在周三实例保存，所有周一及后续周三实例没有该时刻；多个绝对提醒分别选择目标并去重。
-2. 绝对提醒位于初始14天/桌面62天窗口之外，查询仍找到正确实例；后续滚动补齐不会复制或重复生成它。有限范围无目标、相同开始时刻、CLAMP月末/闰日和每2周保持正确。
-3. 相对提醒继续针对每次课程，绝对提醒仅针对拥有者；取消/单次改期/时段后续/整门课共同字段修改、账号切换事务回滚、重复确认及跨端备份同步不增加提醒次数。
+sync/TransientPlanningWeb.kt输出absoluteAssignments，每项包含start、slotIndex、reminders。DesktopSyncCoordinator.previewTransientPlanning对编辑候选复用原session冻结now，检查账号generation/token/有效期并重校验；不新建session或写库。
 
-现有测试扩展入口：Android `TransientPlanningParserTest`、设备`TransientPlanningRepositoryTest`和`TransientPlanningWebContractTest`；Windows `TransientPlanningTests`与循环/提醒回归。先验证真实数据和触发时间，再进行必要界面、构建与安装验收。
+desktop-web/transient-planning.js展示归属，时间/提醒/范围修改后200ms重校验；pending/invalid禁用确认，请求前及响应后检查revision/epoch/connectionGeneration，丢弃过期回调。派生字段不作为可信输入，最终导入重新计算。
 
-## 选择二：循环只用提前分钟，绝对提醒另建单次事项
+## 新增与受影响验收
 
-保留现有循环绝对校验，将内部“归属尚未确定”诊断改为明确的产品规则；说明如何另建单次事项。不得自动拆出隐含待办，也不得丢掉输入中的绝对时刻。预览修正及取消继续不写库。
+1. 算法：跨时段、相等、同刻输入顺序、重复/多个绝对时刻、有限范围无目标、月末/闰日、间隔与远期窗口。
+2. 数据：真实拥有者字段与触发时间、相对每次、远期实例与中间补齐、取消/改单次/系列共同字段、过去不补响、备份往返、事务和重复确认。
+3. 界面：真实Compose/WPF编辑后重算、无目标错误及禁用确认、取消不写库；LAN JSON合同与真实DOM模拟HTTP流程分别记录。
 
-新增验收应证明循环相对提醒可用、循环绝对提醒有清晰定位、用户明确输入的单次绝对事项只保存一次，以及混合非法批次没有部分导入。更新本地/AI合同、LAN诊断与帮助，移除待确认措辞。
+Android单测PlanningAbsoluteAssignmentTest；设备RecurringPlanningAbsoluteRepositoryTest、RecurringPlanningAbsoluteUiTest、RecurringPlanningAbsoluteWebContractTest，以及受影响的旧循环、规划和日历合同。WindowsTransientPlanningTests、循环作用域/提醒回归、实际WPF预览和packaged检查。
 
-## 收尾顺序
+本轮Android270单测、Lint0错误/137警告/30信息和三种构建通过；64设备条目63通过、1旧跨端fixture条件跳过，本轮17新增设备检查全部通过。Windows62项不同检查通过（60针对+2包）；LAN模拟HTTP实际DOM9/9及node--check通过，未冒称真实LAN网络。成品、更新资产、Release同证书和原user0/user10逐文件哈希已核实，模拟器原暂停恢复。精确统计、失败/复验和边界见[1.17.13验收](../VALIDATION_1.17.13.md)，私有过程目录Scratch/PaykiTodo/planning-absolute-1.17.13。
 
-收到用户选择后再执行所选分支。任何可见规则或行为变化先按项目要求升版本；优先保持Room34，只有必要的新持久化合同才迁移。完成相关验收和文档，审计新增提交与远端main后执行已授权推送。没有新变化时不重跑1.17.11全部成功套件。
+## 收尾
+
+本轮验收、成品和设备保护已完成。同步最终文档、中文功能提交和独立目标归档，复扫新增历史并核对远端，执行已授权main推送。实际push并核实远端前整体目标未完成；公开Release仍v1.15.18，源码push不等同发布安装包或部署。

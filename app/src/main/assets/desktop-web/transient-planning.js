@@ -12,7 +12,8 @@
     busy = value;
     modal.querySelectorAll('input,textarea,select,button').forEach(node => { node.disabled = value; });
     confirm.textContent = value ? '处理中' : preview ? '确认导入' : '识别';
-    if (!value && preview?.diagnostics?.length) confirm.disabled = true;
+    if (!value && (preview?.diagnostics?.length || [...byId('transient-planning-preview').children].some(card =>
+      card.querySelector('[data-selected]')?.checked && (card.dataset.validationPending || card.dataset.validationInvalid)))) confirm.disabled = true;
   }
   function inputPage() {
     preview = null; feedback('');
@@ -99,9 +100,40 @@
       if (candidate.slots?.length) {
         const slots = document.createElement('p'); slots.className = 'muted';
         slots.textContent = '首次时段：' + candidate.slots.map(s => s.start.replace('T', ' ') + ' > ' + s.end.replace('T', ' ')).join('；');
-        if (candidate.slots.some(s => s.recurring)) slots.textContent += '。未写截止即持续重复，近期实例滚动生成。月末与闰日采用实际月份末日。';
+        if (candidate.slots.some(s => s.recurring)) slots.textContent += '。未写截止即持续重复，近期实例滚动生成。相对分钟每次提醒，绝对时刻只提醒一次。月末与闰日采用实际月份末日。';
         card.append(slots);
       }
+      const owner = document.createElement('p'); owner.className = 'muted'; owner.dataset.absoluteOwner = 'true'; card.append(owner);
+      function showOwners(value) {
+        owner.textContent = (value.absoluteAssignments || []).map(a => '只提醒一次：' +
+          a.reminders.map(t => t.replace('T', ' ')).join('、') + ' → ' + a.start.replace('T', ' ') + '的课程').join('；');
+      }
+      showOwners(candidate);
+      let revision = 0, timer;
+      card.querySelectorAll('[data-field="time"],[data-field="reminders"],[data-field="range"]').forEach(control => {
+        control.oninput = () => {
+          const ownRevision = ++revision, ownEpoch = epoch, generation = connectionGeneration;
+          clearTimeout(timer); card.dataset.validationPending = 'true'; owner.textContent = '正在校验提醒归属…'; confirm.disabled = true;
+          timer = setTimeout(async () => {
+            if (ownRevision !== revision || ownEpoch !== epoch || generation !== connectionGeneration) return;
+            const edit = { id: candidate.id };
+            card.querySelectorAll('[data-field]').forEach(node => { edit[node.dataset.field] = node.value; });
+            try {
+              const checked = await api('/api/planning/transient/preview', { method: 'POST', body: JSON.stringify({ sessionId: result.sessionId, candidates: [edit] }) });
+              if (ownRevision !== revision || ownEpoch !== epoch || generation !== connectionGeneration) return;
+              showOwners(checked.candidates[0]); delete card.dataset.validationInvalid;
+            } catch (exception) {
+              if (ownRevision !== revision || ownEpoch !== epoch || generation !== connectionGeneration) return;
+              owner.textContent = exception.message; card.dataset.validationInvalid = 'true';
+            } finally {
+              if (ownRevision === revision && ownEpoch === epoch && generation === connectionGeneration) {
+                delete card.dataset.validationPending; if (!busy) setBusy(false);
+              }
+            }
+          }, 200);
+        };
+      });
+      card.querySelector('[data-selected]').onchange = () => { if (!busy) setBusy(false); };
       host.append(card);
     }
   }

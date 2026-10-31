@@ -6,6 +6,7 @@ namespace PaykiTodo.Desktop;
 internal enum PlanningReminderMode { Omitted, Disabled, Explicit }
 internal sealed record TransientPlanningSlot(DateTime StartAt, DateTime EndAt, string RecurrenceType = "NONE", int Interval = 1,
     string Weekdays = "", DateTime? EndDate = null, int? IntendedDay = null);
+internal sealed record PlanningAbsoluteReminderAssignment(DateTime ReminderAt, int SlotIndex, DateTime StartAt);
 internal sealed record TransientPlanningCandidate(string Id, string? ParentId, int LineNumber, int Column, string SourceLine,
     string Title, string Location, string Notes, DateTime? DueAt, IReadOnlyList<TransientPlanningSlot> Slots,
     PlanningReminderMode ReminderMode, IReadOnlyList<int> ReminderOffsets, IReadOnlyList<DateTime> AbsoluteReminders,
@@ -14,6 +15,19 @@ internal sealed record TransientPlanningCandidate(string Id, string? ParentId, i
     public long? GroupId { get; init; }
     public string CalendarId { get; init; } = "default";
     public bool IsEvent => Slots.Count > 0;
+    public bool IsRecurring => Slots.Any(s => s.RecurrenceType != "NONE");
+    public IReadOnlyList<PlanningAbsoluteReminderAssignment> AssignAbsoluteReminders()
+    {
+        if (!IsRecurring || ReminderMode == PlanningReminderMode.Disabled) return Array.Empty<PlanningAbsoluteReminderAssignment>();
+        var result = new List<PlanningAbsoluteReminderAssignment>();
+        foreach (var reminder in AbsoluteReminders.Distinct().Order()) {
+            var closest = Slots.Select((slot, index) => new { Index = index, Start = DesktopSnapshotDocument.NextPlanningOccurrence(slot, reminder) })
+                .Where(value => value.Start != null).OrderBy(value => value.Start).ThenBy(value => value.Index).FirstOrDefault();
+            if (closest == null) throw new InvalidOperationException($"绝对提醒{reminder:yyyy-MM-dd HH:mm}之后在循环范围内没有日程，请调整提醒或循环范围");
+            result.Add(new(reminder, closest.Index, closest.Start!.Value));
+        }
+        return result;
+    }
     public string? Validate()
     {
         if (string.IsNullOrWhiteSpace(Title)) return "标题不能为空";
@@ -21,7 +35,7 @@ internal sealed record TransientPlanningCandidate(string Id, string? ParentId, i
         if (ReminderOffsets.Any(n => n < 0)) return "提醒分钟必须是非负整数";
         if (!IsEvent && DueAt == null && ReminderMode == PlanningReminderMode.Explicit && ReminderOffsets.Count > 0) return "相对提醒需要DDL，请补时间或使用()关闭提醒";
         if (Slots.Any(s => s.EndDate < s.StartAt.Date)) return "循环截止日期早于首次日程";
-        if (AbsoluteReminders.Count > 0 && Slots.Any(s => s.RecurrenceType != "NONE")) return "循环中的绝对提醒归属尚未确定，请先改用相对分钟";
+        try { _ = AssignAbsoluteReminders(); } catch (InvalidOperationException error) { return error.Message; }
         return null;
     }
 }

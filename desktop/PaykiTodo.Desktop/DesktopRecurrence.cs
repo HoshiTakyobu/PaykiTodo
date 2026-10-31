@@ -224,26 +224,63 @@ internal sealed partial class DesktopSnapshotDocument
             var occupied = existing.Select(InstanceDay).ToHashSet();
             foreach (var date in RecurringDates(template, startDate.Date, startDate.Date.AddDays(horizonDays))) {
                 var day = EpochDay(date); if (occupied.Contains(day) || skips.Contains((series, day))) continue;
-                var item = existing.FirstOrDefault()?.DeepClone().AsObject() ?? new JsonObject();
-                ApplyTemplateFields(item, template); ResetOccurrence(item);
-                var time = date.AddHours(template["dueHour"]?.GetValue<int>() ?? 0).AddMinutes(template["dueMinute"]?.GetValue<int>() ?? 0);
-                var zoneId = template["eventTimeZoneId"]?.GetValue<string>() ?? "";
-                if (DesktopCalendarTime.Zone(zoneId).IsInvalidTime(DateTime.SpecifyKind(time, DateTimeKind.Unspecified))) continue;
-                var millis = DesktopCalendarTime.Millis(time, zoneId);
-                var isEvent = template["itemType"]?.GetValue<string>() == "EVENT";
-                item["id"] = nextId++; item["recurringSeriesId"] = series;
-                item["startAtMillis"] = isEvent ? millis : null;
-                var duration = template["eventDurationMinutes"]?.GetValue<int?>() ?? 60;
-                item["endAtMillis"] = isEvent ? item["allDay"]?.GetValue<bool>() == true
-                    ? DesktopCalendarTime.Millis(time.AddDays(Math.Max(1, (int)Math.Round(duration / 1440.0))), zoneId)
-                    : millis + duration * 60000L : null;
-                item["dueAtMillis"] = isEvent ? item["endAtMillis"]!.DeepClone() : JsonValue.Create(millis);
-                item["recurrenceAnchorDueAtMillis"] = millis;
-                RefreshOccurrenceReminders(item);
+                var item = CreateRecurringOccurrence(template, existing.FirstOrDefault(), date, nextId);
+                if (item == null) continue;
+                nextId++;
                 Tasks.Add(item); occupied.Add(day); changed = true;
             }
         }
         return changed;
+    }
+    private static JsonObject? CreateRecurringOccurrence(JsonObject template, JsonObject? prototype, DateTime date, long id)
+    {
+        var item = prototype?.DeepClone().AsObject() ?? new JsonObject();
+        ApplyTemplateFields(item, template); ResetOccurrence(item);
+        var time = date.AddHours(template["dueHour"]?.GetValue<int>() ?? 0).AddMinutes(template["dueMinute"]?.GetValue<int>() ?? 0);
+        var zoneId = template["eventTimeZoneId"]?.GetValue<string>() ?? "";
+        if (DesktopCalendarTime.Zone(zoneId).IsInvalidTime(DateTime.SpecifyKind(time, DateTimeKind.Unspecified))) return null;
+        var millis = DesktopCalendarTime.Millis(time, zoneId);
+        var isEvent = template["itemType"]?.GetValue<string>() == "EVENT";
+        item["id"] = id; item["recurringSeriesId"] = template["seriesId"]!.DeepClone();
+        item["startAtMillis"] = isEvent ? millis : null;
+        var duration = template["eventDurationMinutes"]?.GetValue<int?>() ?? 60;
+        item["endAtMillis"] = isEvent ? item["allDay"]?.GetValue<bool>() == true
+            ? DesktopCalendarTime.Millis(time.AddDays(Math.Max(1, (int)Math.Round(duration / 1440.0))), zoneId)
+            : millis + duration * 60000L : null;
+        item["dueAtMillis"] = isEvent ? item["endAtMillis"]!.DeepClone() : JsonValue.Create(millis);
+        item["recurrenceAnchorDueAtMillis"] = millis;
+        RefreshOccurrenceReminders(item);
+        return item;
+    }
+    internal static DateTime? NextPlanningOccurrence(TransientPlanningSlot slot, DateTime reminder)
+    {
+        if (slot.RecurrenceType == "NONE") return slot.StartAt >= reminder ? slot.StartAt : null;
+        var from = reminder.Date > slot.StartAt.Date ? reminder.Date : slot.StartAt.Date;
+        // Use the same matcher as replenishment. The bounded lookahead covers two
+        // full intervals, including a skipped local-clock occurrence, without
+        // scanning an indefinite course all the way to DateTime.MaxValue.
+        var interval = Math.Max(1, slot.Interval);
+        long lookahead = slot.RecurrenceType switch {
+            "DAILY" => 2L * interval + 2,
+            "WEEKLY" => 14L * interval + 7,
+            "MONTHLY_DAY" or "MONTHLY" => 62L * interval + 31,
+            "YEARLY_DATE" or "YEARLY" => 732L * interval + 366,
+            _ => throw new InvalidOperationException("规划循环类型不受支持")
+        };
+        var to = from.AddDays(Math.Min(lookahead, (DateTime.MaxValue.Date - from).Days));
+        if (slot.EndDate is { } end && end < to) to = end.Date;
+        var template = new JsonObject {
+            ["startEpochDay"] = EpochDay(slot.StartAt), ["endEpochDay"] = slot.EndDate is { } last ? EpochDay(last) : null,
+            ["recurrenceNeverEnds"] = slot.EndDate == null, ["recurrenceType"] = slot.RecurrenceType,
+            ["recurrenceInterval"] = interval, ["recurrenceWeekdays"] = slot.Weekdays,
+            ["recurrenceMonthlyDay"] = slot.IntendedDay ?? slot.StartAt.Day,
+            ["recurrenceYearlyMonth"] = slot.StartAt.Month, ["recurrenceYearlyDay"] = slot.IntendedDay ?? slot.StartAt.Day
+        };
+        foreach (var date in RecurringDates(template, from, to)) {
+            var at = date + slot.StartAt.TimeOfDay;
+            if (at >= reminder && !DesktopCalendarTime.Zone("").IsInvalidTime(DateTime.SpecifyKind(at, DateTimeKind.Unspecified))) return at;
+        }
+        return null;
     }
     private static void ApplyTemplateFields(JsonObject item, JsonObject template)
     {
@@ -274,7 +311,7 @@ internal sealed partial class DesktopSnapshotDocument
         var weekdays = (template["recurrenceWeekdays"]?.GetValue<string>() ?? "").Split(',').ToHashSet();
         var interval = Math.Max(1, template["recurrenceInterval"]?.GetValue<int>() ?? 1);
         var skipInvalid = template["recurrenceInvalidDatePolicy"]?.GetValue<string>() == "SKIP";
-        for (var date = from.Date > anchor ? from.Date : anchor; date <= to && EpochDay(date) <= last; date = date.AddDays(1)) {
+        for (var date = from.Date > anchor ? from.Date : anchor; date <= to && EpochDay(date) <= last;) {
             var weekday = ((int)date.DayOfWeek + 6) % 7 + 1;
             var days = (date - anchor).Days;
             var weeks = (days + ((int)anchor.DayOfWeek + 6) % 7) / 7;
@@ -292,6 +329,8 @@ internal sealed partial class DesktopSnapshotDocument
                 _ => false
             };
             if (matches) yield return date;
+            if (date == DateTime.MaxValue.Date) yield break;
+            date = date.AddDays(1);
         }
     }
     internal static (int Month, int Day) LunarMonthDay(DateTime date)

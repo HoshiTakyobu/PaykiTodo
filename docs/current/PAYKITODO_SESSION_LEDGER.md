@@ -1,5 +1,13 @@
 # PaykiTodo Session Ledger
 
+## Current 1.17.13 round
+
+2026-11-01按决策014本轮继续执行并实施循环课程绝对提醒全课唯一归属。Android1.17.13/405、Windows1.17.13.0、Room34；Start>=absolute最近合法实例，相等本次、并列时段顺序，相对每次，窗口外提前物化且补齐不跳过中间，有限范围无目标事务拒绝，取消/改单次/共同字段不重新分配或复制。三端预览显示并在编辑后重算。
+
+270Android单测零失败/跳过、Lint0错误/137警告/30信息、Debug/AndroidTest/签名Release构建通过；64设备条目63通过（53数据+5Compose+5Web）、1旧跨端fixture条件跳过，本轮17新增全部通过。Windows62不同检查（60针对+2实际包）、LAN模拟HTTP实际DOM9/9和node--check通过。新版同证书/资产、494交付文件及更新资产验签重建已核；原user0 646/646、user10 148/148哈希相同，user11 after218文件保留，测试停止、user10主页及PID20332原暂停恢复。详细统计与首次失败见[验收](VALIDATION_1.17.13.md)。原七项产品需求和本轮本地验收完成，当前仍待提交、全量审计和已授权main推送；实际push前不标整体完成，公开Release仍v1.15.18，无安装包发布或部署。
+
+## Historical 1.17.12 Android round
+
 2026-11-01后续Android1.17.12/404、Room34完成循环单次提醒保护：转换/生成/系列及整课修改保留对应实例绝对时刻，有效远期实例不截掉，显式关闭生效，待办修改失败事务回滚。258单测、Lint0错误、42项数据库设备检查及暖启动通过；Debug/同证书Release交付，原模拟器user0 646/646、user10 148/148哈希一致，user10主页和暂停恢复。Windows1.17.12原成品及51项验收保持。见[Android验收](VALIDATION_ANDROID_1.17.12.md)。循环文本归属仍待选择，未推送/发布/部署，整体目标继续。
 
 This file summarizes the original `【开发】PaykiTodo` session and the later continuation context in a repository-native form.
@@ -12,7 +20,7 @@ The original PaykiTodo sessions became large and increasingly unreliable. This f
 
 The released `1.15.18 / versionCode 360` round restores independent full-screen and notification reminder selections across phone/Web/Planning Desk, keeps single-channel storage values intact, limits retained post-action notifications to items that selected the notification channel, aligns Desktop Web hour labels with their solid grid lines, and fades ended events as complete cards. It preserves the `1.15.17` event-preview and snooze/acknowledgement work. Database version remains `30`; the signed APK is published in GitHub Release `v1.15.18`.
 
-## Current Development Round
+## Historical Development Rounds
 
 2026-11-01独立修复Windows实例绝对提醒复制与改名误关问题，Windows1.17.12.0、Android保持1.17.11/403/Room34。49相关回归（含14新增）及2个实际包检查通过，MSI和484文件便携目录交付；无新APK/设备操作，不重算重试，见[验收](VALIDATION_1.17.12.md)。循环规划绝对提醒仍待归属选择，新增提交待最终审计与授权push，原目标未完成。
 

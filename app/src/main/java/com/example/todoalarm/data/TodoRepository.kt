@@ -97,15 +97,21 @@ class TodoRepository(
                     listOf(item.copy(id = id)).also { replaceGroupTags(it, listOf(groupId)) }
                 } else {
                     val bundle = if (candidate.slots.size > 1) UUID.randomUUID().toString() else null
-                    candidate.slots.flatMap { slot ->
+                    val recurring = candidate.slots.any { it.recurrence.isRecurring }
+                    val assignments = if (recurring && absolutes.isNotEmpty())
+                        assignPlanningAbsoluteReminders(candidate.slots, candidate.absoluteReminderTimes) else emptyList()
+                    candidate.slots.flatMapIndexed { slotIndex, slot ->
+                        val owners = assignments.filter { it.slotIndex == slotIndex }
+                            .associate { it.occurrenceStartAt.toEpochMillis() to it.absoluteReminderTimes.map(LocalDateTime::toEpochMillis) }
                         val draft = CalendarEventDraft(candidate.title, candidate.notes, candidate.location,
                             slot.startAt, slot.endAt, false, "#467DAB", reminderOffsetsMinutes = offsets,
                             ringEnabled = true, vibrateEnabled = true, recurrence = slot.recurrence,
                             multiSlotBundleId = bundle, groupId = groupId, calendarId = candidate.calendarId)
-                        createCalendarEventFromDraftTransaction(draft).map { stored ->
-                            stored.copy(reminderAbsoluteTimesCsv = absolutes.joinToString(","),
-                                reminderEnabled = offsets.isNotEmpty() || absolutes.isNotEmpty(),
-                                parentTodoId = candidate.parentId?.let(persisted::get)).also { todoDao.update(it) }
+                        createCalendarEventFromDraftTransaction(draft, owners.keys.map {
+                            Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+                        }.toSet()).map { stored ->
+                            stored.withAbsoluteReminders(if (recurring) owners[stored.startAtMillis].orEmpty() else absolutes)
+                                .copy(parentTodoId = candidate.parentId?.let(persisted::get)).also { todoDao.update(it) }
                         }
                     }
                 }
@@ -1633,7 +1639,7 @@ class TodoRepository(
     }
 
     suspend fun createFromDraft(draft: TodoDraft): List<TodoItem> {
-        require(!draft.recurrence.isRecurring || draft.absoluteReminderTimesMillis.isEmpty()) { "新建循环事项的绝对提醒归属尚未确定" }
+        require(!draft.recurrence.isRecurring || draft.absoluteReminderTimesMillis.isEmpty()) { "新建循环事项的绝对提醒请从规划预览确认所属实例" }
         val now = System.currentTimeMillis()
         val groupIds = resolveTodoGroupIds(draft)
         val groupId = groupIds.first()
@@ -1664,8 +1670,11 @@ class TodoRepository(
         return created
     }
 
-    private suspend fun createCalendarEventFromDraftTransaction(draft: CalendarEventDraft): List<TodoItem> {
-        require(!draft.recurrence.isRecurring || draft.absoluteReminderTimesMillis.isEmpty()) { "新建循环事项的绝对提醒归属尚未确定" }
+    private suspend fun createCalendarEventFromDraftTransaction(
+        draft: CalendarEventDraft,
+        additionalDates: Set<LocalDate> = emptySet()
+    ): List<TodoItem> {
+        require(!draft.recurrence.isRecurring || draft.absoluteReminderTimesMillis.isEmpty()) { "新建循环事项的绝对提醒请从规划预览确认所属实例" }
         requireCalendarWritable(draft.calendarId)
         val now = System.currentTimeMillis()
         val resolvedGroupId = resolveCalendarGroupId(draft)
@@ -1674,7 +1683,8 @@ class TodoRepository(
             generateRecurringEventItems(
                 draft = resolvedDraft,
                 seriesId = UUID.randomUUID().toString(),
-                now = now
+                now = now,
+                additionalDates = additionalDates
             )
         } else {
             listOf(buildCalendarEventItem(resolvedDraft, now = now))
@@ -2057,10 +2067,9 @@ class TodoRepository(
                 .mapNotNull { item -> item.recurrenceInstanceDateOrNull() }
                 .toSet()
             val skippedEpochDays = todoDao.getRecurringSkipEpochDays(template.seriesId).toSet()
-            val latestExistingDate = existingDates.maxOrNull()
             val templateStartDate = LocalDate.ofEpochDay(template.startEpochDay)
-            val nextMissingDate = latestExistingDate?.plusDays(1) ?: today
-            val targetStartDate = if (templateStartDate.isAfter(nextMissingDate)) templateStartDate else nextMissingDate
+            // An absolute reminder can materialize a sparse future owner. Fill the intervening holes too.
+            val targetStartDate = maxOf(templateStartDate, today)
             if (targetStartDate.isAfter(targetEndDate)) return@forEach
 
             val missingDates = generateTemplateDates(template, targetStartDate, targetEndDate)

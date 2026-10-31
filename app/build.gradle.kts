@@ -7,8 +7,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.17.12"
-val paykiVersionCode = 404
+val paykiVersionName = "1.17.13"
+val paykiVersionCode = 405
 
 val paykiCloudProperties = Properties().apply {
     val file = rootProject.file("user/cloud.properties")

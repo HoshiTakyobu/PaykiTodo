@@ -2,31 +2,39 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Android and Windows 1.17.12 instance reminder protection
+## Current 1.17.13: recurring absolute planning
+
+三端规划已支持每个绝对时刻全课唯一归属，Start>=absolute最近合法实例、相等本次、并列输入顺序；相对每次，重复时刻去重，过去不补响。窗口外拥有者提前物化，补齐检查中间缺口；有限范围无目标整批拒绝。编辑预览显示并重算归属，LAN冻结原session日期与账号保护，派生字段不能绕过最终校验。1.17.12实例保护保持，不因取消/改单次/共同字段修改自动重新分配或复制。
+
+Android1.17.13/405、Windows1.17.13.0、Room34；270单测/Lint0错误/三种Android构建通过，64设备条目63通过/1旧跨端fixture条件跳过（本轮17新增全通过）；Windows62不同检查、LAN模拟HTTP实际DOM9/9通过。494交付文件、同证书/资源/更新资产和原user0 646/646、user10 148/148哈希已核，模拟器原暂停恢复，详见[验收](VALIDATION_1.17.13.md)。原七项产品行为及本轮验收已完成，仍须提交/全量审计和已授权源码push后才完成整体目标。公开Release仍v1.15.18，未发布安装包或部署。
+
+下方按版本保留历史验收及实现台账，旧“待选择/待实现/待清理”只描述其阶段，不覆盖当前规则。
+
+## Historical stage: Android and Windows 1.17.12 instance reminder protection
 
 双端循环生成及系列修改保留对应实例自己的绝对提醒，新实例只继承相对规则；纯绝对拥有者在其他实例改名后保持提醒，显式关闭作用于所选范围。Android1.17.12/404、Room34：258单测、Lint0错误、42项数据库回归及暖启动检查通过，Debug和同证书Release交付，原模拟器数据保留，见[Android验收](VALIDATION_ANDROID_1.17.12.md)。Windows1.17.12原51项检查及MSI/便携成品保持，见[Windows验收](VALIDATION_1.17.12.md)。新循环文本的绝对时刻归属仍待选择，整体目标和最终推送未完成。
 
-## 2026-11-01 history audit
+## Historical stage: 2026-11-01 history audit
 
 60个未推送提交的文件与消息已脱敏并逐一复核，完整阶段历史和恢复bundle保留，最终实现/资源/工具/CI469文件与已验收1.17.11相同，见[审计](PUBLIC_HISTORY_AUDIT_20261101.md)。循环绝对提醒仍等待归属选择与相应实现，最终push尚未执行；下面“全部历史清理未做”仅描述旧阶段。
 
-## Current update stage: 1.17.11 / 403
+## Historical update stage: 1.17.11 / 403
 
 双端稳定Release检查和手动入口完成；手机DownloadManager状态恢复/取消、正确APK与签名/包名/版本核对、系统安装入口完成。Windows实现稳定灰度、后台签名资产校验、变化文件增量及完整回退、基础启动器/独立版本目录/nonce确认/失败回退，MSI和便携目录包含后续增量基线。验收、失败修正和真实线上/手机安装边界见[1.17.11验收](VALIDATION_1.17.11.md)。尚待循环绝对提醒选择、全部未公开历史处理及授权推送。下面1.17.10规划阶段的“更新器待完成”只描述当时状态。
 
-## Current planning stage: 1.17.10 / 402
+## Historical planning stage: 1.17.10 / 402
 
 Android、Windows与LAN网页已从每日看板提供临时规划输入、本地/可选AI识别、预览编辑和确认事务导入。支持标题-only、日期/+简写、>日程、混合非循环绝对提醒、父子事项、同课多时段及持续循环；旧文档含归档只读保留，不创建新文档。Room34新增绝对提醒字段，贯穿备份/同步和普通编辑保留。具体已验证范围与限制见 [VALIDATION_1.17.10.md](VALIDATION_1.17.10.md)。
 
 更新器、循环绝对提醒归属、最终公开历史审计和推送仍待完成；下面1.17.8/1.17.9是已完成历史阶段，不能用其旧“规划未实现”描述覆盖当前源码。
 
-## 进行中：2026-10-31 双端体验更新
+## 历史阶段：2026-10-31 双端体验更新
 
 1.17.8阶段完成Windows设置导航与左对齐、中文字体别名、12—22px字号及真实预览、取消/保存一致性、随字号调整的日历与输入框，以及设置/F1可打开的离线使用说明。Android迁移包保留桌面字号。验证和成品见 [VALIDATION_1.17.8.md](VALIDATION_1.17.8.md)。
 
 统一规划输入尚待语法最终收敛及实现。已确认逗号字段、>日程、可省略字段、提醒默认5和0/空括号关闭、层级、#备注、首尾引号、循环方括号、多时段课程关联和可选范围。1.17.9完成公共报告规则、上下文与168小时过期，详情见 [验收](VALIDATION_1.17.9.md)。更新机制、全部历史清理和推送仍未完成。不得用本阶段测试代替整轮验收。
 
-## Current local fix: 1.17.7 / 399
+## Historical local fix: 1.17.7 / 399
 
 Android and Windows persist acknowledged account/server-bound personal snapshots for conservative three-way reconciliation. Independent records and noncompeting settings merge automatically; task lifecycle actions can merge with snooze/passive missed state. Repeated identical completion/cancellation keeps the earliest action time and finished items cannot retain enabled reminders. Competing edits within a task's content/schedule section, opposite explicit actions, delete/edit, new-ID collisions and broken references remain conflicts. No baseline means no automatic choice between divergent legacy copies.
 

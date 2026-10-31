@@ -36,10 +36,12 @@ internal sealed partial class DesktopSnapshotDocument
                     checklist = tree;
                 }
                 var offsets = candidate.ReminderMode == PlanningReminderMode.Disabled || (!candidate.IsEvent && candidate.DueAt == null) ? Array.Empty<int>() : candidate.ReminderOffsets;
-                var absolute = candidate.ReminderMode == PlanningReminderMode.Disabled ? Array.Empty<long>() : candidate.AbsoluteReminders.Select(t => DesktopCalendarTime.Millis(t, "")).ToArray();
+                var assignments = candidate.AssignAbsoluteReminders();
+                var absolute = candidate.ReminderMode == PlanningReminderMode.Disabled || candidate.IsRecurring
+                    ? Array.Empty<long>() : candidate.AbsoluteReminders.Select(t => DesktopCalendarTime.Millis(t, "")).ToArray();
                 var bundle = candidate.Slots.Count > 1 ? Guid.NewGuid().ToString() : null;
                 IEnumerable<TransientPlanningSlot?> slots = candidate.IsEvent ? candidate.Slots.Cast<TransientPlanningSlot?>() : new TransientPlanningSlot?[] { null };
-                long firstId = 0;
+                long firstId = 0; var slotIds = new List<long>();
                 foreach (var slot in slots) {
                     var edit = new DesktopItemEdit(candidate.IsEvent, candidate.Title, candidate.Notes, candidate.Location,
                         candidate.DueAt is { } due ? DesktopCalendarTime.Millis(due, "") : null,
@@ -58,7 +60,23 @@ internal sealed partial class DesktopSnapshotDocument
                         item["multiSlotBundleId"] = bundle; var series = item["recurringSeriesId"]?.GetValue<string>();
                         foreach (var template in Templates.OfType<JsonObject>().Where(t => t["seriesId"]?.GetValue<string>() == series)) template["multiSlotBundleId"] = bundle;
                     }
-                    created.Add(id);
+                    created.Add(id); slotIds.Add(id);
+                }
+                foreach (var assignment in assignments) {
+                    var initial = FindTask(slotIds[assignment.SlotIndex])!;
+                    var series = initial["recurringSeriesId"]?.GetValue<string>();
+                    var start = DesktopCalendarTime.Millis(assignment.StartAt, "");
+                    var owner = series == null ? initial : Tasks.OfType<JsonObject>().FirstOrDefault(item => item["recurringSeriesId"]?.GetValue<string>() == series && item["startAtMillis"]?.GetValue<long?>() == start);
+                    if (owner == null) {
+                        var template = Templates.OfType<JsonObject>().Single(t => t["seriesId"]?.GetValue<string>() == series);
+                        owner = CreateRecurringOccurrence(template, initial, assignment.StartAt.Date, NextId(Tasks))
+                            ?? throw new InvalidOperationException("绝对提醒所属日程的本地时间不存在");
+                        Tasks.Add(owner); created.Add(owner["id"]!.GetValue<long>());
+                    }
+                    var times = DesktopItemEdit.FromJson(owner).AbsoluteReminderTimes.Append(DesktopCalendarTime.Millis(assignment.ReminderAt, "")).Distinct().Order().ToList();
+                    owner["reminderAbsoluteTimesCsv"] = string.Join(',', times);
+                    owner["reminderEnabled"] = true;
+                    RefreshOccurrenceReminders(owner);
                 }
                 persisted[candidate.Id] = firstId;
             }

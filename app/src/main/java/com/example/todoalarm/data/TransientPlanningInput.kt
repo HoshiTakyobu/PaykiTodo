@@ -46,7 +46,11 @@ data class TransientPlanningCandidate(
         if (reminderOffsetsMinutes.any { it < 0 }) return "提前分钟必须为非负整数"
         if (type == PlanningParsedType.TODO && dueAt == null && reminderMode == PlanningReminderMode.EXPLICIT && reminderOffsetsMinutes.isNotEmpty()) return "相对提醒需要DDL，请补时间或使用()关闭提醒"
         if (slots.any { it.recurrence.endDate?.isBefore(it.startAt.toLocalDate()) == true }) return "循环截止日期早于首次日程"
-        if (absoluteReminderTimes.isNotEmpty() && slots.any { it.recurrence.isRecurring }) return "循环中的绝对提醒归属尚未确定，请先改用相对分钟"
+        if (reminderMode != PlanningReminderMode.DISABLED && absoluteReminderTimes.isNotEmpty() && slots.any { it.recurrence.isRecurring }) {
+            runCatching { assignPlanningAbsoluteReminders(slots, absoluteReminderTimes) }.exceptionOrNull()?.let {
+                return it.message ?: "无法确定绝对提醒所属课程"
+            }
+        }
         return null
     }
 }

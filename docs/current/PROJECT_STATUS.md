@@ -1,18 +1,30 @@
 # Project Status
 
-## Current Android and Windows fix: 1.17.12
+## Current baseline: 1.17.13 recurring absolute planning
+
+Android1.17.13/405、Windows1.17.13.0、Room34。循环规划按决策014实施：每个绝对时刻只归属整门课所有时段中最近Start>=absolute合法实例，相等本次、并列按输入时段顺序；相对分钟每次。三端编辑预览重算归属，窗口外拥有者提前物化，补齐覆盖中间课程，有限范围无目标整批拒绝；1.17.12实例保护保持。
+
+已确认270Android单测零失败/跳过，Lint0错误/137警告/30信息，Debug/AndroidTest/签名Release构建通过；64项不同设备条目中63通过（53数据、5Compose、5Web）、1旧跨端fixture条件跳过，本轮17新增设备检查全部通过。Windows62项不同检查通过（60针对回归及真实WPF预览、另2实际包）；LAN模拟HTTP实际DOM9/9和node--check通过。APK1.17.13/405、包名、同1.17.12的Release证书及三类资产字节一致已核对；新交付494文件，SHA256.json覆盖其余493，便携484及完整/增量更新资产验签和重建通过。详见[1.17.13验收](VALIDATION_1.17.13.md)。
+
+设备保护已完成：原user0 646/646及user10 148/148逐文件SHA256相同，零增删改，user11 after218文件保留备份；已停止测试/应用、回user10主页，核身份后PID20332恢复原暂停。没有真实手机操作。模拟HTTP、模拟器及本地更新验收不代表真实LAN网络、未来公开更新或OEM行为均已验证。
+
+设置/字体/帮助、报告、临时规划、双端更新器及未公开历史清理均已完成，本轮验收和交付完成，当前剩余最终文档/提交、全量新增历史复扫和已授权源码push。公开Release实查仍v1.15.18，远端main实查仍83ff5cf，本轮未push/创建Release/上传/部署，实际推送并核实远端前原goal未完成。原未跟踪历史Prompt保留。
+
+下方为对应版本的历史阶段记录，旧“仍待选择/未实现/下一步”只描述当时状态，不作为当前执行指令；当前规则与步骤以本节及更新后三份交接指南为准。
+
+## Historical baseline: Android and Windows 1.17.12
 
 Android1.17.12/404、Windows1.17.12.0、Room34。双端循环生成/系列编辑保留对应实例自己的绝对提醒；选择无提醒实例改名保留其他拥有者，显式关闭仍生效。Android258单测、Lint0错误、42项模拟器数据库回归及暖启动检查通过；Debug和同证书签名Release已构建，原user0 646/646、user10 148/148哈希一致，模拟器恢复暂停，见[Android验收](VALIDATION_ANDROID_1.17.12.md)。Windows原51项检查、MSI及484文件便携成品保持，见[Windows验收](VALIDATION_1.17.12.md)。
 
 原未推送60提交已清理，后续修复及归档已复扫至3e3b5c2：65提交/1710blob/167已分类URL，零未解决命中。当前三份交接指南已消除旧1.17.9待做指令，文档提交也须继续复扫；未改源码或重建成品。循环规划中的绝对提醒归属仍待用户选择，最终push未执行，公开Release仍v1.15.18，整体目标未完成。下方源码完全相同的描述仅针对历史清理阶段。
 
-## 2026-11-01 unpublished history verified
+## Historical stage: 2026-11-01 unpublished history verified
 
 远端83ff5cf之后的60个提交已在隔离副本脱敏并接回main，阶段归档HEAD为83e2a45；保留阶段顺序、作者/日期和恢复bundle。全部快照与消息复扫、127对变化blob及完整差异空白检查通过；最终469个实现/资源/工具/CI文件与已验收1.17.11完全一致，只有历史文档变化，未重建APK。详见[历史审计记录](PUBLIC_HISTORY_AUDIT_20261101.md)。
 
 Android1.17.11/403、Windows1.17.11.0、Room34保持。当前仅待循环课程绝对提醒选择及对应实现、新增提交复核和最终授权push；公开Release仍v1.15.18，远端main未改变，原目标未完成。下方历史阶段的未清理描述不覆盖本节。
 
-## Current Baseline
+## Historical update baseline: 1.17.11
 
 - 2026-11-01更新阶段已实施并验收：Android1.17.11/403、Windows1.17.11.0、Room34。两端稳定Release检查、手机系统下载与签名核对、桌面后台/灰度/增量重建及启动切换回退已实现，见[1.17.11验收](VALIDATION_1.17.11.md)。
 - 258 Android单测、Lint0错误、5项不同设备检查；104项Windows回归、1条独立14阶段UIA、4种模拟启动器进程场景及最终MSI真实升级/修复/卸载/资料保留通过。重跑不重复计数；真实公开未来版本和手机手动系统安装未冒充实测。

@@ -1,5 +1,17 @@
 # Session Handoff
 
+## 2026-11-01 Windows循环单次提醒保护完成
+
+从b9bbaac恢复，独立修复Windows补齐/系列编辑复制绝对提醒，以及选择其他实例只改名关闭拥有者提醒的问题。Windows1.17.12.0，Android仍1.17.11/403、Room34；所选范围内显式关闭提醒仍生效，原实例时刻、相对规则和备份保留。51个不同检查通过（49相关回归含14新增、另2实际包启动/nonce）；3个补齐和10个系列编辑用例先复现失败，重跑不重复计数。
+
+- 证据Scratch/PaykiTodo/recurrence-reminders-1.17.12；新MSI和484文件完整便携目录在Deliverables/PaykiTodo/1.17.12，487交付文件有哈希。实际payload为desktop/obj/installer/1.17.12-773fce09cffd481888a0003a9a2ecb1d/payload；MSI哈希A12AF3672F10080BFE0D05404E17D563E319AF1B199FDA9EF31A003A4061CD0D，详情见VALIDATION_1.17.12。
+- 构建用已验证微软签名缓存；成品检查在构建后运行。未重复MSI生命周期/完整UIA/Android套件；没有用户数据、真实手机或模拟器操作。最新APK仍app/build/outputs/apk/debug/PaykiTodo-1.17.11-debug.apk，没有新APK。
+- 规划候选仍拒绝循环绝对时刻，未选择任何待定分支；下一步需要用户答复一次归属或只允许提前分钟，再实现/验证并审计全部新增提交后授权push。原60提交清理及恢复bundle保留，原未跟踪Prompt保持。没有push/tag/Release/部署，原目标未完成。
+
+## 2026-11-01 循环绝对提醒实施定位
+
+恢复核对b9bbaac，Android1.17.11/403、Windows1.17.11.0、Room34；仅有原未跟踪历史Prompt。只读核对双端候选校验、导入、循环模板和现有验收；未收到最终归属选择，产品仍保留报错。若选只提醒一次，必须在整门课所有时段中唯一分配，并处理窗口外目标、补齐和共同字段编辑时的复制；现有Room34事项字段可复用。具体分支和验收入口见[实施定位](planning-input/RECURRING_ABSOLUTE_IMPLEMENTATION_20261101.md)，其中建议边界不是用户确认。未改源码/版本/运行数据，无新APK或重复测试，未push/Release/部署；原目标未完成。下一步需要用户回复所选规则，再实施并复核新增提交。
+
 ## 2026-11-01 未推送历史清理完成，继续剩余规划规则与最终推送
 
 按实际c8079df/Android1.17.11/403/Windows1.17.11.0/Room34恢复。最新完整bundle已验证且未覆盖旧备份；在隔离裸仓库重写远端83ff5cf之后的60个提交，保留路径/模式/作者/日期/顺序，接回main后的归档HEAD为83e2a45，更新功能提交为092afab，规划为6f8d24d。全部新快照及消息复扫无禁止参考/凭据特征命中，已识别地址无残留；URL复核保留合法来源/许可证/命名空间及测试语法。完整60提交差异通过git diff --check。

@@ -17,6 +17,124 @@ public sealed class RecurrenceScopeTests
         using var reader = new StreamReader(zip.GetEntry("backup.json")!.Open());
         return JsonNode.Parse(reader.ReadToEnd())!.AsObject();
     }
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ReplenishedOccurrencesKeepRelativeRulesWithoutCopyingAbsoluteReminders(bool isEvent)
+    {
+        var start = new DateTime(2026, 11, 1, 9, 0, 0);
+        var absolute = Ms(start.AddDays(30).AddHours(-1));
+        var doc = DesktopSnapshotDocument.CreateEmpty();
+        var draft = Event(start, 180) with { AbsoluteReminderTimes = new[] { absolute } };
+        if (!isEvent) draft = draft with { IsEvent = false, DueAtMillis = Ms(start), StartAtMillis = null, EndAtMillis = null };
+        var owner = doc.SaveItem(draft);
+
+        Assert.True(doc.EnsureRecurringInstances(start, 5));
+        Assert.Equal(new[] { absolute }, doc.EditFor(owner)!.AbsoluteReminderTimes);
+        Assert.All(doc.Items.Where(item => item.Id != owner), item => {
+            var edit = doc.EditFor(item.Id)!;
+            Assert.Empty(edit.AbsoluteReminderTimes);
+            Assert.True(edit.ReminderEnabled);
+            var anchor = isEvent ? edit.StartAtMillis!.Value : edit.DueAtMillis!.Value;
+            Assert.Equal(new[] { anchor - 15 * 60_000L }, DesktopCalendarTime.Triggers(edit));
+        });
+
+        var restored = DesktopSnapshotDocument.FromArchiveBytes(doc.ToArchiveBytes(false));
+        Assert.True(restored.EnsureRecurringInstances(start.AddDays(60), 5));
+        Assert.Equal(new[] { absolute }, restored.EditFor(owner)!.AbsoluteReminderTimes);
+        Assert.All(restored.Items.Where(item => item.Id != owner), item => Assert.Empty(restored.EditFor(item.Id)!.AbsoluteReminderTimes));
+        Assert.False(restored.EnsureRecurringInstances(start.AddDays(60), 5));
+    }
+    [Fact]
+    public void ReplenishmentOfAbsoluteOnlyOccurrenceDoesNotEnableEmptySiblingReminders()
+    {
+        var start = new DateTime(2026, 11, 1, 9, 0, 0);
+        var absolute = Ms(start.AddDays(30));
+        var doc = DesktopSnapshotDocument.CreateEmpty();
+        var owner = doc.SaveItem(Event(start) with { ReminderOffsets = Array.Empty<int>(), AbsoluteReminderTimes = new[] { absolute } });
+        Assert.True(doc.EnsureRecurringInstances(start));
+        Assert.Equal(new[] { absolute }, DesktopCalendarTime.Triggers(doc.EditFor(owner)!));
+        Assert.All(doc.Items.Where(item => item.Id != owner), item => {
+            var edit = doc.EditFor(item.Id)!;
+            Assert.Empty(edit.AbsoluteReminderTimes);
+            Assert.False(edit.ReminderEnabled);
+            Assert.Empty(DesktopCalendarTime.Triggers(edit));
+            Assert.Null(Json(doc)["tasks"]!.AsArray().Single(task => task!["id"]!.GetValue<long>() == item.Id)!["reminderAtMillis"]);
+        });
+        Assert.Single(doc.RemindersBetween(absolute - 1, absolute + 1));
+    }
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, false, false)]
+    public void SharedSeriesEditsKeepEachOccurrencesOwnAbsoluteReminder(bool isEvent, bool all, bool selectOwner)
+    {
+        var start = new DateTime(2026, 11, 1, 9, 0, 0);
+        var absolute = Ms(start.AddDays(30));
+        var doc = DesktopSnapshotDocument.CreateEmpty();
+        var draft = Event(start) with { AbsoluteReminderTimes = new[] { absolute } };
+        if (!isEvent) draft = draft with { IsEvent = false, DueAtMillis = Ms(start), StartAtMillis = null, EndAtMillis = null };
+        var owner = doc.SaveItem(draft);
+        doc.EnsureRecurringInstances(start);
+        var secondOwner = doc.Items[2].Id;
+        var secondAbsolute = absolute + 60_000;
+        doc.SaveItem(doc.EditFor(secondOwner)! with { AbsoluteReminderTimes = new[] { secondAbsolute } }, secondOwner);
+        var selected = selectOwner ? owner : doc.Items[1].Id;
+        doc.SaveItem(doc.EditFor(selected)! with { Title = "共同改名", Location = "新教室" }, selected,
+            all ? RecurrenceScope.All : RecurrenceScope.CurrentAndFuture);
+
+        Assert.Equal(new[] { absolute }, doc.EditFor(owner)!.AbsoluteReminderTimes);
+        Assert.Equal(new[] { secondAbsolute }, doc.EditFor(secondOwner)!.AbsoluteReminderTimes);
+        Assert.All(doc.Items.Where(item => item.Id != owner && item.Id != secondOwner), item => Assert.Empty(doc.EditFor(item.Id)!.AbsoluteReminderTimes));
+        Assert.All(doc.Items.Where(item => all || selectOwner || item.Id != owner), item => Assert.Equal("共同改名", item.Title));
+        Assert.Equal(2, doc.RemindersBetween(absolute - 1, secondAbsolute + 1).Count);
+    }
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void RenamingAbsoluteOnlySeriesKeepsEnabledOwnerAndDisablingRemindersIsExplicit(bool selectOwner)
+    {
+        var start = new DateTime(2026, 11, 1, 9, 0, 0);
+        var absolute = Ms(start.AddDays(30));
+        var doc = DesktopSnapshotDocument.CreateEmpty();
+        var owner = doc.SaveItem(Event(start) with { ReminderOffsets = Array.Empty<int>(), AbsoluteReminderTimes = new[] { absolute } });
+        doc.EnsureRecurringInstances(start);
+        var selected = selectOwner ? owner : doc.Items[1].Id;
+        doc.SaveItem(doc.EditFor(selected)! with { Title = "只改标题" }, selected, RecurrenceScope.All);
+
+        Assert.True(doc.EditFor(owner)!.ReminderEnabled);
+        Assert.Equal(new[] { absolute }, DesktopCalendarTime.Triggers(doc.EditFor(owner)!));
+        Assert.All(doc.Items.Where(item => item.Id != owner), item => Assert.False(doc.EditFor(item.Id)!.ReminderEnabled));
+        doc.SaveItem(doc.EditFor(owner)! with { ReminderEnabled = false, AbsoluteReminderTimes = Array.Empty<long>() }, owner, RecurrenceScope.All);
+        Assert.All(doc.Items, item => { Assert.False(doc.EditFor(item.Id)!.ReminderEnabled); Assert.Empty(doc.EditFor(item.Id)!.AbsoluteReminderTimes); });
+        Assert.Empty(doc.RemindersBetween(absolute - 1, absolute + 1));
+    }
+    [Fact]
+    public void ChangingSeriesTimeKeepsAbsoluteReminderOwnerWhileNewDatesUseOnlyRelativeRules()
+    {
+        var start = new DateTime(2026, 11, 1, 9, 0, 0);
+        var absolute = Ms(start.AddDays(30));
+        var doc = DesktopSnapshotDocument.CreateEmpty();
+        var owner = doc.SaveItem(Event(start) with { AbsoluteReminderTimes = new[] { absolute } });
+        doc.EnsureRecurringInstances(start);
+        doc.SaveItem(doc.EditFor(owner)! with { StartAtMillis = Ms(start.AddHours(1)), EndAtMillis = Ms(start.AddHours(3)),
+            RecurrenceEndEpochDay = Day(start.AddDays(8)) }, owner, RecurrenceScope.All);
+
+        Assert.Equal(9, doc.Items.Count);
+        Assert.Equal(new[] { absolute }, doc.EditFor(owner)!.AbsoluteReminderTimes);
+        Assert.All(doc.Items, item => Assert.Equal(10, Local(item.StartAtMillis).Hour));
+        Assert.All(doc.Items.Where(item => item.Id != owner), item => {
+            var edit = doc.EditFor(item.Id)!;
+            Assert.Empty(edit.AbsoluteReminderTimes);
+            Assert.Equal(new[] { edit.StartAtMillis!.Value - 15 * 60_000L }, DesktopCalendarTime.Triggers(edit));
+        });
+        Assert.Single(doc.RemindersBetween(absolute - 1, absolute + 1));
+    }
     [Fact] public void MovingOnlyCurrentDoesNotAlterSiblingsOrRegenerateOriginalDate()
     {
         var start = new DateTime(2026, 10, 23, 23, 0, 0); var doc = DesktopSnapshotDocument.CreateEmpty();

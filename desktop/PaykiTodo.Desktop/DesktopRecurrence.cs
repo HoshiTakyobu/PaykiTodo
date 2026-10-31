@@ -108,8 +108,11 @@ internal sealed partial class DesktopSnapshotDocument
                 else available.Remove(item);
                 var itemId = item["id"]!.GetValue<long>();
                 item["recurringSeriesId"] = edit.RecurrenceType == "NONE" ? null : targetSeries;
-                SaveItemCore(ShiftEdit(edit, date + firstAt.TimeOfDay), itemId, false);
+                var occurrenceEdit = WithOccurrenceReminders(ShiftEdit(edit, date + firstAt.TimeOfDay), prior, item, id);
+                SaveItemCore(occurrenceEdit, itemId, false);
                 if (template != null) ApplyTemplateFields(item, template);
+                item["reminderEnabled"] = occurrenceEdit.ReminderEnabled;
+                RefreshOccurrenceReminders(item);
                 if (date == dates[0]) resultId = itemId;
             }
             foreach (var stale in available) RemoveOccurrence(stale);
@@ -143,14 +146,37 @@ internal sealed partial class DesktopSnapshotDocument
         var prototype = (JsonObject)original.DeepClone(); prototype["recurringSeriesId"] = targetSeries;
         SyncRecurringTemplate(prototype, anchorEdit, anchorEdit.EndAtMillis!.Value, null, targetSeries);
         var updatedTemplate = Templates.OfType<JsonObject>().First(value => value["seriesId"]?.GetValue<string>() == targetSeries);
+        var selectedId = original["id"]!.GetValue<long>();
+        var prior = DesktopItemEdit.FromJson(original);
         foreach (var target in targets) {
             var anchor = Anchor(target);
             var at = DesktopItemEdit.FromJson(target);
-            SaveItemCore(edit with { StartAtMillis = at.StartAtMillis, EndAtMillis = at.EndAtMillis }, target["id"]!.GetValue<long>(), false);
+            var occurrenceEdit = WithOccurrenceReminders(edit with { StartAtMillis = at.StartAtMillis, EndAtMillis = at.EndAtMillis }, prior, target, selectedId);
+            SaveItemCore(occurrenceEdit, target["id"]!.GetValue<long>(), false);
             ApplyTemplateFields(target, updatedTemplate);
+            target["reminderEnabled"] = occurrenceEdit.ReminderEnabled;
+            RefreshOccurrenceReminders(target);
             target["recurringSeriesId"] = targetSeries; target["recurrenceAnchorDueAtMillis"] = anchor;
         }
         return original["id"]!.GetValue<long>();
+    }
+    private static DesktopItemEdit WithOccurrenceReminders(DesktopItemEdit edit, DesktopItemEdit prior, JsonObject target, long selectedId)
+    {
+        if (prior.ReminderEnabled && !edit.ReminderEnabled)
+            return edit with { AbsoluteReminderTimes = Array.Empty<long>() };
+        var selected = target["id"]!.GetValue<long>() == selectedId;
+        var existing = DesktopItemEdit.FromJson(target);
+        var absolute = selected ? edit.AbsoluteReminderTimes : existing.AbsoluteReminderTimes;
+        return edit with {
+            AbsoluteReminderTimes = absolute,
+            ReminderEnabled = edit.ReminderEnabled || (!selected && existing.ReminderEnabled && absolute.Count > 0)
+        };
+    }
+    private static void RefreshOccurrenceReminders(JsonObject item)
+    {
+        var reminders = DesktopCalendarTime.Triggers(DesktopItemEdit.FromJson(item));
+        item["reminderAtMillis"] = reminders.Count > 0 ? reminders[0] : null;
+        item["reminderEnabled"] = reminders.Count > 0;
     }
     private static DesktopItemEdit ShiftEdit(DesktopItemEdit edit, DateTime at)
     {
@@ -213,8 +239,7 @@ internal sealed partial class DesktopSnapshotDocument
                     : millis + duration * 60000L : null;
                 item["dueAtMillis"] = isEvent ? item["endAtMillis"]!.DeepClone() : JsonValue.Create(millis);
                 item["recurrenceAnchorDueAtMillis"] = millis;
-                var reminders = DesktopCalendarTime.Triggers(DesktopItemEdit.FromJson(item));
-                item["reminderAtMillis"] = reminders.Count > 0 ? reminders[0] : null;
+                RefreshOccurrenceReminders(item);
                 Tasks.Add(item); occupied.Add(day); changed = true;
             }
         }
@@ -232,6 +257,8 @@ internal sealed partial class DesktopSnapshotDocument
     private static void ResetOccurrence(JsonObject item)
     {
         item["sharedEventId"] = "";
+        // Absolute reminders belong to the existing occurrence, not its template.
+        item["reminderAbsoluteTimesCsv"] = "";
         item["eventParticipantsJson"] = DesktopEventParticipants.Select(item["eventParticipantsJson"]?.GetValue<string>() ?? "[]", "[]");
         item["createdAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         foreach (var key in new[] { "completed", "canceled", "missed" }) item[key] = false;

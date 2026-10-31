@@ -1,4 +1,4 @@
-最新补充（2026-11-01）：临时规划1.17.10和双端更新1.17.11/403、Windows1.17.11.0、Room34已实施并验收；60个未推送提交已完成历史脱敏并逐一复核，归档HEAD83e2a45，实现/资源/工具/CI469文件不变。先读SESSION_HANDOFF、PROJECT_STATUS、PUBLIC_HISTORY_AUDIT_20261101、VALIDATION_1.17.11与WINDOWS_UPDATE_PROTOCOL。下面是原1.17.9交接，不把“尚无规划/更新代码”当现状；继续循环绝对提醒归属与对应实现、新增提交复核和授权推送，原目标未完成。
+最新补充（2026-11-01）：Windows1.17.12独立修复循环补齐/系列编辑的实例绝对提醒保护，51项不同检查与MSI/完整便携目录通过。Android仍1.17.11/403、Room34；临时规划及双端更新已实施，60个未推送提交已完成历史清理。先读SESSION_HANDOFF、PROJECT_STATUS、VALIDATION_1.17.12、PUBLIC_HISTORY_AUDIT_20261101与WINDOWS_UPDATE_PROTOCOL。下面是原1.17.9交接，不把“尚无规划/更新代码”当现状；继续循环绝对提醒归属与对应实现、新增提交复核和授权推送，原目标未完成。
 
 请接手 PaykiTodo 尚未完成的整轮修改。工作目录：G:\Workspace\Project\PaykiTodo。
 

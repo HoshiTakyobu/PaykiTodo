@@ -68,6 +68,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -299,7 +300,8 @@ fun SettingsPanel(
                 SettingsMenuDivider()
                 SettingsMenuItem(Icons.AutoMirrored.Rounded.Article, "崩溃日志", null) { selectedSection = SettingsSection.CRASH }
                 SettingsMenuDivider()
-                SettingsMenuItem(Icons.Rounded.Folder, "关于", "PaykiTodo") { selectedSection = SettingsSection.ABOUT }
+                val update by com.example.todoalarm.update.AppUpdater.get(LocalContext.current).state.collectAsState()
+                SettingsMenuItem(Icons.Rounded.Folder, "关于", update.release?.let { "发现新版本 ${it.version}" } ?: "PaykiTodo") { selectedSection = SettingsSection.ABOUT }
             }
         }
     }
@@ -2253,6 +2255,7 @@ fun AboutPanel(
             AboutRow("版本号", versionName)
             AboutRow("内部版本", versionCode)
             AboutRow("包名", context.packageName)
+            AppUpdatePanel()
         }
 
         PrefCard("项目信息") {

@@ -1,7 +1,8 @@
 param(
     [string]$WixPath = 'wix',
     [string]$ServerConfig,
-    [string]$VersionOverride
+    [string]$VersionOverride,
+    [string]$WebView2Bootstrapper
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
@@ -16,6 +17,7 @@ $output = Join-Path $repo 'desktop/installer-output'
 New-Item -ItemType Directory -Path $payload,$output -Force | Out-Null
 dotnet publish $project -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o $payload
 if ($LASTEXITCODE -ne 0) { throw 'Windows publish failed' }
+& (Join-Path $PSScriptRoot 'Build-WindowsLauncher.ps1') -OutputDirectory $payload
 if ($ServerConfig) {
     $config = Get-Content -LiteralPath $ServerConfig -Raw | ConvertFrom-Json
     if (@($config.PSObject.Properties.Name).Count -ne 1 -or !$config.serverUrl) { throw 'Server config must contain only serverUrl' }
@@ -25,9 +27,14 @@ if ($ServerConfig) {
 }
 Copy-Item -LiteralPath (Join-Path $repo 'desktop/installer/README.md') -Destination (Join-Path $payload 'Windows-installation.md')
 $runtimeSetup = Join-Path $payload 'MicrosoftEdgeWebview2Setup.exe'
-Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $runtimeSetup
+if ($WebView2Bootstrapper) {
+    Copy-Item -LiteralPath (Resolve-Path -LiteralPath $WebView2Bootstrapper).Path -Destination $runtimeSetup
+} else {
+    Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $runtimeSetup -TimeoutSec 60
+}
 $signature = Get-AuthenticodeSignature -LiteralPath $runtimeSetup
 if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'Microsoft WebView2 installer signature validation failed' }
+& (Join-Path $PSScriptRoot 'Write-WindowsUpdateBaseline.ps1') -PayloadDirectory $payload
 $license = Join-Path $build 'License.rtf'
 $licenseText = (Get-Content -LiteralPath (Join-Path $repo 'LICENSE') -Raw).Replace('\','\\').Replace('{','\{').Replace('}','\}').Replace("`n",'\par ')
 [IO.File]::WriteAllText($license, '{\rtf1\ansi\deff0{\fonttbl{\f0 Segoe UI;}}\fs20 ' + $licenseText + '}')

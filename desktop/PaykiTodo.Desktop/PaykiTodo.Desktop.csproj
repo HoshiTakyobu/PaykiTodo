@@ -9,9 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PaykiTodo</AssemblyName>
     <RootNamespace>PaykiTodo.Desktop</RootNamespace>
-    <Version>1.17.10</Version>
-    <AssemblyVersion>1.17.10.0</AssemblyVersion>
-    <FileVersion>1.17.10.0</FileVersion>
+    <Version>1.17.11</Version>
+    <AssemblyVersion>1.17.11.0</AssemblyVersion>
+    <FileVersion>1.17.11.0</FileVersion>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\PaykiTodo.ico</ApplicationIcon>
@@ -24,6 +24,7 @@
   <ItemGroup>
     <EmbeddedResource Include="..\..\app\src\main\assets\ai\report-system.txt" LogicalName="PaykiTodo.ReportSystem" />
     <EmbeddedResource Include="..\..\app\src\main\assets\ai\planning-system.txt" LogicalName="PaykiTodo.PlanningSystem" />
+    <EmbeddedResource Include="update-public-key.txt" LogicalName="PaykiTodo.UpdatePublicKey" />
     <Resource Include="Assets\*.png" />
     <Resource Include="Assets\*.ico" />
     <Resource Include="..\..\docs\WINDOWS_USER_GUIDE.md" Link="Assets\WINDOWS_USER_GUIDE.md" />

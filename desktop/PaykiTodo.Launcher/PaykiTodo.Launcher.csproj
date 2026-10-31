@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>PaykiTodo.Launcher</AssemblyName>
+    <ApplicationIcon>../PaykiTodo.Desktop/Assets/PaykiTodo.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../PaykiTodo.Desktop/DesktopUpdateProtocol.cs" Link="DesktopUpdateProtocol.cs" />
+    <Compile Include="../PaykiTodo.Desktop/DesktopUpdateStore.cs" Link="DesktopUpdateStore.cs" />
+    <EmbeddedResource Include="../PaykiTodo.Desktop/update-public-key.txt" LogicalName="PaykiTodo.UpdatePublicKey" />
+  </ItemGroup>
+</Project>

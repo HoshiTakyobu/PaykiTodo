@@ -1,5 +1,16 @@
 # Session Handoff
 
+## 2026-11-01 1.17.11 更新链路已实施，继续原七项目标
+
+核对起点5d54c96，保留预升版本和原未提交两行说明/历史Prompt。Android1.17.11/403、Windows1.17.11.0、Room34；两端GitHub稳定版本检查、手机DownloadManager/持久状态/取消/签名与版本校验/系统安装、Windows签名清单/稳定灰度/后台delta重建/full回退/独立启动器/nonce确认与启动失败回退完成。MSI及便携构建写入实际增量基线。详见VALIDATION_1.17.11和WINDOWS_UPDATE_PROTOCOL。
+
+- 已通过258Android单测/Lint0错误137警告30信息、5项不同user11设备用例；104项不同Windows回归（2个Android联动夹具未启用）、另1条14阶段独立UIA；4种模拟启动器进程场景、真实WPF包nonce确认；最终固定MSI真实1.17.10升级/修复/484文件/安装EXE/快捷方式/卸载/普通用户资料保持。失败及重试保留，不重复计数。
+- 最新APK app/build/outputs/apk/debug/PaykiTodo-1.17.11-debug.apk及对应签名Release；同1.17.10 Release证书。MSI desktop/installer-output/PaykiTodo-1.17.11-windows-x64.msi，最终payload desktop/obj/installer/1.17.11-edb364f892ee40dc966fcb7ff82993ca/payload；不是旧desktop/dist。交付目录Deliverables/PaykiTodo/1.17.11含完整便携目录、更新资产和哈希。
+- 证据Scratch/PaykiTodo/updates-1.17.11；最终MSI installer-verified/install-66d50ff25f7d4000bfe8d91a2a8028eb/result.json。原用户0 646/646、10 148/148文件哈希相同；前后tar及user11变化在Backups/PaykiTodo/updates-1.17.11。emulator-5554/Pixel_8/PID20332，无窗口，最终Debug/AndroidTest已安装，只user11执行测试，恢复user10主页，应用停止，核对AVD身份后恢复原暂停。用户真实手机不动。
+- 私钥只在忽略的user/update-signing/private-key.pem，公钥update-public-key.txt提交；不要打印或推送私钥。微软安装器在线等待曾阻塞，最终使用旧版本已验证微软签名的缓存；构建脚本可选WebView2Bootstrapper并有60秒超时。下载/失败候选保留，无缓存自动清理。
+- 下一步：循环绝对提醒仅一次归属仍待答复（本轮提供两个选择），然后完整未推送历史清理及授权push；公开Release实查仍v1.15.18。没有push/tag/Release/部署，整体goal未完成。现有规划解析不要重做，下面“更新未实现/交接后暂停”均属历史。
+- 未提交文档说明和历史Prompt保持独立；原始副本在Backups/PaykiTodo/unpublished-before-scrub-20261101。新的更新文件由本轮提交，不能git add .把原Prompt混入。
+
 ## 2026-11-01 临时规划主体已实施，原七项目标继续
 
 Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未提交规划代码。三端每日看板临时输入、本地/可选AI、可编辑预览、确认事务导入、父子与课程多时段、旧文档含归档只读、绝对提醒备份同步和无截止滚动已实施。254Android单测/Lint、12项设备检查、Windows90回归+1独立14阶段UIA和5段LAN模拟HTTP浏览器流程通过；成品含Debug、同证书签名Release、MSI和完整便携目录，见Deliverables/PaykiTodo/1.17.10及VALIDATION_1.17.10。原user0 646/646、user10 148/148哈希相同。

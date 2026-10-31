@@ -2,6 +2,10 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
+## Current update stage: 1.17.11 / 403
+
+双端稳定Release检查和手动入口完成；手机DownloadManager状态恢复/取消、正确APK与签名/包名/版本核对、系统安装入口完成。Windows实现稳定灰度、后台签名资产校验、变化文件增量及完整回退、基础启动器/独立版本目录/nonce确认/失败回退，MSI和便携目录包含后续增量基线。验收、失败修正和真实线上/手机安装边界见[1.17.11验收](VALIDATION_1.17.11.md)。尚待循环绝对提醒选择、全部未公开历史处理及授权推送。下面1.17.10规划阶段的“更新器待完成”只描述当时状态。
+
 ## Current planning stage: 1.17.10 / 402
 
 Android、Windows与LAN网页已从每日看板提供临时规划输入、本地/可选AI识别、预览编辑和确认事务导入。支持标题-only、日期/+简写、>日程、混合非循环绝对提醒、父子事项、同课多时段及持续循环；旧文档含归档只读保留，不创建新文档。Room34新增绝对提醒字段，贯穿备份/同步和普通编辑保留。具体已验证范围与限制见 [VALIDATION_1.17.10.md](VALIDATION_1.17.10.md)。

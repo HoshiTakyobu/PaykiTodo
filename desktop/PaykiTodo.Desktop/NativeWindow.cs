@@ -19,6 +19,7 @@ internal sealed partial class NativeWindow : Window
 {
     private readonly DesktopWorkspace workspace;
     private readonly string profileDirectory;
+    private readonly bool isolatedProfile;
     private Grid root = new();
     private ContentControl content = new();
     private StackPanel navigation = new();
@@ -43,6 +44,7 @@ internal sealed partial class NativeWindow : Window
 
     public NativeWindow(DesktopWorkspace? workspace = null, string? profileDirectory = null)
     {
+        isolatedProfile = workspace != null || profileDirectory != null;
         this.profileDirectory = profileDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
         this.workspace = workspace ?? new DesktopWorkspace(new DesktopSecureStore(this.profileDirectory));
         Dark = this.workspace.Document?.Settings["themeMode"]?.GetValue<string>() == "DARK";
@@ -77,8 +79,8 @@ internal sealed partial class NativeWindow : Window
             finally { syncTickRunning = false; }
             ReviewCountdowns();
         }; timer.Start();
-        Closed += (_, _) => { timer.Stop(); reportExpiryTimer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
-        Loaded += async (_, _) => { if (workspace == null) reminders = new DesktopReminders(this, this.workspace, OpenItemDetails); await this.workspace.SyncAsync(); };
+        Closed += (_, _) => { updateCancellation?.Cancel(); timer.Stop(); reportExpiryTimer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
+        Loaded += async (_, _) => { UpdateStartup(workspace == null && profileDirectory == null); if (workspace == null) reminders = new DesktopReminders(this, this.workspace, OpenItemDetails); await this.workspace.SyncAsync(); };
         Render();
     }
 
@@ -100,7 +102,7 @@ internal sealed partial class NativeWindow : Window
         }
         rail.Children.Add(navigation); root.Children.Add(rail);
         var main = new DockPanel(); Grid.SetColumn(main, 1); root.Children.Add(main);
-        var footer = new Border { Padding = new Thickness(26, 8, 24, 8), Background = B("#F8FAF9"), Child = status };
+        var footer = new Border { Padding = new Thickness(26, 8, 24, 8), Background = B("#F8FAF9"), Child = UpdateFooter() };
         DockPanel.SetDock(footer, Dock.Bottom); main.Children.Add(footer);
         var top = new Grid { Margin = new Thickness(28, 22, 24, 14) };
         top.ColumnDefinitions.Add(new ColumnDefinition()); top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

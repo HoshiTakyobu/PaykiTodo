@@ -59,7 +59,7 @@ internal sealed partial class NativeWindow
         try {
             var native = Path.Combine(folder, "native-server.txt"); if (File.Exists(native)) return File.ReadAllText(native).Trim();
             if (workspace.Account != null) return workspace.Account.ServerUrl;
-            var packaged = Path.Combine(AppContext.BaseDirectory, "client-config.json");
+            var packaged = Path.Combine(Environment.GetEnvironmentVariable("PAYKI_UPDATE_SEED") ?? AppContext.BaseDirectory, "client-config.json");
             if (File.Exists(packaged)) return JsonDocument.Parse(File.ReadAllText(packaged)).RootElement.GetProperty("serverUrl").GetString() ?? "";
             var legacy = Path.Combine(folder, "desktop-preferences.json");
             if (File.Exists(legacy)) return JsonDocument.Parse(File.ReadAllText(legacy)).RootElement.GetProperty("ServerUrl").GetString() ?? "";
@@ -164,7 +164,7 @@ internal sealed partial class NativeWindow
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             }))));
         body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 " + typeof(NativeWindow).Assembly.GetName().Version?.ToString(3), 14, Muted),
-            Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
+            Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), UpdateControls(), Action("隐私政策", ShowPrivacy))));
         var categories = new[] { "账号与同步", "常规", "数据与备份", "分组管理", "AI 与规划", "连接手机", "关于" };
         var shell = new Grid { Margin = new Thickness(28, 0, 24, 18) };
         System.Windows.Automation.AutomationProperties.SetAutomationId(shell, "Settings.Layout");

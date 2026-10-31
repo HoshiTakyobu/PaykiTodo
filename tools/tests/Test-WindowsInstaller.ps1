@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][string]$Installer, [string]$PreviousInstaller, [Parameter(Mandatory)][string]$Evidence)
+param([Parameter(Mandatory)][string]$Installer, [string]$PreviousInstaller, [Parameter(Mandatory)][string]$Evidence, [string]$InstalledTestFilter)
 $ErrorActionPreference = 'Stop'
 $Installer = (Resolve-Path -LiteralPath $Installer).Path
 $evidenceRoot = [IO.Path]::GetFullPath($Evidence)
@@ -69,7 +69,8 @@ if (!(Test-Path -LiteralPath (Join-Path $installRoot 'PaykiTodo.exe'))) { throw 
 $shell = New-Object -ComObject WScript.Shell
 foreach($path in @((Join-Path $startMenu 'PaykiTodo.lnk'),(Join-Path $desktop 'PaykiTodo.lnk'))) {
     if (!(Test-Path -LiteralPath $path)) { throw 'Shortcut missing' }
-    if ($shell.CreateShortcut($path).TargetPath -ne (Join-Path $installRoot 'PaykiTodo.exe')) { throw 'Shortcut target mismatch' }
+    $expectedEntry = if (Test-Path -LiteralPath (Join-Path $installRoot 'PaykiTodo.Launcher.exe')) { 'PaykiTodo.Launcher.exe' } else { 'PaykiTodo.exe' }
+    if ($shell.CreateShortcut($path).TargetPath -ne (Join-Path $installRoot $expectedEntry)) { throw 'Shortcut target mismatch' }
 }
 Invoke-Msi @('/fa',$productCode) 'repair-current'
 if (Test-Path -LiteralPath ($Installer+'.files.json')) {
@@ -80,7 +81,9 @@ if (Test-Path -LiteralPath ($Installer+'.files.json')) {
 }
 # The same isolated WPF launch/controls harness validates the actual installed EXE.
 $repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-& (Join-Path $PSScriptRoot 'Invoke-DesktopAcceptance.ps1') -Evidence (Join-Path $testRoot 'installed-app') -PackagedExe (Join-Path $installRoot 'PaykiTodo.exe')
+$checks = @{Evidence=(Join-Path $testRoot 'installed-app');PackagedExe=(Join-Path $installRoot 'PaykiTodo.exe')}
+if ($InstalledTestFilter) { $checks.TestFilter = $InstalledTestFilter }
+& (Join-Path $PSScriptRoot 'Invoke-DesktopAcceptance.ps1') @checks
 Invoke-Msi @('/x',$productCode) 'uninstall-current'
 if (Test-Path -LiteralPath (Join-Path $installRoot 'PaykiTodo.exe')) { throw 'EXE left installed after uninstall' }
 if (Test-Path -LiteralPath (Join-Path $desktop 'PaykiTodo.lnk')) { throw 'Desktop shortcut left after uninstall' }

@@ -7,6 +7,11 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        var launcher = Path.Combine(AppContext.BaseDirectory, "PaykiTodo.Launcher.exe");
+        if (args.Length == 0 && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PAYKI_UPDATE_SEED")) && File.Exists(launcher)) {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(launcher) { UseShellExecute = false, CreateNoWindow = true });
+            return;
+        }
         ApplicationConfiguration.Initialize();
         var app = new System.Windows.Application();
         string? directory = null;

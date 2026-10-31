@@ -1,5 +1,7 @@
 # 下一模型的源码、验证与运行环境地图
 
+最新1.17.11更新模块：Android update/GithubRelease.kt、AppUpdater.kt、ApkUpdateIdentity.kt和ui/AppUpdatePanel.kt；Windows DesktopUpdateProtocol/Store/Updater及NativeWindow.Updates；desktop/PaykiTodo.Launcher是独立启动器。tools/build/New-WindowsUpdateRelease.ps1生成签名资产，Write-WindowsUpdateBaseline.ps1进入MSI和便携构建。验收见VALIDATION_1.17.11，协议见WINDOWS_UPDATE_PROTOCOL。下面“更新模块尚无实现”是旧定位。Windows构建可传-WebView2Bootstrapper复用已验证微软签名的缓存，避免重复等待下载。
+
 > 2026-11-01后续实现：1.17.10规划主体已落代码并通过阶段验收，见 [当前交接](SESSION_HANDOFF.md) 和 [验收](VALIDATION_1.17.10.md)。下面“尚未实现”描述是1.17.9交接时的历史定位。新入口为TransientPlanningInput/Recognition、TransientPlanningDialog、TodoRepository.importTransientPlanning，Windows同名新解析/导入/NativeWindow.TransientPlanning，LAN复用TransientPlanningWeb及transient-planning.js。更新模块仍待实现。
 
 配合 [整体指南](MODEL_HANDOFF_20261101.md) 使用。这里只列本轮相关入口，行号可能随实现变化；用 `rg` 定位符号，不全盘扫描工作区。

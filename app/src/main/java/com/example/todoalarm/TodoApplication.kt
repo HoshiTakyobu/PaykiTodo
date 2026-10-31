@@ -41,6 +41,11 @@ class TodoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashLogger.install(this)
+        applicationScope.launch {
+            val updater = com.example.todoalarm.update.AppUpdater.get(this@TodoApplication)
+            updater.refresh()
+            updater.check(manual = false)
+        }
         val skipReminderRecovery = SafeStartupGuard.enterStartup(this)
         runCatching {
             alarmScheduler.cancelLegacyBackupAlarms()

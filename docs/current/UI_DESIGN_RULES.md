@@ -72,7 +72,7 @@ Daily Board artwork is product identity. Starting with 1.16.15, the user explici
 - Avoid stacking several outlined cards inside another outlined card. Prefer one section surface with light internal grouping and a single obvious primary action.
 - Account identity occupies the drawer header; account settings open from that identity. Todo history belongs under Todo, not as an independent drawer destination.
 - Calendar month/week changes use spatial pager transitions. Agenda rows use compact text and a content-height accent bar; the lower date rail does not duplicate the top strip's lunar label.
-- Planning Desk keeps only document selection and recognition in the main toolbar. Document creation, rename and archive belong in the document list; help belongs in the top-right question-mark icon.
+- Planning input opens from Daily Board as a temporary draft. Recognition leads to an editable preview and one confirmation action. Existing saved text remains available through the read-only legacy entry; new input creates tasks and events without new document records.
 
 ## 8. Desktop Web workstation layout
 

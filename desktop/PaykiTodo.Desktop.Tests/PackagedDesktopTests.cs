@@ -7,6 +7,31 @@ namespace PaykiTodo.Desktop.Tests;
 
 public sealed class PackagedDesktopTests
 {
+    [PackagedFact]
+    public void UpdatedExecutableConfirmsNonceBeforeNetworkWithIsolatedProfile()
+    {
+        using var isolated = new IsolatedDesktop();
+        var executable = Environment.GetEnvironmentVariable("PAYKI_PACKAGED_EXE")!;
+        var folder = Path.Combine(Environment.GetEnvironmentVariable("PAYKI_UI_EVIDENCE")!, "updated-profile");
+        var store = new DesktopSecureStore(folder); var document = DesktopSnapshotDocument.CreateEmpty();
+        document.SaveItem(NativeWorkspaceTests.NewItem(false, "更新启动保留的独立任务")); store.SaveDocument(document);
+        var updates = new DesktopUpdateStore(Path.GetDirectoryName(executable)!, Path.Combine(folder, "updates"));
+        var nonce = Guid.NewGuid().ToString("N"); var version = typeof(DesktopWorkspace).Assembly.GetName().Version!.ToString(3);
+        updates.Change(s => (s with { Pending = version, Attempt = version, Nonce = nonce }, true));
+        var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden };
+        start.ArgumentList.Add("--data-directory"); start.ArgumentList.Add(folder);
+        start.Environment["PAYKI_UPDATE_SEED"] = Path.GetDirectoryName(executable)!;
+        start.Environment["PAYKI_UPDATE_ROOT"] = updates.Root; start.Environment["PAYKI_UPDATE_NONCE"] = nonce;
+        using var process = Process.Start(start)!;
+        try {
+            var deadline = DateTime.UtcNow.AddSeconds(20);
+            while (!process.HasExited && updates.Read().Nonce == nonce && DateTime.UtcNow < deadline) Thread.Sleep(100);
+            Assert.False(process.HasExited); Assert.Null(updates.Read().Nonce); Assert.Equal(version, updates.Read().Active);
+            Assert.Equal("更新启动保留的独立任务", new DesktopWorkspace(store).Document!.Items.Single().Title);
+            process.Refresh(); Assert.True(process.CloseMainWindow()); Assert.True(process.WaitForExit(10000));
+        } finally { if (!process.HasExited) { process.Kill(true); process.WaitForExit(); } }
+    }
+
     private sealed class PackagedFactAttribute : FactAttribute
     {
         public PackagedFactAttribute()

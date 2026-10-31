@@ -1633,6 +1633,7 @@ class TodoRepository(
     }
 
     suspend fun createFromDraft(draft: TodoDraft): List<TodoItem> {
+        require(!draft.recurrence.isRecurring || draft.absoluteReminderTimesMillis.isEmpty()) { "新建循环事项的绝对提醒归属尚未确定" }
         val now = System.currentTimeMillis()
         val groupIds = resolveTodoGroupIds(draft)
         val groupId = groupIds.first()
@@ -1664,6 +1665,7 @@ class TodoRepository(
     }
 
     private suspend fun createCalendarEventFromDraftTransaction(draft: CalendarEventDraft): List<TodoItem> {
+        require(!draft.recurrence.isRecurring || draft.absoluteReminderTimesMillis.isEmpty()) { "新建循环事项的绝对提醒归属尚未确定" }
         requireCalendarWritable(draft.calendarId)
         val now = System.currentTimeMillis()
         val resolvedGroupId = resolveCalendarGroupId(draft)
@@ -1690,6 +1692,16 @@ class TodoRepository(
         original: TodoItem,
         draft: TodoDraft,
         scope: RecurrenceScope = RecurrenceScope.CURRENT
+    ): List<TodoItem> {
+        val updated = database.withTransaction { updateFromDraftTransaction(original, draft, scope) }
+        notifyItemsChanged()
+        return updated
+    }
+
+    private suspend fun updateFromDraftTransaction(
+        original: TodoItem,
+        draft: TodoDraft,
+        scope: RecurrenceScope
     ): List<TodoItem> {
         val groupIds = resolveTodoGroupIds(draft, original)
         val resolvedDraft = draft.copy(groupId = groupIds.first(), groupIds = groupIds)
@@ -1718,7 +1730,6 @@ class TodoRepository(
         }
         replaceGroupTags(updatedItems.filter { it.isTodo }, groupIds)
         updatedItems.forEach { syncPlanningNodeFromItem(it) }
-        notifyItemsChanged()
         return updatedItems
     }
 
@@ -2255,7 +2266,10 @@ class TodoRepository(
                     reminderOffsetsMinutes = targetOffsets,
                     recurrence = target.toRecurrenceConfig(),
                     multiSlotBundleId = bundleId,
-                    groupId = resolvedGroupId
+                    groupId = resolvedGroupId,
+                    absoluteReminderTimesMillis = occurrenceAbsoluteReminders(
+                        original, target, draft.absoluteReminderTimesMillis, draft.reminderTriggerTimesMillis().isEmpty()
+                    )
                 ),
                 now = target.createdAtMillis,
                 existing = target,
@@ -3663,7 +3677,11 @@ class TodoRepository(
                     val replacement = generateRecurringItems(
                         draft = draft.copy(groupId = draft.groupId.takeIf { it > 0 } ?: original.groupId),
                         seriesId = branchSeriesId,
-                        now = System.currentTimeMillis()
+                        now = System.currentTimeMillis(),
+                        additionalDates = shiftedOccurrenceDates(targets, original.recurrenceScopeDate(), requireNotNull(draft.dueAt).toLocalDate())
+                    ).withReplacementReminders(
+                        targets, original, draft.absoluteReminderTimesMillis, todoRemindersEmpty(draft),
+                        original.recurrenceScopeDate(), requireNotNull(draft.dueAt).toLocalDate()
                     )
                     if (replacement.isEmpty()) {
                         return emptyList()
@@ -3724,7 +3742,12 @@ class TodoRepository(
             val updated = targets.map { item ->
                 val instanceStart = item.calendarStartDateTime()
                 val instanceEnd = item.calendarEndDateTime().let { if (item.allDay) it.minusDays(1) else it }
-                buildCalendarEventItem(draft.copy(startAt = instanceStart, endAt = instanceEnd), item.createdAtMillis, item, keepSeries = true)
+                buildCalendarEventItem(draft.copy(
+                    startAt = instanceStart, endAt = instanceEnd,
+                    absoluteReminderTimesMillis = occurrenceAbsoluteReminders(
+                        original, item, draft.absoluteReminderTimesMillis, draft.reminderTriggerTimesMillis().isEmpty()
+                    )
+                ), item.createdAtMillis, item, keepSeries = true)
                     .copy(recurringSeriesId = nextSeriesId)
             }
             updated.forEach { todoDao.update(it) }
@@ -3783,7 +3806,11 @@ class TodoRepository(
                     val replacement = generateRecurringEventItems(
                         draft = draft,
                         seriesId = branchSeriesId,
-                        now = System.currentTimeMillis()
+                        now = System.currentTimeMillis(),
+                        additionalDates = shiftedOccurrenceDates(targets, original.recurrenceScopeDate(), draft.startAt.toLocalDate())
+                    ).withReplacementReminders(
+                        targets, original, draft.absoluteReminderTimesMillis, draft.reminderTriggerTimesMillis().isEmpty(),
+                        original.recurrenceScopeDate(), draft.startAt.toLocalDate()
                     )
                     if (replacement.isEmpty()) {
                         return emptyList()
@@ -3820,7 +3847,8 @@ class TodoRepository(
         )
         if (generated.isEmpty()) return emptyList()
 
-        val first = generated.first().copy(id = original.id, createdAtMillis = original.createdAtMillis)
+        val first = generated.first().withAbsoluteReminders(draft.absoluteReminderTimesMillis)
+            .copy(id = original.id, createdAtMillis = original.createdAtMillis)
         todoDao.update(first)
         val rest = generated.drop(1)
         val createdRest = if (rest.isEmpty()) {
@@ -3845,7 +3873,8 @@ class TodoRepository(
         )
         if (generated.isEmpty()) return emptyList()
 
-        val first = generated.first().copy(id = original.id, createdAtMillis = original.createdAtMillis)
+        val first = generated.first().withAbsoluteReminders(draft.absoluteReminderTimesMillis)
+            .copy(id = original.id, createdAtMillis = original.createdAtMillis)
         todoDao.update(first)
         val rest = generated.drop(1)
         val createdRest = if (rest.isEmpty()) {
@@ -3939,7 +3968,11 @@ class TodoRepository(
             generateRecurringItems(
                 draft = draft,
                 seriesId = targetSeriesId,
-                now = System.currentTimeMillis()
+                now = System.currentTimeMillis(),
+                additionalDates = shiftedOccurrenceDates(targets, targets.minOf { it.recurrenceScopeDate() }, requireNotNull(draft.dueAt).toLocalDate())
+            ).withReplacementReminders(
+                targets, original, draft.absoluteReminderTimesMillis, todoRemindersEmpty(draft),
+                targets.minOf { it.recurrenceScopeDate() }, requireNotNull(draft.dueAt).toLocalDate()
             )
         } else {
             listOf(
@@ -3973,7 +4006,11 @@ class TodoRepository(
             generateRecurringEventItems(
                 draft = draft,
                 seriesId = targetSeriesId,
-                now = System.currentTimeMillis()
+                now = System.currentTimeMillis(),
+                additionalDates = shiftedOccurrenceDates(targets, targets.minOf { it.recurrenceScopeDate() }, draft.startAt.toLocalDate())
+            ).withReplacementReminders(
+                targets, original, draft.absoluteReminderTimesMillis, draft.reminderTriggerTimesMillis().isEmpty(),
+                targets.minOf { it.recurrenceScopeDate() }, draft.startAt.toLocalDate()
             )
         } else {
             listOf(
@@ -3995,6 +4032,51 @@ class TodoRepository(
         val offsetMinutes = normalizedReminderOffsetsMinutes.firstOrNull()
         val newReminderAt = offsetMinutes?.let { newDueAt.minusMinutes(it.toLong()) }
         return copy(dueAt = newDueAt, reminderAt = newReminderAt)
+    }
+
+    private fun todoRemindersEmpty(draft: TodoDraft): Boolean =
+        (draft.dueAt == null || draft.normalizedReminderOffsetsMinutes.isEmpty()) && draft.absoluteReminderTimesMillis.isEmpty()
+
+    private fun occurrenceAbsoluteReminders(
+        original: TodoItem,
+        target: TodoItem,
+        editedTimes: List<Long>,
+        editedRemindersEmpty: Boolean
+    ): List<Long> = when {
+        original.reminderEnabled && editedRemindersEmpty -> emptyList()
+        target.id == original.id -> editedTimes
+        else -> target.reminderAbsoluteTimesCsv.split(',').mapNotNull { it.trim().toLongOrNull() }
+    }
+
+    private fun shiftedOccurrenceDates(targets: List<TodoItem>, oldStart: LocalDate, newStart: LocalDate): Set<LocalDate> {
+        val shiftDays = java.time.temporal.ChronoUnit.DAYS.between(oldStart, newStart)
+        return targets.map { it.recurrenceScopeDate().plusDays(shiftDays) }.toSet()
+    }
+
+    // Replacements have new IDs. Match their shifted series anchors, never their reminder timestamps.
+    private fun List<TodoItem>.withReplacementReminders(
+        targets: List<TodoItem>,
+        original: TodoItem,
+        editedTimes: List<Long>,
+        editedRemindersEmpty: Boolean,
+        oldStart: LocalDate,
+        newStart: LocalDate
+    ): List<TodoItem> {
+        val shiftDays = java.time.temporal.ChronoUnit.DAYS.between(oldStart, newStart)
+        val owners = targets.associateBy { it.recurrenceScopeDate().plusDays(shiftDays) }
+        return map { replacement ->
+            val source = owners[replacement.recurrenceScopeDate()]
+            replacement.withAbsoluteReminders(source?.let {
+                occurrenceAbsoluteReminders(original, it, editedTimes, editedRemindersEmpty)
+            }.orEmpty())
+        }
+    }
+
+    private fun TodoItem.withAbsoluteReminders(times: List<Long>): TodoItem {
+        // Call only on freshly generated instances: reminderAtMillis contains relative triggers only.
+        val candidate = copy(reminderAbsoluteTimesCsv = times.distinct().sorted().joinToString(","), reminderEnabled = true)
+        val triggers = candidate.reminderTriggerTimesMillis()
+        return candidate.copy(reminderAtMillis = triggers.minOrNull(), reminderEnabled = triggers.isNotEmpty())
     }
 
     private fun buildTaskItem(
@@ -4359,7 +4441,8 @@ class TodoRepository(
     private fun generateRecurringItems(
         draft: TodoDraft,
         seriesId: String,
-        now: Long
+        now: Long,
+        additionalDates: Set<LocalDate> = emptySet()
     ): List<TodoItem> {
         val config = draft.recurrence
         if (!config.isRecurring) {
@@ -4372,13 +4455,14 @@ class TodoRepository(
         val dueTime = dueDateTime.toLocalTime()
         val offsetMinutes = draft.normalizedReminderOffsetsMinutes.firstOrNull()
 
-        val dates = calendarRecurrenceDates(dueDate, config, rangeEnd = endDate)
+        val dates = (calendarRecurrenceDates(dueDate, config, rangeEnd = endDate).take(INITIAL_RECURRING_INSTANCE_LIMIT) +
+            additionalDates.filter { calendarRecurrenceDates(dueDate, config, it, it).isNotEmpty() }).distinct().sorted()
 
-        return dates.take(INITIAL_RECURRING_INSTANCE_LIMIT).map { instanceDate ->
+        return dates.map { instanceDate ->
             val instanceDue = LocalDateTime.of(instanceDate, dueTime)
             val instanceReminder = offsetMinutes?.let { instanceDue.minusMinutes(it.toLong()) }
             buildTaskItem(
-                draft = draft.copy(dueAt = instanceDue, reminderAt = instanceReminder),
+                draft = draft.copy(dueAt = instanceDue, reminderAt = instanceReminder, absoluteReminderTimesMillis = emptyList()),
                 now = now,
                 seriesId = seriesId
             )
@@ -4388,7 +4472,8 @@ class TodoRepository(
     private fun generateRecurringEventItems(
         draft: CalendarEventDraft,
         seriesId: String,
-        now: Long
+        now: Long,
+        additionalDates: Set<LocalDate> = emptySet()
     ): List<TodoItem> {
         val config = draft.recurrence
         if (!config.isRecurring) {
@@ -4400,13 +4485,14 @@ class TodoRepository(
         val endDate = config.endDate ?: startDate.plusDays(INITIAL_RECURRING_LOOKAHEAD_DAYS)
         val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(1)
 
-        val dates = calendarRecurrenceDates(startDate, config, rangeEnd = endDate)
+        val dates = (calendarRecurrenceDates(startDate, config, rangeEnd = endDate).take(INITIAL_RECURRING_INSTANCE_LIMIT) +
+            additionalDates.filter { calendarRecurrenceDates(startDate, config, it, it).isNotEmpty() }).distinct().sorted()
 
-        return dates.take(INITIAL_RECURRING_INSTANCE_LIMIT).map { instanceDate ->
+        return dates.map { instanceDate ->
             val instanceStart = LocalDateTime.of(instanceDate, draft.startAt.toLocalTime())
             val instanceEnd = instanceStart.plusMinutes(durationMinutes)
             buildCalendarEventItem(
-                draft = draft.copy(startAt = instanceStart, endAt = instanceEnd),
+                draft = draft.copy(startAt = instanceStart, endAt = instanceEnd, absoluteReminderTimesMillis = emptyList()),
                 now = now,
                 seriesId = seriesId
             )

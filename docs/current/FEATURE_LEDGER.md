@@ -2,9 +2,9 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Windows 1.17.12 instance reminder protection
+## Android and Windows 1.17.12 instance reminder protection
 
-循环补齐及系列修改保留每个实例自己的绝对提醒，新实例只继承相对规则；纯绝对拥有者可在改名后保持提醒，显式关闭仍作用于所选范围。51项不同检查及新MSI/便携清单通过，见[验收](VALIDATION_1.17.12.md)。Android仍1.17.11/403，Room34。规划循环绝对时刻归属仍待选择，整体目标和最终推送未完成。
+双端循环生成及系列修改保留对应实例自己的绝对提醒，新实例只继承相对规则；纯绝对拥有者在其他实例改名后保持提醒，显式关闭作用于所选范围。Android1.17.12/404、Room34：258单测、Lint0错误、42项数据库回归及暖启动检查通过，Debug和同证书Release交付，原模拟器数据保留，见[Android验收](VALIDATION_ANDROID_1.17.12.md)。Windows1.17.12原51项检查及MSI/便携成品保持，见[Windows验收](VALIDATION_1.17.12.md)。新循环文本的绝对时刻归属仍待选择，整体目标和最终推送未完成。
 
 ## 2026-11-01 history audit
 

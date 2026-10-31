@@ -1,5 +1,15 @@
 # Session Handoff
 
+## 2026-11-01 Android循环单次提醒保护完成
+
+从02e32c5恢复，Android升1.17.12/404、Room34，Windows保持已验收1.17.12.0。首次循环生成不继承绝对时刻，单次转循环保留原ID拥有者；全部/后续/整课修改按日期锚点匹配实例保留提醒，不因新ID复制或丢失。仍有效的已生成远期日期保留；无提醒实例改名不误关其他纯绝对拥有者，显式关闭按所选范围生效。待办编辑纳入事务，生成失败回滚。新循环文本归属仍待明确选择，当前候选校验保持，不能把“继续”解释为选项。
+
+- 258单测、Lint0错误/137警告/30信息；42项数据库设备检查含20新增通过。基线10项中9项先复现失败。另1项暖启动Status: ok；错误Activity和两次冷启动等待超时保留，不作为冷启动成功，详情见[Android验收](VALIDATION_ANDROID_1.17.12.md)。
+- 新Debug：app/build/outputs/apk/debug/PaykiTodo-1.17.12-debug.apk；同证书Release：app/build/outputs/apk/release/PaykiTodo-1.17.12-release.apk。交付在Deliverables/PaykiTodo/1.17.12；原Windows487交付文件哈希不变，新增两APK和Android说明，490文件有哈希。Windows不重建、不重跑既有验收。
+- 模拟器emulator-5554/Pixel_8无窗口，先核实PID20332暂停再恢复；只user11跑内存数据库测试。最终user10主页、测试/应用停止、PID20332恢复暂停。原user0 646/646及user10 148/148哈希完全相同。备份Backups/PaykiTodo/recurrence-reminders-1.17.12，证据Scratch/PaykiTodo/recurrence-reminders-1.17.12；所有中途/失败副本保留。无真实手机操作。
+- 原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留且不得混入提交。清理后的历史及原bundle保持；新增功能和单独目标归档须完整复扫。未push/tag/Release/上传/部署，公开Release仍v1.15.18，原七项目标未完成。
+- 下一步等待用户选择循环绝对提醒只响一次并归属之后最近课程，或循环只允许提前分钟；再实施所选分支、验收、审计新增提交及远端后执行既有授权main推送。不重做1.17.8—1.17.11，不新建goal或重复请求恢复许可。
+
 ## 2026-11-01 Windows循环单次提醒保护完成
 
 从b9bbaac恢复，独立修复Windows补齐/系列编辑复制绝对提醒，以及选择其他实例只改名关闭拥有者提醒的问题。Windows1.17.12.0，Android仍1.17.11/403、Room34；所选范围内显式关闭提醒仍生效，原实例时刻、相对规则和备份保留。51个不同检查通过（49相关回归含14新增、另2实际包启动/nonce）；3个补齐和10个系列编辑用例先复现失败，重跑不重复计数。

@@ -1,6 +1,6 @@
 # 下一模型的源码、验证与运行环境地图
 
-最新Windows1.17.12独立修复在DesktopRecurrence.cs：ResetOccurrence清空新实例的绝对提醒，WithOccurrenceReminders按目标实例保留，RefreshOccurrenceReminders在模板应用后重算。51个不同检查及MSI/484文件便携目录见VALIDATION_1.17.12。Android保持1.17.11/403、Room34；规划绝对循环归属仍待确认，不能借本修复撤销候选校验。
+最新双端1.17.12提醒保护：Windows DesktopRecurrence.cs的ResetOccurrence、WithOccurrenceReminders、RefreshOccurrenceReminders已通过51项检查和MSI/484文件便携验收。Android1.17.12/404、Room34在TodoRepository的generateRecurringItems/EventItems、convertSingleTodo/EventToRecurring、updateRecurringSeries/CalendarSeries、整课共同字段入口及withReplacementReminders按锚点匹配新ID、保留实例绝对提醒与有效远期日期；待办编辑事务回滚。新增RecurringAbsoluteReminderRepositoryTest共20项，累计42数据库设备检查、258单测及Lint通过，Debug/同证书Release交付，见VALIDATION_ANDROID_1.17.12。规划绝对循环归属仍待确认，不能借本修复撤销候选校验。
 
 2026-11-01完成60提交历史清理，阶段归档HEAD为83e2a45，更新功能提交092afab，规划功能提交6f8d24d；469个实现/资源/工具/CI文件与验收版本相同。旧编号指清理前历史，见[审计](PUBLIC_HISTORY_AUDIT_20261101.md)。仅待循环绝对提醒归属及对应实现、最终复核和push；下面旧未实现定位不覆盖最新交接。
 

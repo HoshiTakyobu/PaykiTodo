@@ -1,8 +1,8 @@
 # Project Status
 
-## Current Windows fix: 1.17.12
+## Current Android and Windows fix: 1.17.12
 
-Windows1.17.12.0修复循环补齐和系列编辑复制单次绝对提醒的问题，保留各实例自己的时刻；单纯改名保留拥有者提醒，显式关闭仍生效。49项相关回归和另2项实际程序启动/nonce检查通过，MSI及484文件便携目录交付，见[验收](VALIDATION_1.17.12.md)。Android保持1.17.11/403、Room34；无新APK或设备操作。
+Android1.17.12/404、Windows1.17.12.0、Room34。双端循环生成/系列编辑保留对应实例自己的绝对提醒；选择无提醒实例改名保留其他拥有者，显式关闭仍生效。Android258单测、Lint0错误、42项模拟器数据库回归及暖启动检查通过；Debug和同证书签名Release已构建，原user0 646/646、user10 148/148哈希一致，模拟器恢复暂停，见[Android验收](VALIDATION_ANDROID_1.17.12.md)。Windows原51项检查、MSI及484文件便携成品保持，见[Windows验收](VALIDATION_1.17.12.md)。
 
 原未推送60提交已清理，新修复和归档须纳入最终审计。循环规划中的绝对提醒归属仍待用户选择，最终push未执行，公开Release仍v1.15.18，整体目标未完成。下方源码完全相同的描述仅针对历史清理阶段。
 

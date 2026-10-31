@@ -1,4 +1,4 @@
-最新补充（2026-11-01）：Windows1.17.12独立修复循环补齐/系列编辑的实例绝对提醒保护，51项不同检查与MSI/完整便携目录通过。Android仍1.17.11/403、Room34；临时规划及双端更新已实施，60个未推送提交已完成历史清理。先读SESSION_HANDOFF、PROJECT_STATUS、VALIDATION_1.17.12、PUBLIC_HISTORY_AUDIT_20261101与WINDOWS_UPDATE_PROTOCOL。下面是原1.17.9交接，不把“尚无规划/更新代码”当现状；继续循环绝对提醒归属与对应实现、新增提交复核和授权推送，原目标未完成。
+最新补充（2026-11-01）：Android1.17.12/404与Windows1.17.12.0、Room34已独立修复循环实例绝对提醒保护。Android258单测、Lint0错误、42数据库设备检查通过，Debug/同证书Release交付，原用户数据不变且模拟器恢复暂停；Windows原51项检查与MSI/完整便携成品保持。临时规划及双端更新已实施，60个未推送提交已完成历史清理，新增提交继续复扫。先读SESSION_HANDOFF、PROJECT_STATUS、VALIDATION_ANDROID_1.17.12、VALIDATION_1.17.12、PUBLIC_HISTORY_AUDIT_20261101与WINDOWS_UPDATE_PROTOCOL。下面是原1.17.9交接，不把“尚无规划/更新代码”当现状；继续循环绝对提醒归属与对应实现、新增提交复核和授权推送，原目标未完成。
 
 请接手 PaykiTodo 尚未完成的整轮修改。工作目录：G:\Workspace\Project\PaykiTodo。
 

@@ -1,5 +1,7 @@
 # PaykiTodo Session Ledger
 
+2026-11-01后续Android1.17.12/404、Room34完成循环单次提醒保护：转换/生成/系列及整课修改保留对应实例绝对时刻，有效远期实例不截掉，显式关闭生效，待办修改失败事务回滚。258单测、Lint0错误、42项数据库设备检查及暖启动通过；Debug/同证书Release交付，原模拟器user0 646/646、user10 148/148哈希一致，user10主页和暂停恢复。Windows1.17.12原成品及51项验收保持。见[Android验收](VALIDATION_ANDROID_1.17.12.md)。循环文本归属仍待选择，未推送/发布/部署，整体目标继续。
+
 This file summarizes the original `【开发】PaykiTodo` session and the later continuation context in a repository-native form.
 
 ## Why This File Exists

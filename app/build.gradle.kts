@@ -39,10 +39,12 @@ fun releaseSigningProperty(name: String): String {
 }
 
 val releaseStoreFile = releaseSigningProperty("storeFile")
-val releaseStorePath = listOf(
-    rootProject.file(releaseStoreFile),
-    releaseKeystorePropertiesFile.parentFile.resolve(releaseStoreFile)
-).firstOrNull { it.isFile }
+val releaseStorePath = releaseStoreFile.takeIf { it.isNotBlank() }?.let { path ->
+    listOf(
+        rootProject.file(path),
+        releaseKeystorePropertiesFile.parentFile.resolve(path)
+    ).firstOrNull { it.isFile }
+}
 val releaseSigningConfigured = listOf(
     "storeFile",
     "storePassword",

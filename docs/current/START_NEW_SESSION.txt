@@ -1,32 +1,18 @@
-Read repository files before doing any coding.
+PaykiTodo新会话入口
 
-Working directory:
-G:\Workspace\Project\PaykiTodo
+工作目录：G:\Workspace\Project\PaykiTodo
 
-Read in this order:
-1. AGENTS.md
-2. docs/current/PROJECT_INTENT.md
-3. docs/current/PROJECT_STATUS.md
-4. docs/current/FEATURE_LEDGER.md
-5. docs/current/CURRENT_TASK.md
-6. docs/current/SESSION_HANDOFF.md
-7. docs/current/PAYKITODO_SESSION_LEDGER.md
-8. docs/current/SESSION_WORKFLOW_MANUAL.md
-9. README.md
-10. docs/current/PROJECT_BACKLOG.md
-11. CHANGELOG.md
+先读AGENTS.md并执行恢复基线检查、按要求读取当前项目文档。
+当前未完成整轮工作已整理为：
+1. docs/current/MODEL_HANDOFF_20261101.md
+2. docs/current/planning-input/INPUT_CONTRACT_20261101.md
+3. docs/current/IMPLEMENTATION_MAP_20261101.md
+可直接使用 docs/current/START_NEXT_MODEL_20261101.txt 作为启动提示词。
 
-Then inspect:
-12. git status
+用户要求上一模型在文档交接后暂停自动目标，以更换模型；这不表示整体完成或技术阻塞。
+收到用户恢复执行指令后，沿用完整七项范围和已确认决策继续，不缩成较小任务。
 
-Rules:
-1. Treat repository files as the source of truth.
-2. Do not rely on old chat memory when it conflicts with files.
-3. Do not scan the whole G:\Workspace.
-4. Do not revert unrelated user changes.
-5. If you change code, behavior, versioning, or task status, update the relevant repository docs in the same round.
-6. Before finishing the round, update `docs/current/SESSION_HANDOFF.md` and any other stale current docs affected by your work.
-7. Before editing, output:
-   - project background summary
-   - current repo state summary
-   - smallest next step
+以实际git、版本文件和当前文档为准，不扫描整个G:\Workspace，不恢复无关改动或删除用户资料。
+设置、字体、报告已有已验证实现；统一规划和更新器尚未实现。新语法遵循归一化契约，待定项不能写成已确认。
+按相关文件定位源码，不必重复读取所有历史设计。变更产品行为时升版本、验证、维护文档并按AGENTS规范中文提交。
+公开推送前必须审计全部未推送提交的文件与消息，不能只检查当前树。

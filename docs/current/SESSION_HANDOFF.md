@@ -1,6 +1,18 @@
 # Session Handoff
 
-## Active: 1.17.9 report stage verified; full experience goal continues
+## 2026-11-01：用户要求切换模型，交接后暂停自动执行
+
+用户因模型成本要求先写完整指导文档，交给下一模型实现；并明确答复“暂停，交给新模型继续”。本轮仅整理文档，没有继续开发更新或规划功能，代码版本仍为Android1.17.9/401、Windows1.17.9.0、Room33，最近功能提交87240cd。文档提交位于其后，恢复时仍需核对git。
+
+- **新模型先读 [整体实施指南](MODEL_HANDOFF_20261101.md)**，再读 [规划语法契约](planning-input/INPUT_CONTRACT_20261101.md) 和 [源码/验收地图](IMPLEMENTATION_MAP_20261101.md)。可直接使用 [启动提示词](START_NEXT_MODEL_20261101.txt)。这些文件整合原七项范围、完成状态、工程路径、现有冲突、验证和公开历史审计要求。
+- 本轮没有新增APK/MSI、修改运行数据、调用AI服务、生成更新密钥或实现更新器。现有最新Debug成品仍在Deliverables/PaykiTodo/1.17.9。没有push/tag/Release或服务器部署。
+- 交接结束后按用户要求暂停当前自动目标；整体目标未完成，也不是技术阻塞。只有用户在新模型中明确恢复执行后继续剩余产品工作，不应自动创建新goal覆盖原目标。
+- 核心规划和循环语法已确认；仅待定边界继续检查用户回复，不能重复询问已确定的格式。当前旧PlanningImportCandidate仍拒绝历史提醒、强制循环截止，旧周多时段函数默认90天；不能原样沿用。
+- 剩余工作：统一临时规划输入和可编辑预览/确认入库、课程多时段管理、两端更新及Windows后台/灰度/增量、最终公众文档、全部未推送历史审计和授权推送。新规划/更新代码仍未开始。
+- 原有未提交两行历史整理补充与未跟踪历史规划Prompt继续保留。新交接文档不覆盖这两项；它们不是新语法来源。本次分离补充的patch在Scratch/PaykiTodo/experience-20261031/model-handoff-preexisting.patch。
+- 运行环境沿用下方已验证报告阶段：没有活动构建/测试任务；Pixel_8无窗口、user10主页、应用停止，qemu最后20332处于暂停。先核对状态再恢复，勿因ADB查询等待盲目重启。
+
+## Previous coding stage: 1.17.9 reports verified
 
 - Recheck git/version on resume. Report-stage base was730e3fa; current source/build Android1.17.9/401, Windows1.17.9.0, Room33. Full seven-item goal remains active; do not mark complete from this stage.
 - Shared report-system asset drives Android/Windows AI reports. Both use Monday–Sunday weeks, bounded previous/current/upcoming evidence, recurrence/bundle/parent relations and actual check-in slices. No invented completion rate, unsupported medical inference or treating plans as completed actions. Daily reports expire inclusively at generation+604800000ms; weekly retention remains independent. Read/search/detail/export/restore/merge guards, Android app monitor/persisted job, Windows startup/timer cleanup and live-open UI expiry are implemented.

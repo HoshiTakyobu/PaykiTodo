@@ -1,6 +1,8 @@
 # Session Handoff
 
-## 2026-11-01 1.17.13终验与推送收尾
+## 2026-11-01 1.17.13原七项目标与源码推送完成
+
+首次GitHub CI的无签名配置空路径错误已由61ae359修正；[实际CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41243078175)单测、Debug构建及空白检查全部通过。独立公开副本Debug配置成功，无配置Release仍明确拒绝；见[公开构建验收](VALIDATION_PUBLIC_BUILD_20261101.md)。未改变已验收产品行为或重建本地1.17.13成品。
 
 从d765f14恢复，Android1.17.13/405、Windows1.17.13.0、Room34已实施全课循环绝对提醒唯一归属：Start>=absolute最近实例，相等本次、并列输入顺序，相对每次，过去不补响，窗口外提前物化和中间缺口补齐。决定来源为本轮按最后单一推荐方案后用户继续执行，决策014不伪写数字选项回复。三端可编辑归属预览；取消/改单次/系列共同字段不自动重新分配或复制，1.17.12实例保护保持。
 
@@ -8,8 +10,9 @@
 - Windows62项不同检查通过（60针对检查，含13新增数据回归与真实WPF预览，另2实际包）。首轮UI测试等待布局失败及复验保留，重跑不重复计数。
 - APK1.17.13/405、包名、同1.17.12Release证书、三类资产与源码字节一致已核对。Deliverables/PaykiTodo/1.17.13共494文件，SHA256.json覆盖其余493，便携484；完整更新ZIP482条目/增量4条目验签和重建匹配。新MSI、真实payload及路径见[验收](VALIDATION_1.17.13.md)，不是旧desktop/dist。LAN实际DOM模拟HTTP9/9首轮通过，node--check通过；3张截图重采不累计检查数，不能冒称真实LAN网络或未来公开升级已实测。
 - 无窗口emulator-5554/Pixel_8仅user11测试。最终原user0 646/646与user10 148/148逐文件SHA256完全相同，零增删改；user11 after218文件保留备份。已停user11应用/测试、回user10主页，核身份后qemu PID20332恢复原Suspend，353线程Wait Suspended。备份Backups/PaykiTodo/planning-absolute-1.17.13，证据Scratch/PaykiTodo/planning-absolute-1.17.13/android-evidence-summary.json。真实手机未动。
-- 原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留且排除提交；不git add .。原历史清理及恢复bundle保持，最新复扫d765f14为66提交/1715blob/167已分类URL，零未解决命中，新增功能/归档/文档还须复扫。
-- 远端main实查仍83ff5cf，公开Release仍v1.15.18；尚未push/Release/上传/部署，原目标未完成。本轮验收/成品/数据保护均已结束；下一步最终文档、中文功能提交与独立目标归档、全量审计、已授权main推送并核实远端；无需再问旧两分支或恢复许可，不新建goal，无新变化不重复成功套件。
+- 原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留且排除提交；不git add .。原历史清理及恢复bundle保持；功能/归档推送前按旧远端83ff5cf基线全量审计68提交/1756blob/169已分类URL，零未解决命中与已审地址残留，完整diffcheck/忽略路径通过。
+- 功能提交e014a23、独立目标归档f0902eb，main已正常fast-forward从83ff5cfc9b66f071dc2e58ce90f3247cd3fb7c69推送至f0902ebe874fa185134d4755682080b08d12e632，实查远端/本地一致。原七项目标的产品、验收、成品、文档、历史审计与实际源码push均已完成；最终推送结果文档补记也从同一旧基线完整复扫并随main推送，不预写未知补记SHA。公开Release仍v1.15.18，没有tag/Release/上传APK/部署。
+- 后续继续先核对实际git/版本/最新文档，再按新的用户任务执行；不重跑已完成本轮目标、不重问旧两分支或恢复许可、无新变化不重复成功套件。
 
 下方所有旧“待用户选择/待实现/暂停/下一步”是历史阶段状态，不能覆盖本节。当前交接三文档已同步实际1.17.13规则与收尾入口。
 

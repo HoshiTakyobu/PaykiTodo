@@ -1,6 +1,6 @@
 # PaykiTodo 当前源码与验收地图
 
-双端1.17.13，Android405、Windows1.17.13.0、Room34。规划、更新器及全课循环绝对提醒唯一归属已实施，本轮验收、成品和数据保护已完成；当前收尾文档/提交和审计后的源码push。先读[整体指南](MODEL_HANDOFF_20261101.md)、[语法契约](planning-input/INPUT_CONTRACT_20261101.md)和SESSION_HANDOFF。用rg定位符号，不照旧1.17.9入口重建模块或重问过期选择。
+双端1.17.13，Android405、Windows1.17.13.0、Room34。原七项目标的实施、验收、成品、数据保护、文档、审计和main源码推送已完成。先读[整体指南](MODEL_HANDOFF_20261101.md)、[语法契约](planning-input/INPUT_CONTRACT_20261101.md)和SESSION_HANDOFF，核对基线后仅按新的用户任务继续。用rg定位符号，不照旧1.17.9入口重建模块或重问过期选择。
 
 ## 规划与循环提醒
 
@@ -68,6 +68,6 @@ ADB为C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe。复用emula
 - Deliverables/PaykiTodo/1.17.13共494文件，SHA256.json覆盖其余493；两APK、MSI、484文件完整便携目录、说明与更新资产保持。完整更新ZIP482条目/增量4条目验签和重建匹配，旧1.17.12成品不覆盖，公开Release仍v1.15.18。
 - 本轮证据Scratch/PaykiTodo/planning-absolute-1.17.13，备份Backups/PaykiTodo/planning-absolute-1.17.13。LAN模拟HTTP实际DOM9/9与node--check通过，不冒称真实LAN网络；原user0/user10哈希与暂停恢复证据android-evidence-summary.json，所有中途/失败副本保留。
 - 规划/更新阶段详见[1.17.10](VALIDATION_1.17.10.md)、[1.17.11](VALIDATION_1.17.11.md)；其证据位于对应阶段Scratch/Backups，旧成功套件不重跑。
-- 未推送历史扫描/私有策略：Scratch/PaykiTodo/history-scrub-20261101，最近完整验证after-current-handoff-refresh-verification.json（HEAD d765f14，66提交/1715blob/167已分类URL，零未解决命中）；原始bundle在Backups/PaykiTodo/unpublished-before-scrub-20261101。新增功能/归档/文档提交继续全量复扫，实查远端后只push main，远端HEAD核实一致后才完成原goal。
+- 历史审计/私有策略：Scratch/PaykiTodo/history-scrub-20261101；功能e014a23与归档f0902eb推送前，按旧远端83ff5cf基线全量审计68提交/1756blob/169已分类URL，零未解决命中与已审地址残留，diffcheck和忽略路径通过。main正常fast-forward至f0902ebe874fa185134d4755682080b08d12e632，实查本地/远端一致；最终文档补记仍从同一旧基线完整复扫并随main推送，未知补记提交SHA不预写。原始bundle在Backups/PaykiTodo/unpublished-before-scrub-20261101，原七项目标已完成。
 
 旧1.17.9源码地图保留在Git历史及Backups/PaykiTodo/handoff-docs-20261101-3e3b5c2，仅作历史定位，不作为当前待实施指南。

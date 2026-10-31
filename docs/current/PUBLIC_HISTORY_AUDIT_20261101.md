@@ -1,10 +1,16 @@
 # 未推送历史审计与本地清理记录
 
-## 1.17.13 最终推送准备
+## 1.17.13 审计与实际源码推送完成
 
 原七项目标的产品实现已验收至Android1.17.13/405、Windows1.17.13.0、Room34，详见[1.17.13验收](VALIDATION_1.17.13.md)。循环绝对提醒规则已按决策014落地，不再等待旧两分支。原user0/user10哈希保持，模拟器恢复暂停，本地签名成品已交付。
 
-2026-11-01再次实查远端main仍为`83ff5cfc9b66f071dc2e58ce90f3247cd3fb7c69`，公开Release仍`v1.15.18`。新增功能、目标归档和当前文档将进入同一远端基线后的全量快照/消息复扫，通过后按既有授权只push main。实际推送结果将在本节补记；尚未上传安装包、创建tag/Release或部署服务器。
+2026-11-01按既有授权执行`git push origin main`，远端从`83ff5cfc9b66f071dc2e58ce90f3247cd3fb7c69`正常快进到`f0902ebe874fa185134d4755682080b08d12e632`，随后独立实查与本地HEAD一致。功能提交为`e014a23`，独立目标归档为`f0902eb`。没有force、push --all或推送原始恢复引用。
+
+推送前复扫同一基线之后全部68提交、1756不同blob和所有消息，169条URL初筛已分类，未解决命中与已审地址残留均为0；完整基线差异`git diff --check`和忽略认证/签名路径检查通过。私有证据为`Scratch/PaykiTodo/history-scrub-20261101/after-1.17.13-verification.json`，实际push日志与HEAD核对在`Scratch/PaykiTodo/planning-absolute-1.17.13/source-push.log`及`source-push-verification.json`。
+
+本次最终状态补记也从上述固定基线完整复扫，并随main推送；最终验证入口为`after-1.17.13-final-verification.json`和`source-final-push-verification.json`。文档不嵌入自己的未知提交编号，最终远端HEAD以该证据及实际git为准。原七项整体目标的产品实现、验收、历史审计和授权源码推送均已完成。公开Release实查仍`v1.15.18`，没有上传安装包、创建tag/Release或部署服务器，旧成品和恢复bundle保持。
+
+推送后首次GitHub CI暴露无签名配置空路径错误，已用`61ae359`修正。该提交全量复扫为69提交/1758blob/169已分类URL、零未解决项，并正常推送至远端一致；[实际CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41243078175)单测、Debug构建和空白检查全部成功，见[公开构建验收](VALIDATION_PUBLIC_BUILD_20261101.md)。这是构建配置修正，不改变版本或已交付产品，也不重建本地APK。最后文档补记包含该结果并继续完整审计。
 
 下方是1.17.11清理阶段的历史记录；旧“等待选择/剩余步骤”只描述当时状态，不覆盖当前规则和验收。
 

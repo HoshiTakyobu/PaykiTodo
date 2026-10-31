@@ -10,6 +10,8 @@
 - `:app:assembleRelease --dry-run`按预期失败，明确提示Release signing is not configured；不再是空路径异常。
 - `git diff --check`通过。
 
-证据：`Scratch/PaykiTodo/planning-absolute-1.17.13/github-ci-failed.log`、`ci-public-debug-config.log`、`ci-public-release-config.log`及独立`ci-public-checkout/`。后续修复提交的GitHub实际单测和Debug构建结果将在此补记。
+修复提交`61ae359`经同一旧远端基线全量审计69提交/1758blob/169已分类URL，零未解决项，推送并实查远端一致。[GitHub CI 41243078175](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41243078175)实际完成：单元测试、Debug APK构建及push空白检查均为success。该线上构建使用公开检出，未提供本地Release秘密资料。
+
+证据：`Scratch/PaykiTodo/planning-absolute-1.17.13/github-ci-failed.log`、`ci-public-debug-config.log`、`ci-public-release-config.log`、`github-ci-fixed-watch.log`、`github-ci-fixed-result.json`及独立`ci-public-checkout/`。历史首次失败保留，不被后续成功覆盖。
 
 这是公开构建配置修正，未改变用户行为、版本或已验收成品，也未重建交付APK。Android仍1.17.13/405、Windows1.17.13.0、Room34；本地成品及签名见[1.17.13验收](VALIDATION_1.17.13.md)。源码推送结果见[审计记录](PUBLIC_HISTORY_AUDIT_20261101.md)。

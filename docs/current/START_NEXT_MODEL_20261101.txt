@@ -1,21 +1,23 @@
-请继续PaykiTodo原七项目标的最终收尾，工作目录G:\Workspace\Project\PaykiTodo。
+PaykiTodo原七项目标已完成。工作目录G:\Workspace\Project\PaykiTodo；后续继续先核当前基线，再按新的用户任务执行，不重新驱动已完成目标。
+
+首次GitHub CI无签名配置空路径错误已由61ae359修正，实际CI41243078175的单测、Debug构建及空白检查均通过。独立公开副本Debug配置成功，无配置Release仍明确拒绝，见docs/current/VALIDATION_PUBLIC_BUILD_20261101.md。未改变已验收产品行为或重建本地1.17.13成品。
 
 先读AGENTS.md并执行恢复基线检查，再读当前PROJECT_STATUS、CURRENT_TASK、SESSION_HANDOFF顶部，然后按顺序读：
 1. docs/current/MODEL_HANDOFF_20261101.md
 2. docs/current/planning-input/INPUT_CONTRACT_20261101.md
 3. docs/current/IMPLEMENTATION_MAP_20261101.md
 
-当前源码及已验收成品Android1.17.13/405、Windows1.17.13.0、Room34；本轮起点d765f14，最终提交/远端以实际git为准。公开Release仍v1.15.18，尚未push/创建Release/上传/部署。1.17.13本地验收、成品和数据保护已完成，具体数量/条件跳过与成品见VALIDATION_1.17.13，实际push前不标整目标完成。
+当前源码及已验收成品Android1.17.13/405、Windows1.17.13.0、Room34；本轮起点d765f14，功能e014a23、独立目标归档f0902eb。main已从83ff5cfc9b66f071dc2e58ce90f3247cd3fb7c69正常fast-forward至f0902ebe874fa185134d4755682080b08d12e632，实查本地/远端一致，产品实施、验收、成品、数据保护、文档、审计和实际源码push均完成。最终结果文档补记后的HEAD以实际git为准。公开Release仍v1.15.18，没有tag/创建Release/上传APK/部署。
 
 已完成模块：1.17.8设置/中文字体/字号/离线帮助，1.17.9共同报告prompt与168小时日报期限，1.17.10每日看板临时规划/本地及AI/编辑预览/事务导入/父子与课程多时段/旧文档只读，1.17.11双端GitHub更新及Windows签名后台/灰度/增量/启动回退，1.17.12双端现有实例提醒保护。不要重做这些模块。
 
 1.17.13已实现循环课程绝对提醒唯一归属。决定来源是本轮按最后单一推荐方案后用户继续执行，决策014不伪写数字选项回复。每个不同绝对时刻只存到整门课程所有时段中最近Start>=absolute的合法实例，相等本次，并列按输入时段顺序。相对分钟每次，过去不补响，有限范围无目标报错整批拒绝；窗口外拥有者提前生成、补齐覆盖中间课程；取消/改单次/共同字段修改不自动重新分配或复制。Room34事项字段保持，模板不存单次绝对时刻。三端预览支持显示和修改后重算，LAN冻结原session日期并保护账号代际。
 
-不要回退到旧两分支等待，不重复问标题/提醒/分号后#、跨午夜补日期、层级/引号、循环/范围。270Android单测/Lint0错误/三种构建通过；64设备条目63通过、1旧跨端fixture条件跳过（本轮17新增全通过）；Windows62不同检查、LAN模拟HTTP实际DOM9/9及node--check通过。剩余为最终文档、中文功能提交及独立目标归档、全量审计和已授权main推送，无新变化不重复成功套件。
+不要回退到旧两分支等待，不重复问标题/提醒/分号后#、跨午夜补日期、层级/引号、循环/范围。270Android单测/Lint0错误/三种构建通过；64设备条目63通过、1旧跨端fixture条件跳过（本轮17新增全通过）；Windows62不同检查、LAN模拟HTTP实际DOM9/9及node--check通过。无新改动或失败不重复成功套件，精确统计、条件跳过和边界见VALIDATION_1.17.13。
 
-原60未公开提交已清理；最近复扫至d765f14，66提交/1715blob/167已分类URL，零未解决命中。新增功能、归档及文档提交须继续全量复扫，最后只push审计后的main，不force、不push --all、不推恢复引用。完成实际push并实查远端HEAD一致后才把原goal标complete。创建Release/上传安装包/部署不是源码push。
+原60未公开提交已清理；功能/归档推送前按83ff5cf旧远端基线全量审计68提交/1756blob/169已分类URL，零未解决命中与已审地址残留，diffcheck/忽略路径通过。实际main推送和远端一致性已核实；最终推送结果文档补记仍从同一旧基线完整复扫并随main推送，不预写未知补记SHA/统计。恢复bundle保留，不force、不push --all、不推恢复引用。源码已推送不代表创建Release、上传安装包或部署。
 
-用户已经恢复原目标，不再次请求恢复许可，不新建goal替代。原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留，不git add .或混入提交。
+用户已恢复并完成原目标，不再次请求恢复许可，不新建或续跑这个已完成目标。若后续只说“继续”，先核基线并说明原目标已完成，再按最新用户任务开展，不擅自发布或重做已验收功能。原未跟踪docs/goals/PaykiTodo_规划台实现Prompt.md保留，不git add .或混入提交。
 
 本轮APK路径app/build/outputs/apk/debug/PaykiTodo-1.17.13-debug.apk及对应签名Release，MSI desktop/installer-output/PaykiTodo-1.17.13-windows-x64.msi，真实payload desktop/obj/installer/1.17.13-15bbf1bf1431488690872e90c2ae6327/payload。新交付目录Deliverables/PaykiTodo/1.17.13共494文件，SHA256.json覆盖其余493；便携484文件、完整更新482条目/增量4条目验签和重建已核对，Release与1.17.12证书一致。旧成品保留，不用旧desktop/dist或单个EXE冒充当前成品。
 

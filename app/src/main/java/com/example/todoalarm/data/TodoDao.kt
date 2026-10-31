@@ -227,6 +227,7 @@ interface TodoDao {
         AND (
             reminderAtMillis IS NOT NULL
             OR reminderOffsetsCsv != ''
+            OR reminderAbsoluteTimesCsv != ''
         )
         ORDER BY dueAtMillis ASC, createdAtMillis ASC
         """
@@ -733,6 +734,9 @@ interface TodoDao {
         """
     )
     fun observePlanningNotes(): Flow<List<PlanningNote>>
+
+    @Query("SELECT * FROM planning_notes ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
+    fun observePlanningArchive(): Flow<List<PlanningNote>>
 
     @Query(
         """

@@ -24,6 +24,7 @@ internal sealed partial class DesktopSnapshotDocument
     {
         this.root = root;
         EnsureShape();
+        foreach (var task in Tasks.OfType<JsonObject>()) task["reminderAbsoluteTimesCsv"] ??= "";
         ReportsPrunedOnRead = PurgeExpiredReports() > 0;
     }
 
@@ -255,6 +256,7 @@ internal sealed partial class DesktopSnapshotDocument
         item["totalCheckInMinutes"] = item["totalCheckInMinutes"]?.GetValue<int>() ?? 0;
         item["reminderAtMillis"] = DesktopCalendarTime.Triggers(edit).FirstOrDefault() is var firstTrigger && firstTrigger != 0 ? firstTrigger : null;
         item["reminderOffsetsCsv"] = string.Join(',', edit.ReminderOffsets.OrderByDescending(value => value));
+        item["reminderAbsoluteTimesCsv"] = string.Join(',', edit.AbsoluteReminderTimes.Distinct().Order());
         item["reminderEnabled"] = edit.ReminderEnabled;
         item["ringEnabled"] ??= true;
         item["vibrateEnabled"] ??= true;
@@ -593,10 +595,10 @@ internal sealed partial class DesktopSnapshotDocument
         template["recurrenceInvalidDatePolicy"] = edit.RecurrenceInvalidDatePolicy;
         template["recurrenceMonthlyOrdinal"] = edit.RecurrenceType == "MONTHLY_NTH_WEEKDAY" ? edit.RecurrenceMonthlyOrdinal ?? (anchor.Day - 1) / 7 + 1 : null;
         template["recurrenceMonthlyWeekday"] = edit.RecurrenceType == "MONTHLY_NTH_WEEKDAY" ? edit.RecurrenceMonthlyWeekday ?? ((int)anchor.DayOfWeek + 6) % 7 + 1 : null;
-        template["recurrenceMonthlyDay"] = edit.RecurrenceType == "MONTHLY_DAY" ? anchor.Day : null;
+        template["recurrenceMonthlyDay"] = edit.RecurrenceType == "MONTHLY_DAY" ? edit.RecurrenceMonthlyDay ?? anchor.Day : null;
         var lunar = edit.RecurrenceType == "YEARLY_LUNAR_DATE" ? LunarMonthDay(anchor) : (0, 0);
         template["recurrenceYearlyMonth"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Month : lunar.Item1 == 0 ? null : lunar.Item1;
-        template["recurrenceYearlyDay"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Day : lunar.Item2 == 0 ? null : lunar.Item2;
+        template["recurrenceYearlyDay"] = edit.RecurrenceType == "YEARLY_DATE" ? edit.RecurrenceMonthlyDay ?? anchor.Day : lunar.Item2 == 0 ? null : lunar.Item2;
         template["startEpochDay"] = startEpochDay;
         template["recurrenceNeverEnds"] = edit.RecurrenceEndEpochDay == null;
         template["endEpochDay"] = edit.RecurrenceEndEpochDay ?? startEpochDay + 36525L;
@@ -725,6 +727,8 @@ internal sealed record DesktopItemEdit(
     public string RecurrenceInvalidDatePolicy { get; init; } = "CLAMP";
     public int? RecurrenceMonthlyOrdinal { get; init; }
     public int? RecurrenceMonthlyWeekday { get; init; }
+    public int? RecurrenceMonthlyDay { get; init; }
+    public IReadOnlyList<long> AbsoluteReminderTimes { get; init; } = Array.Empty<long>();
     public IReadOnlyList<DesktopTimeSlot> AdditionalTimeSlots { get; init; } = Array.Empty<DesktopTimeSlot>();
     public static DesktopItemEdit FromJson(JsonObject item)
     {
@@ -766,7 +770,9 @@ internal sealed record DesktopItemEdit(
             RecurrenceInterval = item["recurrenceInterval"]?.GetValue<int>() ?? 1,
             RecurrenceInvalidDatePolicy = item["recurrenceInvalidDatePolicy"]?.GetValue<string>() ?? "CLAMP",
             RecurrenceMonthlyOrdinal = item["recurrenceMonthlyOrdinal"]?.GetValue<int?>(),
-            RecurrenceMonthlyWeekday = item["recurrenceMonthlyWeekday"]?.GetValue<int?>()
+            RecurrenceMonthlyWeekday = item["recurrenceMonthlyWeekday"]?.GetValue<int?>(),
+            RecurrenceMonthlyDay = item["recurrenceMonthlyDay"]?.GetValue<int?>() ?? item["recurrenceYearlyDay"]?.GetValue<int?>(),
+            AbsoluteReminderTimes = (item["reminderAbsoluteTimesCsv"]?.GetValue<string>() ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(long.Parse).Distinct().Order().ToArray()
         };
     }
 }

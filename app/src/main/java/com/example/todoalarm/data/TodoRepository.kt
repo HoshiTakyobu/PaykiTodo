@@ -1,6 +1,8 @@
 package com.example.todoalarm.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import androidx.room.withTransaction
 import java.time.DayOfWeek
 import java.time.Duration
@@ -18,6 +20,107 @@ class TodoRepository(
     private val onItemsChanged: (() -> Unit)? = null
 ) {
     private val todoDao: TodoDao = database.todoDao()
+    private val planningImports = linkedMapOf<String, Pair<List<TransientPlanningCandidate>, List<TodoItem>>>()
+    private val planningImportMutex = Mutex()
+
+    suspend fun importTransientPlanning(
+        candidates: List<TransientPlanningCandidate>,
+        sessionId: String,
+        accountStillCurrent: () -> Boolean = { true }
+    ): List<TodoItem> = planningImportMutex.withLock {
+        require(sessionId.isNotBlank() && candidates.isNotEmpty()) { "没有可导入的事项" }
+        val result = database.withTransaction {
+            check(accountStillCurrent()) { "账号已变化，请重新识别" }
+            planningImports[sessionId]?.let { previous ->
+                require(previous.first == candidates) { "本次预览已经导入，请重新打开规划" }
+                return@withTransaction previous.second
+            }
+            require(candidates.map { it.id }.distinct().size == candidates.size) { "候选ID重复" }
+            val byId = candidates.associateBy { it.id }
+            candidates.forEach { candidate ->
+                candidate.validate()?.let { error("第${candidate.lineNumber}行：$it") }
+                require(candidate.parentId == null || byId.containsKey(candidate.parentId)) { "父事项未选中，请选择父事项或调整层级" }
+            }
+            val defaultGroup = defaultGroupId()
+            val calendars = todoDao.getCalendars()
+            val now = System.currentTimeMillis()
+            val persisted = mutableMapOf<String, Long>()
+            val depths = mutableMapOf<String, Int>()
+            val treeGroups = mutableMapOf<String, Long>()
+            val created = mutableListOf<TodoItem>()
+            val pending = candidates.toMutableList()
+            while (pending.isNotEmpty()) {
+                val candidate = pending.firstOrNull { it.parentId == null || persisted.containsKey(it.parentId) }
+                    ?: error("父子关系存在循环")
+                pending.remove(candidate)
+                check(accountStillCurrent()) { "账号已变化，请重新识别" }
+                val groupId = candidate.groupId ?: defaultGroup
+                require(todoDao.getGroupById(groupId) != null) { "所选分组不存在" }
+                require(candidate.calendarId == DEFAULT_CALENDAR_ID || calendars.any { it.id == candidate.calendarId }) { "所选日历不存在" }
+                require(!candidate.calendarId.startsWith("shared:") && calendars.none { it.id == candidate.calendarId && it.shareMode == "SHARED" }) {
+                    "规划导入请选择个人日历，共享日程请从日历创建"
+                }
+                var root = candidate
+                val visited = mutableSetOf<String>()
+                while (root.parentId != null) {
+                    require(visited.add(root.id)) { "父子关系存在循环" }
+                    root = byId.getValue(root.parentId!!)
+                }
+                val depth = candidate.parentId?.let { depths.getValue(it) + 1 } ?: 0
+                depths[candidate.id] = depth
+                val hasTree = candidate.parentId != null || candidates.any { it.parentId == candidate.id }
+                val checklistId = if (hasTree && root.type == PlanningParsedType.TODO) {
+                    treeGroups[root.id] ?: todoDao.insertQuickChecklistGroup(QuickChecklistGroup(
+                        title = root.title, sourceFingerprint = "planning:$sessionId:${root.id}",
+                        createdAtMillis = now, updatedAtMillis = now
+                    )).also { treeGroups[root.id] = it }
+                } else null
+                val offsets = if (candidate.reminderMode == PlanningReminderMode.DISABLED ||
+                    (candidate.type == PlanningParsedType.TODO && candidate.dueAt == null)) emptyList()
+                    else candidate.reminderOffsetsMinutes
+                val absolutes = if (candidate.reminderMode == PlanningReminderMode.DISABLED) emptyList()
+                    else candidate.absoluteReminderTimes.map { it.toEpochMillis() }
+                val items = if (candidate.type == PlanningParsedType.TODO) {
+                    val due = candidate.dueAt
+                    val base = buildTaskItem(TodoDraft(candidate.title, candidate.notes, due,
+                        offsets.minOrNull()?.let { due?.minusMinutes(it.toLong()) }, groupId,
+                        ringEnabled = true, vibrateEnabled = true, reminderOffsetsMinutes = offsets,
+                        calendarId = candidate.calendarId), now)
+                    val item = base.copy(location = candidate.location,
+                        reminderAbsoluteTimesCsv = absolutes.joinToString(","),
+                        reminderEnabled = offsets.isNotEmpty() || absolutes.isNotEmpty(),
+                        reminderAtMillis = (offsets.mapNotNull { due?.minusMinutes(it.toLong())?.toEpochMillis() } + absolutes).minOrNull(),
+                        quickChecklistGroupId = checklistId, parentTodoId = candidate.parentId?.let(persisted::get),
+                        quickChecklistDepth = if (checklistId != null) depth else null,
+                        quickChecklistSortOrder = candidates.indexOf(candidate))
+                    val id = todoDao.insert(item)
+                    listOf(item.copy(id = id)).also { replaceGroupTags(it, listOf(groupId)) }
+                } else {
+                    val bundle = if (candidate.slots.size > 1) UUID.randomUUID().toString() else null
+                    candidate.slots.flatMap { slot ->
+                        val draft = CalendarEventDraft(candidate.title, candidate.notes, candidate.location,
+                            slot.startAt, slot.endAt, false, "#467DAB", reminderOffsetsMinutes = offsets,
+                            ringEnabled = true, vibrateEnabled = true, recurrence = slot.recurrence,
+                            multiSlotBundleId = bundle, groupId = groupId, calendarId = candidate.calendarId)
+                        createCalendarEventFromDraftTransaction(draft).map { stored ->
+                            stored.copy(reminderAbsoluteTimesCsv = absolutes.joinToString(","),
+                                reminderEnabled = offsets.isNotEmpty() || absolutes.isNotEmpty(),
+                                parentTodoId = candidate.parentId?.let(persisted::get)).also { todoDao.update(it) }
+                        }
+                    }
+                }
+                require(items.isNotEmpty()) { "范围内没有该日程" }
+                persisted[candidate.id] = items.first().id
+                created += items
+            }
+            check(accountStillCurrent()) { "账号已变化，请重新识别" }
+            created.toList()
+        }
+        planningImports[sessionId] = candidates.toList() to result
+        while (planningImports.size > 32) planningImports.remove(planningImports.keys.first())
+        notifyItemsChanged()
+        result
+    }
     enum class GroupFilterMode {
         INTERSECTION,
         UNION
@@ -61,6 +164,7 @@ class TodoRepository(
     }
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
+    fun observePlanningArchive(): Flow<List<PlanningNote>> = todoDao.observePlanningArchive()
     fun observePlanningNotesWithAnnouncementHints(): Flow<List<PlanningNote>> = todoDao.observePlanningNotesWithAnnouncementHints()
     fun observeAiReports(limit: Int): Flow<List<AiReport>> = todoDao.observeAiReports(limit).withDailyExpiry()
     fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>> {
@@ -2125,24 +2229,23 @@ class TodoRepository(
     suspend fun updateCalendarEventMultiSlotBundleSharedFields(
         original: TodoItem,
         draft: CalendarEventDraft
-    ): List<TodoItem> {
+    ): List<TodoItem> = database.withTransaction {
         val bundleId = original.multiSlotBundleId?.takeIf { it.isNotBlank() }
-            ?: return updateCalendarEventFromDraft(original, draft, RecurrenceScope.CURRENT)
+            ?: return@withTransaction updateCalendarEventFromDraft(original, draft, RecurrenceScope.CURRENT)
+        requireCalendarWritable(original.calendarId)
+        requireCalendarWritable(draft.calendarId)
         val targets = todoDao.getActiveEventsByMultiSlotBundle(bundleId)
-        if (targets.isEmpty()) return emptyList()
+        if (targets.isEmpty()) return@withTransaction emptyList()
 
         val resolvedGroupId = when {
             draft.groupId > 0 -> draft.groupId
             draft.groupName.isNotBlank() -> resolveGroupIdByNameOrCreate(draft.groupName)
             else -> original.groupId
         }
-        val now = System.currentTimeMillis()
         val updatedItems = targets.mapNotNull { target ->
             val targetStartAt = target.eventStartDateTimeOrNull() ?: return@mapNotNull null
             val targetEndAt = target.eventEndDateTimeOrNull() ?: targetStartAt.plusMinutes(30)
-            val targetOffsets = draft.normalizedReminderOffsetsMinutes.filter { minutes ->
-                targetStartAt.minusMinutes(minutes.toLong()).toEpochMillis() > now
-            }
+            val targetOffsets = draft.normalizedReminderOffsetsMinutes
             buildCalendarEventItem(
                 draft = draft.copy(
                     startAt = targetStartAt,
@@ -2159,7 +2262,7 @@ class TodoRepository(
                 keepSeries = target.isRecurring
             )
         }
-        if (updatedItems.isEmpty()) return emptyList()
+        if (updatedItems.isEmpty()) return@withTransaction emptyList()
 
         todoDao.updateAll(updatedItems)
         updateMultiSlotBundleTemplates(
@@ -2168,7 +2271,7 @@ class TodoRepository(
         )
         updatedItems.forEach { syncPlanningNodeFromItem(it) }
         notifyItemsChanged()
-        return updatedItems
+        updatedItems
     }
 
     suspend fun deleteCalendarEvent(
@@ -3786,7 +3889,7 @@ class TodoRepository(
             originalDate = original.recurrenceScopeDate(),
             seriesStartDate = baseDate
         ).atTime(draft.startAt.toLocalTime())
-        val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30)
+        val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(1)
         return draft.copy(
             startAt = newStart,
             endAt = newStart.plusMinutes(durationMinutes)
@@ -3920,15 +4023,16 @@ class TodoRepository(
             startAtMillis = null,
             endAtMillis = null,
             allDay = false,
-            location = "",
+            location = draft.location ?: existing?.location.orEmpty(),
             accentColorHex = null,
             countdownEnabled = draft.countdownEnabled && draft.dueAt != null,
             calendarId = draft.calendarId,
             countdownPastMode = draft.countdownPastMode,
             hiddenFromBoard = draft.hiddenFromBoard,
-            reminderAtMillis = reminderAtMillis,
+            reminderAtMillis = (listOfNotNull(reminderAtMillis) + draft.absoluteReminderTimesMillis).minOrNull(),
             reminderOffsetsCsv = reminderOffsetsCsv,
-            reminderEnabled = normalizedOffsets.isNotEmpty(),
+            reminderAbsoluteTimesCsv = draft.absoluteReminderTimesMillis.distinct().sorted().joinToString(","),
+            reminderEnabled = normalizedOffsets.isNotEmpty() || draft.absoluteReminderTimesMillis.isNotEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             alarmMode = draft.alarmMode && draft.dueAt != null && normalizedOffsets.isNotEmpty(),
@@ -4045,6 +4149,7 @@ class TodoRepository(
             totalCheckInMinutes = existing?.totalCheckInMinutes ?: 0,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
+            reminderAbsoluteTimesCsv = draft.absoluteReminderTimesMillis.distinct().sorted().joinToString(","),
             reminderEnabled = draft.reminderTriggerTimesMillis().isNotEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
@@ -4090,8 +4195,8 @@ class TodoRepository(
             },
             recurrenceMonthlyDay = if (recurrence.isRecurring && keepSeries) {
                 existing?.recurrenceMonthlyDay
-            } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_DAY) {
-                startDate.dayOfMonth
+            } else if (recurrence.isRecurring && recurrence.type in setOf(RecurrenceType.MONTHLY_DAY, RecurrenceType.YEARLY_DATE)) {
+                recurrence.monthlyDay ?: startDate.dayOfMonth
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyDay
             } else {
@@ -4148,14 +4253,14 @@ class TodoRepository(
             recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
             recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.nthWeekOrdinal() else null,
             recurrenceMonthlyWeekday = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.dayOfWeek.value else null,
-            recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) dueDate.dayOfMonth else null,
+            recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) draft.recurrence.monthlyDay ?: dueDate.dayOfMonth else null,
             recurrenceYearlyMonth = when (draft.recurrence.type) {
                 RecurrenceType.YEARLY_DATE -> dueDate.monthValue
                 RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.month
                 else -> null
             },
             recurrenceYearlyDay = when (draft.recurrence.type) {
-                RecurrenceType.YEARLY_DATE -> dueDate.dayOfMonth
+                RecurrenceType.YEARLY_DATE -> draft.recurrence.monthlyDay ?: dueDate.dayOfMonth
                 RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.day
                 else -> null
             },
@@ -4193,7 +4298,7 @@ class TodoRepository(
             groupId = draft.groupId,
             dueHour = draft.startAt.hour,
             dueMinute = draft.startAt.minute,
-            eventDurationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30).toInt(),
+            eventDurationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(1).toInt(),
             reminderOffsetMinutes = draft.reminderMinutesBefore,
             reminderOffsetsCsv = encodeReminderOffsets(draft.normalizedReminderOffsetsMinutes, draft.reminderMinutesBefore),
             ringEnabled = draft.ringEnabled,
@@ -4203,14 +4308,14 @@ class TodoRepository(
             recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
             recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) draft.recurrence.monthlyOrdinal ?: startDate.nthWeekOrdinal() else null,
             recurrenceMonthlyWeekday = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) startDate.dayOfWeek.value else null,
-            recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) startDate.dayOfMonth else null,
+            recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) draft.recurrence.monthlyDay ?: startDate.dayOfMonth else null,
             recurrenceYearlyMonth = when (draft.recurrence.type) {
                 RecurrenceType.YEARLY_DATE -> startDate.monthValue
                 RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.month
                 else -> null
             },
             recurrenceYearlyDay = when (draft.recurrence.type) {
-                RecurrenceType.YEARLY_DATE -> startDate.dayOfMonth
+                RecurrenceType.YEARLY_DATE -> draft.recurrence.monthlyDay ?: startDate.dayOfMonth
                 RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.day
                 else -> null
             },
@@ -4293,7 +4398,7 @@ class TodoRepository(
         val startDateTime = draft.startAt
         val startDate = startDateTime.toLocalDate()
         val endDate = config.endDate ?: startDate.plusDays(INITIAL_RECURRING_LOOKAHEAD_DAYS)
-        val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30)
+        val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(1)
 
         val dates = calendarRecurrenceDates(startDate, config, rangeEnd = endDate)
 
@@ -4398,7 +4503,8 @@ class TodoRepository(
             endDate = if (recurrenceNeverEnds) null else LocalDate.ofEpochDay(endEpochDay),
             interval = recurrenceInterval,
             invalidDatePolicy = recurrenceInvalidDatePolicy,
-            monthlyOrdinal = recurrenceMonthlyOrdinal
+            monthlyOrdinal = recurrenceMonthlyOrdinal,
+            monthlyDay = recurrenceMonthlyDay ?: recurrenceYearlyDay
         )
     }
 
@@ -4410,7 +4516,8 @@ class TodoRepository(
             endDate = recurrenceEndDate,
             interval = recurrenceInterval,
             invalidDatePolicy = recurrenceInvalidDatePolicy,
-            monthlyOrdinal = recurrenceMonthlyOrdinal
+            monthlyOrdinal = recurrenceMonthlyOrdinal,
+            monthlyDay = recurrenceMonthlyDay
         )
     }
 

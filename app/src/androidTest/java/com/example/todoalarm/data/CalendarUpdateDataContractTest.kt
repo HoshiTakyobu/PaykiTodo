@@ -39,7 +39,7 @@ class CalendarUpdateDataContractTest {
             listOf(master), listOf(item), calendars = listOf(PlannerCalendar("legacy", "旧日历", "#3370FF")), settings = AppSettings())
         val json = snapshot.toJson()
         val added33 = setOf("eventTimeZoneId", "allDayReminderRulesJson", "eventBusyStatus", "eventVisibility",
-            "eventParticipantsJson", "recurrenceInterval", "recurrenceInvalidDatePolicy", "recurrenceNeverEnds", "sharedEventId")
+            "eventParticipantsJson", "recurrenceInterval", "recurrenceInvalidDatePolicy", "recurrenceNeverEnds", "sharedEventId", "reminderAbsoluteTimesCsv")
         val originalTriggers = item.reminderTriggerTimesMillis()
         helper.createDatabase(name, 32).use { db ->
             db.insert("task_groups", SQLiteDatabase.CONFLICT_ABORT, values(json.getJSONArray("groups").getJSONObject(0)))
@@ -53,7 +53,7 @@ class CalendarUpdateDataContractTest {
             })
         }
         helper.runMigrationsAndValidate(name, 33, true, DatabaseMigrations.MIGRATION_32_33).close()
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(DatabaseMigrations.MIGRATION_32_33).build()
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name).addMigrations(DatabaseMigrations.MIGRATION_32_33, DatabaseMigrations.MIGRATION_33_34).build()
         try {
             val repo = TodoRepository(db)
             val restored = repo.getTodo(51)!!

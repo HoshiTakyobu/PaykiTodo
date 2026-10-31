@@ -7,6 +7,11 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 object DatabaseMigrations {
+    val MIGRATION_33_34 = object : Migration(33, 34) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN reminderAbsoluteTimesCsv TEXT NOT NULL DEFAULT ''")
+        }
+    }
     val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(

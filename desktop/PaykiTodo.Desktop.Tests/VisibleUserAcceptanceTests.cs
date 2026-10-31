@@ -139,21 +139,24 @@ public sealed class VisibleUserAcceptanceTests
                     await ButtonClick("取消");
                     Assert.DoesNotContain(workspace.Document.Items, item => item.Title == "Canceled draft must not exist");
                     Stage("W02", "Cancel native editor discards input without saving");
-                    await ButtonClick("快速清单");
+                    await Navigate("每日看板");
+                    await ButtonClick("输入规划");
                     var source = UI(() => Descendants<TextBox>(Current()).Single(t => t.AcceptsReturn));
-                    await Type(source, "- Visible root\n-- Visible child\n--# Visible note\n// discarded comment");
+                    await Type(source, "- Visible root\n  - Visible child; #Visible note");
                     Capture("windows-checklist-editor-light");
-                    await ButtonClick("完成");
+                    await ButtonClick("识别");
+                    await Task.Delay(350);
+                    await ButtonClick("确认导入");
                     Assert.Equal(2, workspace.Document.Items.Count(i => i.QuickChecklistGroupId != null));
                     Assert.Equal("Visible note", workspace.Document.Items.Single(i => i.Title == "Visible child").Notes);
-                    Stage("W03", "Titleless checklist saved as real parent/child tasks; notes retained");
-                    await ButtonClick("快速清单");
+                    Stage("W03", "Transient planner preview confirmed real parent/child tasks and notes");
+                    await ButtonClick("输入规划");
                     source = UI(() => Descendants<TextBox>(Current()).Single(t => t.AcceptsReturn));
                     await Type(source, "- Continuation");
                     if (physical) { Key(0x0D, false); Key(0x0D, true); }
                     else UI(() => { source.CaretIndex = source.Text.Length; source.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, System.Windows.PresentationSource.FromVisual(source), 0, System.Windows.Input.Key.Enter) { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent }); return true; });
                     await Task.Delay(250);
-                    Assert.EndsWith("\n- ", UI(() => source.Text));
+                    Assert.EndsWith("\n  - ", UI(() => source.Text));
                     await ButtonClick("取消"); Stage("W04", physical ? "Physical Enter continues task dash; cancellation not stored" : "Component PreviewKeyDown continues dash (not keyboard E2E); cancellation not stored");
                     await Navigate("日历");
                     Capture("windows-calendar-current-light");
@@ -180,13 +183,16 @@ public sealed class VisibleUserAcceptanceTests
                     Assert.Equal(new TimeSpan(11, 45, 0), DateTimeOffset.FromUnixTimeMilliseconds(savedEvent.EndAtMillis!.Value).LocalDateTime.TimeOfDay);
                     if (!physical) Assert.Equal(eventDay, DateTimeOffset.FromUnixTimeMilliseconds(savedEvent.StartAtMillis.Value).LocalDateTime.Date);
                     Stage("W05", "Calendar date/time edited and persisted; date/time text viewport checked against clipping");
-                    await Navigate("规划台"); await ButtonClick("＋ 新建文档");
-                    var markdown = UI(() => Descendants<TextBox>(window).Single(t => t.AcceptsReturn));
-                    await Type(markdown, "Draft survives navigation");
-                    await Navigate("待办"); await Navigate("规划台"); await ButtonClick("继续新文档草稿");
-                    Assert.Equal("Draft survives navigation", UI(() => Descendants<TextBox>(window).Single(t => t.AcceptsReturn).Text));
-                    await ButtonClick("完成"); Assert.Contains(workspace.Document.PlanningNotes, n => n.Markdown == "Draft survives navigation");
-                    Stage("W06", "Planning draft survives real navigation, then completion persists document");
+                    await Navigate("每日看板"); await ButtonClick("输入规划");
+                    var planningCount = workspace.Document.PlanningNotes.Count;
+                    var markdown = UI(() => Descendants<TextBox>(Current()).Single(t => t.AcceptsReturn));
+                    await Type(markdown, "Preview cancellation,16:30;");
+                    await ButtonClick("识别"); await Task.Delay(350);
+                    Assert.DoesNotContain(workspace.Document.Items, i => i.Title == "Preview cancellation");
+                    await ButtonClick("取消");
+                    Assert.Equal(planningCount, workspace.Document.PlanningNotes.Count);
+                    Assert.DoesNotContain(workspace.Document.Items, i => i.Title == "Preview cancellation");
+                    Stage("W06", "Transient recognition/preview/cancel writes neither task nor planning document");
                     await Navigate("设置");
                     UI(() => {
                         var combo = Descendants<System.Windows.Controls.ComboBox>(window).Single(c => AutomationProperties.GetName(c) == "界面主题");
@@ -197,7 +203,7 @@ public sealed class VisibleUserAcceptanceTests
                     await Task.Delay(300);
                     Assert.True(NativeUi.Dark); Stage("W07", "Theme selector changes full native workspace to dark mode");
                     Capture("windows-uia-settings-dark");
-                    foreach (var page in new[] { "每日看板", "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) {
+                    foreach (var page in new[] { "每日看板", "待办", "日历", "倒数日", "AI 报告", "设置" }) {
                         await Navigate(page);
                         if (page == "日历") {
                             Capture("windows-calendar-current-dark");

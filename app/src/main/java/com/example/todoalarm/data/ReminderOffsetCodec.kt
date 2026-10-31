@@ -31,35 +31,38 @@ internal fun CalendarEventDraft.reminderTriggerTimesMillis(): List<Long> {
     val primary = if (allDay && allDayReminderRulesJson.isNotBlank())
         allDayReminderTimes(startAt.toLocalDate(), eventTimeZoneId, allDayReminderRulesJson)
     else normalizedReminderOffsetsMinutes.map { anchorMillis - it * 60_000L }
-    return (primary + normalizedCheckInReminderOffsetsMinutes.map { anchorMillis - it * 60_000L })
+    return (primary + normalizedCheckInReminderOffsetsMinutes.map { anchorMillis - it * 60_000L } + absoluteReminderTimesMillis)
         .distinct()
         .sorted()
 }
 
 internal fun TodoItem.reminderTriggerTimesMillis(): List<Long> {
     if (!reminderEnabled) return emptyList()
+    val absolute = reminderAbsoluteTimesCsv.split(',').mapNotNull { it.trim().toLongOrNull() }
     if (!isEvent) {
         val offsets = configuredReminderOffsetsMinutes
         if (hasDueDate && offsets.isNotEmpty()) {
-            return offsets
+            return (offsets
                 .map { dueAtMillis - it * 60_000L }
+                + absolute)
                 .distinct()
                 .sorted()
         }
-        return listOfNotNull(reminderAtMillis)
+        return (listOfNotNull(reminderAtMillis) + absolute).distinct().sorted()
     }
     val anchorMillis = eventReminderAnchorMillis()
     if (allDay && allDayReminderRulesJson.isNotBlank()) {
         val date = Instant.ofEpochMilli(startAtMillis ?: dueAtMillis).atZone(calendarZone(eventTimeZoneId)).toLocalDate()
-        return (allDayReminderTimes(date, eventTimeZoneId, allDayReminderRulesJson) +
+        return (absolute + allDayReminderTimes(date, eventTimeZoneId, allDayReminderRulesJson) +
             configuredCheckInReminderOffsetsMinutes.takeIf { checkInEnabled }.orEmpty().map { anchorMillis - it * 60_000L }).distinct().sorted()
     }
     val offsets = normalizeReminderOffsets(
         configuredReminderOffsetsMinutes +
             configuredCheckInReminderOffsetsMinutes.takeIf { checkInEnabled }.orEmpty()
     )
-    return offsets
+    return (offsets
         .map { anchorMillis - it * 60_000L }
+        + absolute)
         .distinct()
         .sorted()
 }

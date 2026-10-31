@@ -18,8 +18,7 @@ fun buildWeeklyMultiSlotEventDrafts(
     baseDraft: CalendarEventDraft,
     slots: List<CalendarEventTimeSlot>,
     baseDate: LocalDate = baseDraft.startAt.toLocalDate(),
-    recurrenceEndDate: LocalDate = baseDraft.recurrence.endDate
-        ?: baseDate.plusDays(DEFAULT_MULTI_SLOT_EVENT_DAYS),
+    recurrenceEndDate: LocalDate? = baseDraft.recurrence.endDate,
     checkInReminderOffsetsForSlot: (CalendarEventTimeSlot, LocalDateTime) -> List<Int> = { _, _ ->
         baseDraft.normalizedCheckInReminderOffsetsMinutes
     },
@@ -47,7 +46,7 @@ fun buildWeeklyMultiSlotEventDrafts(
             reminderOffsetsMinutes = offsets,
             checkInReminderOffsetsMinutes = checkInOffsets,
             multiSlotBundleId = bundleId,
-            recurrence = RecurrenceConfig(
+            recurrence = baseDraft.recurrence.copy(
                 enabled = true,
                 type = RecurrenceType.WEEKLY,
                 weeklyDays = setOf(slot.weekday),

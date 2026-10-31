@@ -1941,6 +1941,7 @@ function syncTopbar() {
   els.openCreate.textContent = '新增待办';
   els.openCreate.classList.toggle('hidden', !(todoMode || boardMode));
   els.openQuickChecklist?.classList.toggle('hidden', !(todoMode || boardMode));
+  document.getElementById('open-transient-planning')?.classList.toggle('hidden', !boardMode);
   els.openEventCreate.textContent = '创建日程';
   els.openEventCreate.classList.toggle('hidden', !(eventMode || boardMode));
   const dataMode = todoMode && state.todosLoaded

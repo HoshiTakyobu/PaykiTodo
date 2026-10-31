@@ -260,6 +260,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("totalCheckInMinutes", totalCheckInMinutes)
         put("reminderAtMillis", reminderAtMillis)
         put("reminderOffsetsCsv", reminderOffsetsCsv)
+        put("reminderAbsoluteTimesCsv", reminderAbsoluteTimesCsv)
         put("reminderEnabled", reminderEnabled)
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
@@ -581,6 +582,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     totalCheckInMinutes = item.optInt("totalCheckInMinutes", 0),
                     reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
                     reminderOffsetsCsv = item.optString("reminderOffsetsCsv", item.optIntOrNull("reminderOffsetMinutes")?.toString().orEmpty()),
+                    reminderAbsoluteTimesCsv = item.optString("reminderAbsoluteTimesCsv", ""),
                     reminderEnabled = item.optBoolean("reminderEnabled", false),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),

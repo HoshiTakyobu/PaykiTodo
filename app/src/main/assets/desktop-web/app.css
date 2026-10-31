@@ -2636,3 +2636,10 @@ body[data-event-view="month"] .event-timeline { display: block; height: 100%; }
   }
   .desktop-connection-actions::before { display: none; }
 }
+.transient-planning-body { padding: 16px; overflow: auto; }
+.transient-planning-body label { display: block; margin: 12px 0; }
+.transient-planning-body textarea, .transient-planning-body input:not([type=checkbox]), .transient-planning-body select { display: block; width: 100%; box-sizing: border-box; margin-top: 5px; }
+.transient-planning-body textarea { resize: vertical; font: inherit; }
+.transient-planning-body pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.transient-planning-candidate { padding: 12px 0; border-top: 1px solid var(--border, #d7dfe6); }
+#transient-planning-error { white-space: pre-wrap; }

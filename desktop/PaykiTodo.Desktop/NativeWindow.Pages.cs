@@ -29,7 +29,7 @@ internal sealed partial class NativeWindow
         var body = Column(greetingCard);
         var columns = new Grid(); columns.ColumnDefinitions.Add(new ColumnDefinition()); columns.ColumnDefinitions.Add(new ColumnDefinition());
         columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        var left = Column(SectionHeader($"今日待办（{tasks.Count}）", ChecklistAction(CreateChecklist)));
+        var left = Column(SectionHeader($"今日待办（{tasks.Count}）", Action("输入规划", CreateTransientPlanning)));
         left.Margin = new Thickness(0, 0, 18, 0);
         AppendTodos(left, tasks);
         if (tasks.Count == 0) left.Children.Add(Card(Text("今天还没有安排任务。", 14, Muted)));
@@ -178,7 +178,7 @@ internal sealed partial class NativeWindow
         filters.ItemsSource = groups; filters.SelectedItem = groups.FirstOrDefault(group => group.Id == (selectedGroup ?? 0)) ?? groups[0];
         filters.SelectionChanged += (_, _) => { selectedGroup = (filters.SelectedItem as DesktopGroup)?.Id; Render(); };
         var toolbar = new Grid(); toolbar.ColumnDefinitions.Add(new ColumnDefinition()); toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var actions = Row(Action("＋ 新增待办", () => EditItem(false), true), ChecklistAction(CreateChecklist),
+        var actions = Row(Action("＋ 新增待办", () => EditItem(false), true),
             Action(history ? "返回待办" : "历史记录", () => { history = !history; Render(); }));
         foreach (var button in actions.Children.OfType<Button>()) { button.Height = 40; button.Padding = new Thickness(14, 6, 14, 6); }
         toolbar.Children.Add(actions);

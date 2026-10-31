@@ -29,7 +29,8 @@ data class CalendarEventDraft(
     val allDayReminderRulesJson: String = "",
     val eventBusyStatus: String = "BUSY",
     val eventVisibility: String = "DEFAULT",
-    val eventParticipantsJson: String = "[]"
+    val eventParticipantsJson: String = "[]",
+    val absoluteReminderTimesMillis: List<Long> = emptyList()
 ) {
     val normalizedReminderOffsetsMinutes: List<Int>
         get() = normalizeReminderOffsets(reminderOffsetsMinutes, reminderMinutesBefore)

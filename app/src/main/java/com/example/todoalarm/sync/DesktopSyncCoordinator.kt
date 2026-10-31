@@ -37,6 +37,9 @@ import com.example.todoalarm.data.PlanningParsedType
 import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.PlanningRecognitionService
+import com.example.todoalarm.data.TransientPlanningCandidate
+import com.example.todoalarm.data.TransientPlanningParser
+import com.example.todoalarm.data.TransientPlanningRecognition
 import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.QuickChecklistParser
@@ -57,6 +60,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.Inet4Address
@@ -83,6 +87,11 @@ class DesktopSyncCoordinator(
     private var server: DesktopSyncServer? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val port = 18765
+    private data class PlanningPreviewSession(
+        val generation: Long, val token: String, val now: LocalDateTime,
+        val candidates: List<TransientPlanningCandidate>, val expiresAt: Long
+    )
+    private val planningPreviews = linkedMapOf<String, PlanningPreviewSession>()
     @Volatile
     private var lastAuthorizedClientAtMillis: Long = 0L
     @Volatile
@@ -106,6 +115,7 @@ class DesktopSyncCoordinator(
         server?.stop()
         server = null
         trackingStartedAtMillis = 0L
+        synchronized(planningPreviews) { planningPreviews.clear() }
     }
 
     fun resetClientTracking() {
@@ -171,6 +181,9 @@ class DesktopSyncCoordinator(
         if (routePath == "/app.js") {
             return DesktopSyncServer.Response.js(DesktopSyncWebAssets.appJs(context))
         }
+        if (routePath == "/transient-planning.js") {
+            return DesktopSyncServer.Response.js(context.assets.open("desktop-web/transient-planning.js").bufferedReader().use { it.readText() })
+        }
         if (routePath == "/app.css") {
             return DesktopSyncServer.Response.css(DesktopSyncWebAssets.appCss(context))
         }
@@ -219,7 +232,13 @@ class DesktopSyncCoordinator(
                 method == "GET" && routePath.matches(Regex("/api/events/\\d+/check-ins")) -> DesktopSyncServer.Response.json(eventCheckIns(routePath))
                 method == "POST" && routePath.matches(Regex("/api/events/\\d+/check-in")) -> DesktopSyncServer.Response.json(checkInEvent(routePath))
                 method == "POST" && routePath.matches(Regex("/api/events/\\d+/check-out")) -> DesktopSyncServer.Response.json(checkOutEvent(routePath))
+                method == "POST" && path == "/api/planning/transient/preview" -> DesktopSyncServer.Response.json(previewTransientPlanning(JSONObject(body)))
+                method == "POST" && path == "/api/planning/transient/import" -> DesktopSyncServer.Response.json(importTransientPlanning(JSONObject(body)))
+                method == "POST" && path == "/api/planning/transient/continuation" -> DesktopSyncServer.Response.json(
+                    JSONObject().put("prefix", TransientPlanningParser.nextLinePrefix(JSONObject(body).optString("line"))))
                 method == "GET" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(planningNotes())
+                method == "GET" && path == "/api/planning/archive" -> DesktopSyncServer.Response.json(JSONObject()
+                    .put("notes", JSONArray(app.repository.getAllPlanningNotes().map { it.toPlanningJson() })))
                 method == "POST" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(createPlanningNote(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(updatePlanningNote(routePath, JSONObject(body)))
                 method == "DELETE" && routePath.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(deletePlanningNote(routePath))
@@ -252,6 +271,46 @@ class DesktopSyncCoordinator(
                 500
             )
         }
+    }
+
+    private suspend fun previewTransientPlanning(json: JSONObject): JSONObject {
+        val text = json.getString("text")
+        require(text.isNotBlank() && text.length <= 200_000) { "请填写规划内容（最多20万字）" }
+        val generation = app.remoteSyncCoordinator.currentAccountGeneration()
+        val settings = settingsStore.currentSettings()
+        val token = settings.desktopSyncToken
+        val now = LocalDateTime.now()
+        val useAi = json.optBoolean("useAi", false)
+        val prompt = if (useAi) context.assets.open("ai/planning-system.txt").bufferedReader().use { it.readText() } else ""
+        val result = TransientPlanningRecognition.recognize(text, settings, useAi, now, prompt)
+        check(settingsStore.hasValidRemoteSession() && generation == app.remoteSyncCoordinator.currentAccountGeneration() &&
+            token == settingsStore.currentSettings().desktopSyncToken) { "账号或连接已变化，请重新识别" }
+        val sessionId = UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
+        synchronized(planningPreviews) {
+            planningPreviews.entries.removeAll { it.value.expiresAt <= timestamp }
+            planningPreviews[sessionId] = PlanningPreviewSession(generation, token, now, result.candidates, timestamp + 30 * 60_000L)
+            while (planningPreviews.size > 32) planningPreviews.remove(planningPreviews.keys.first())
+        }
+        val calendars = app.repository.observeCalendars().first()
+        return TransientPlanningWeb.toJson(result).put("sessionId", sessionId).put("today", now.toLocalDate().toString())
+            .put("calendars", JSONArray(calendars.filter { it.shareMode != "SHARED" }.map { calendar -> JSONObject()
+                .put("id", calendar.id).put("name", calendar.name) }))
+    }
+
+    private suspend fun importTransientPlanning(json: JSONObject): JSONObject {
+        val sessionId = json.getString("sessionId")
+        val preview = synchronized(planningPreviews) { planningPreviews[sessionId] } ?: error("预览已失效，请重新识别")
+        val guard = { settingsStore.hasValidRemoteSession() && preview.expiresAt > System.currentTimeMillis() &&
+            preview.generation == app.remoteSyncCoordinator.currentAccountGeneration() && preview.token == settingsStore.currentSettings().desktopSyncToken }
+        check(guard()) { "预览或连接已失效，请重新识别" }
+        val candidates = TransientPlanningWeb.readEdits(json.getJSONArray("candidates"), preview.candidates, preview.now)
+        val items = app.repository.importTransientPlanning(candidates, "lan:$sessionId", guard)
+        if (guard()) {
+            items.forEach { scheduleReminderOrDisable(it) }
+            autoBackupIfNeeded()
+        }
+        return JSONObject().put("ok", true).put("imported", candidates.size).put("createdItems", items.size)
     }
 
     private fun authorize(headers: Map<String, String>): Boolean {

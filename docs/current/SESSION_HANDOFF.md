@@ -1,5 +1,20 @@
 # Session Handoff
 
+## 2026-11-01 临时规划主体已实施，原七项目标继续
+
+Android1.17.10/402、Windows1.17.10.0、Room34；起点为a25aac6及前模型未提交规划代码。三端每日看板临时输入、本地/可选AI、可编辑预览、确认事务导入、父子与课程多时段、旧文档含归档只读、绝对提醒备份同步和无截止滚动已实施。254Android单测/Lint、12项设备检查、Windows90回归+1独立14阶段UIA和5段LAN模拟HTTP浏览器流程通过；成品含Debug、同证书签名Release、MSI和完整便携目录，见Deliverables/PaykiTodo/1.17.10及VALIDATION_1.17.10。原user0 646/646、user10 148/148哈希相同。
+
+循环绝对时刻的一次归属仍待用户答复，当前报错保留原文，不复制到所有实例。更新器、全部未推送历史审计与最终授权push仍未做；原goal未完成。旧的“规划尚未实现”交接段落是历史。不要重复从头实现已验收解析器或重问已确认语法。
+
+- 最新源码入口：data/TransientPlanningInput.kt、TransientPlanningRecognition.kt、TodoRepository.importTransientPlanning；ui/TransientPlanningDialog.kt；Windows TransientPlanningInput.cs、DesktopTransientPlanning.cs、NativeWindow.TransientPlanning.cs；LAN sync/TransientPlanningWeb.kt、DesktopSyncCoordinator的/api/planning/transient/*与assets/desktop-web/transient-planning.js。
+- LAN预览仅驻内存，30分钟有效；确认重新使用同一解析器，检查候选身份、账号/连接代际、父关系及个人日历。现有旧文档API仍兼容，但新网页不提供新建/删除/自动保存入口。
+- 本轮数据恢复副本：Backups/PaykiTodo/planning-1.17.10/before-20261101-010237和after-lan-verification；证据Scratch/PaykiTodo/planning-1.17.10。模拟器复用emulator-5554/Pixel_8/PID20332，无窗口；当前安装1.17.10Debug，user11执行测试，最终恢复user10主页，应用/测试停止，核实Pixel_8后PID20332恢复暂停。
+- 原有未提交Document organization follow-up两行和docs/goals/PaykiTodo_规划台实现Prompt.md保留，不混入规划功能提交。最新整体状态见PROJECT_STATUS和VALIDATION_1.17.10。
+
+## 2026-11-01 新模型恢复执行
+
+用户明确要求按启动提示词和三份配套文档继续原任务，撤销此前仅为更换模型的暂停请求。接手核对HEAD a25aac6、Android1.17.9/401、Windows1.17.9.0、Room33；原未提交文档整理说明和历史Prompt保留。规划输入实现进行中，源码暂升1.17.10/402、Windows1.17.10.0、Room34用于新绝对提醒字段；尚无本轮构建验收成品，不能把新增代码算作完成。#备注顺序和跨午夜缺省已确认并记录决策012/013。更新机制、完整历史审计和最终授权推送仍待完成，整体goal未完成。
+
 ## 2026-11-01：用户要求切换模型，交接后暂停自动执行
 
 用户因模型成本要求先写完整指导文档，交给下一模型实现；并明确答复“暂停，交给新模型继续”。本轮仅整理文档，没有继续开发更新或规划功能，代码版本仍为Android1.17.9/401、Windows1.17.9.0、Room33，最近功能提交87240cd。文档提交位于其后，恢复时仍需核对git。

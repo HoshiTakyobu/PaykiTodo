@@ -66,6 +66,7 @@ fun calendarRecurrenceDates(
     val interval = config.interval.toLong()
     val ordinal = config.monthlyOrdinal ?: anchor.nthWeekOrdinal()
     val skipInvalid = config.invalidDatePolicy == "SKIP"
+    val intendedDay = config.monthlyDay ?: anchor.dayOfMonth
     return generateSequence(start) { if (it < end) it.plusDays(1) else null }.filter { date ->
         when (config.type) {
             RecurrenceType.NONE -> date == anchor
@@ -73,11 +74,11 @@ fun calendarRecurrenceDates(
             RecurrenceType.WEEKLY -> date.dayOfWeek in weekdays &&
                 ChronoUnit.WEEKS.between(anchorWeek, date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))) % interval == 0L
             RecurrenceType.MONTHLY_DAY -> ChronoUnit.MONTHS.between(anchor.withDayOfMonth(1), date.withDayOfMonth(1)) % interval == 0L &&
-                date.dayOfMonth == (if (skipInvalid) anchor.dayOfMonth else minOf(anchor.dayOfMonth, date.lengthOfMonth()))
+                date.dayOfMonth == (if (skipInvalid) intendedDay else minOf(intendedDay, date.lengthOfMonth()))
             RecurrenceType.MONTHLY_NTH_WEEKDAY -> ChronoUnit.MONTHS.between(anchor.withDayOfMonth(1), date.withDayOfMonth(1)) % interval == 0L &&
                 date.dayOfWeek == anchor.dayOfWeek && (if (ordinal == -1) date.plusWeeks(1).month != date.month else date.nthWeekOrdinal() == ordinal)
             RecurrenceType.YEARLY_DATE -> (date.year - anchor.year) % config.interval == 0 && date.month == anchor.month &&
-                date.dayOfMonth == (if (skipInvalid) anchor.dayOfMonth else minOf(anchor.dayOfMonth, date.lengthOfMonth()))
+                date.dayOfMonth == (if (skipInvalid) intendedDay else minOf(intendedDay, date.lengthOfMonth()))
             RecurrenceType.YEARLY_LUNAR_DATE -> (date.year - anchor.year) % config.interval == 0 &&
                 LunarCalendar.sameLunarDateInYear(anchor, date.year) == date
         }

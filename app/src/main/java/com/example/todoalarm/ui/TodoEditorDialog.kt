@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -107,7 +109,7 @@ fun TodoEditorDialog(
     var dueAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.dueDateTimeOrNull() ?: now.plusHours(2))
     }
-    val initialReminderEnabled = !isHistory && initialTodo?.hasDueDate != false && (initialTodo?.reminderEnabled ?: true)
+    val initialReminderEnabled = !isHistory && (initialTodo?.hasDueDate != false || initialTodo.configuredAbsoluteReminderTimesMillis.isNotEmpty()) && (initialTodo?.reminderEnabled ?: true)
     var reminderEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialReminderEnabled)
     }
@@ -115,7 +117,7 @@ fun TodoEditorDialog(
         mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: dueAt)
     }
     var reminderInput by remember(initialTodo?.id) {
-        mutableStateOf(initialTodo?.configuredReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }?.joinToString(",") ?: "5")
+        mutableStateOf(initialTodo?.configuredReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }?.joinToString(",") ?: if (initialTodo?.configuredAbsoluteReminderTimesMillis?.isNotEmpty() == true) "" else "5")
     }
     var ringEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled)
@@ -228,9 +230,13 @@ fun TodoEditorDialog(
                         enabled = !isHistory && hasDueDate && recurringEnabled,
                         type = recurrenceType,
                         weeklyDays = weeklyDays,
-                        endDate = recurrenceEndDate
+                        endDate = recurrenceEndDate,
+                        interval = initialTodo?.recurrenceInterval ?: 1,
+                        invalidDatePolicy = initialTodo?.recurrenceInvalidDatePolicy ?: "CLAMP",
+                        monthlyDay = initialTodo?.recurrenceMonthlyDay
                     ),
                     reminderOffsetsMinutes = parsedReminderOffsets,
+                    absoluteReminderTimesMillis = if (!isHistory && reminderEnabled) initialTodo?.configuredAbsoluteReminderTimesMillis.orEmpty() else emptyList(),
                     groupIds = selectedGroupIds
                 )
             )
@@ -417,6 +423,21 @@ fun TodoEditorDialog(
                     }
                 }
 
+                if (!isHistory && !hasDueDate && initialTodo?.configuredAbsoluteReminderTimesMillis?.isNotEmpty() == true) {
+                    TodoEditorBlock(title = "提醒") {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it },
+                                modifier = Modifier.semantics { contentDescription = "绝对时间提醒" })
+                            Text("保留绝对时间提醒")
+                        }
+                        initialTodo.configuredAbsoluteReminderTimesMillis.forEach { at ->
+                            Text(reminderAtMillisToDateTime(at).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
+                        }
+                        Text("不需要DDL。已经过去的提醒保留记录，不补响。", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+
                 MoreOptionsToggle(
                     expanded = moreOptionsExpanded,
                     onToggle = { moreOptionsExpanded = !moreOptionsExpanded }
@@ -553,9 +574,13 @@ fun TodoEditorDialog(
                                                         enabled = true,
                                                         type = recurrenceType,
                                                         weeklyDays = weeklyDays,
-                                                        endDate = recurrenceEndDate
+                                                        endDate = recurrenceEndDate,
+                        interval = initialTodo?.recurrenceInterval ?: 1,
+                        invalidDatePolicy = initialTodo?.recurrenceInvalidDatePolicy ?: "CLAMP",
+                        monthlyDay = initialTodo?.recurrenceMonthlyDay
                                                     ),
                                                     reminderOffsetsMinutes = if (effectiveReminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList(),
+                                                    absoluteReminderTimesMillis = if (!isHistory && reminderEnabled) initialTodo?.configuredAbsoluteReminderTimesMillis.orEmpty() else emptyList(),
                                                     groupIds = selectedGroupIds
                                                 )
                                             )

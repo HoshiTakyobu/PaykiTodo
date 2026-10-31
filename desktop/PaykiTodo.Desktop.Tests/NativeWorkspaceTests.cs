@@ -154,7 +154,7 @@ public sealed class NativeWorkspaceTests
                 Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "账号与同步");
                 Assert.DoesNotContain(Descendants<System.Windows.DependencyObject>(window), control => control.GetType().Name.Contains("WebView"));
                 ReportTests.VerifyOpenReportExpiry(window, workspace, store);
-                foreach (var page in new[] { "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) {
+                foreach (var page in new[] { "待办", "日历", "倒数日", "AI 报告", "设置" }) {
                     var button = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate." + page);
                     button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     window.UpdateLayout();
@@ -193,25 +193,7 @@ public sealed class NativeWorkspaceTests
                 Descendants<Button>(window).Single(button => button.Content as string == "账号与同步").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
                 Screenshot(window, Path.Combine(shotFolder, "windows-account-settings-dark.png"));
                 Descendants<Button>(window).Single(button => button.Content as string == "常规").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
-                var planning = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.规划台");
-                planning.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
-                Descendants<Button>(window).First(button => button.Content as string == "＋ 新建文档").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                window.UpdateLayout();
-                var draftEditor = Descendants<TextBox>(window).Single(input => input.AcceptsReturn);
-                draftEditor.Text = "跨导航保留的规划草稿";
-                workspace.Notify("后台同步状态更新"); window.UpdateLayout();
-                Assert.Same(draftEditor, Descendants<TextBox>(window).Single(input => input.AcceptsReturn));
-                var todos = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.待办");
-                todos.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                planning.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
-                Descendants<Button>(window).First(button => button.Content as string == "继续新文档草稿").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                window.UpdateLayout();
-                Assert.Equal("跨导航保留的规划草稿", Descendants<TextBox>(window).Single(input => input.AcceptsReturn).Text);
-                window.Width = 920; window.UpdateLayout();
-                var planningSave = Descendants<Button>(window).Single(button => button.Content as string == "完成");
-                var saveBounds = planningSave.TransformToAncestor(window).TransformBounds(new Rect(planningSave.RenderSize));
-                Assert.True(saveBounds.Bottom < window.ActualHeight - 24, "Planning completion must stay inside the viewport without scrolling");
-                Screenshot(window, Path.Combine(shotFolder, "windows-planning-narrow-dark.png"));
+                VerifyTransientPlanning(window, workspace, shotFolder);
                 window.Width = 1280;
                 var board = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.每日看板");
                 board.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
@@ -242,6 +224,49 @@ public sealed class NativeWorkspaceTests
         desktop?.Dispose();
         if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
     }
+    private static void VerifyTransientPlanning(Window window, DesktopWorkspace workspace, string folder)
+    {
+        Descendants<Button>(window).Single(b => System.Windows.Automation.AutomationProperties.GetAutomationId(b) == "Navigate.每日看板").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        window.UpdateLayout();
+        Assert.DoesNotContain(Descendants<Button>(window), b => System.Windows.Automation.AutomationProperties.GetAutomationId(b) == "Navigate.规划台");
+        var before = DesktopSnapshotDocument.FromArchiveBytes(workspace.Document!.ToArchiveBytes());
+        void Exercise(bool commit)
+        {
+            Exception? failure = null; var stage = 0; var started = DateTime.UtcNow;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+            timer.Tick += (_, _) => {
+                var dialog = window.OwnedWindows.Cast<Window>().FirstOrDefault(w => w.Title is "输入规划" or "确认规划");
+                try {
+                    if (DateTime.UtcNow - started > TimeSpan.FromSeconds(8)) throw new TimeoutException("规划输入/预览没有完成");
+                    if (dialog == null) return;
+                    dialog.Width = 680; dialog.Height = 650; dialog.UpdateLayout();
+                    if (stage == 0) {
+                        var raw = Descendants<TextBox>(dialog).Single(i => i.AcceptsReturn);
+                        raw.Text = "- 新规划待办,16:30,();";
+                        var primary = Descendants<Button>(dialog).Single(b => b.Content as string == "识别");
+                        var bounds = primary.TransformToAncestor(dialog).TransformBounds(new Rect(primary.RenderSize));
+                        Assert.True(bounds.Bottom < dialog.ActualHeight - 10, "规划动作应固定在视口内");
+                        Screenshot(dialog, Path.Combine(folder, "windows-transient-input.png"));
+                        if (!commit) { timer.Stop(); Descendants<Button>(dialog).Single(b => b.Content as string == "取消").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); return; }
+                        stage = 1; primary.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    } else if (dialog.Title == "确认规划") {
+                        Assert.False(workspace.Document!.Items.Any(i => i.Title == "新规划待办"));
+                        Descendants<TextBox>(dialog).First().Text = "在预览修改的待办";
+                        dialog.UpdateLayout(); Screenshot(dialog, Path.Combine(folder, "windows-transient-preview.png"));
+                        timer.Stop(); Descendants<Button>(dialog).Single(b => b.Content as string == "确认导入").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+                } catch (Exception error) { failure = error; timer.Stop(); dialog?.Close(); }
+            };
+            timer.Start();
+            try { Descendants<Button>(window).Single(b => b.Content as string == "输入规划").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
+            finally { timer.Stop(); }
+            Assert.Null(failure);
+        }
+        Exercise(false); Assert.True(workspace.Document!.HasSamePersonalSyncContent(before));
+        Exercise(true); Assert.Single(workspace.Document!.Items.Where(i => i.Title == "在预览修改的待办"));
+        Assert.Equal(before.PlanningNotes.Count, workspace.Document.PlanningNotes.Count);
+    }
+
     private static void Screenshot(Window window, string path)
     {
         window.UpdateLayout(); window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);

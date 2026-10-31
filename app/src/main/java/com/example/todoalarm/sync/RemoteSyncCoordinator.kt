@@ -80,6 +80,7 @@ class RemoteSyncCoordinator(
     private var periodicJob: Job? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     @Volatile private var accountGeneration = 0L
+    fun currentAccountGeneration(): Long = accountGeneration
     private var lastContentAuditAt = 0L
     private val baselines = SyncBaselineStore(File(app.filesDir, "sync-baselines"))
     private data class Download(val snapshot: BackupSnapshot, val revision: Long)

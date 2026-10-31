@@ -2,6 +2,12 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
+## Current planning stage: 1.17.10 / 402
+
+Android、Windows与LAN网页已从每日看板提供临时规划输入、本地/可选AI识别、预览编辑和确认事务导入。支持标题-only、日期/+简写、>日程、混合非循环绝对提醒、父子事项、同课多时段及持续循环；旧文档含归档只读保留，不创建新文档。Room34新增绝对提醒字段，贯穿备份/同步和普通编辑保留。具体已验证范围与限制见 [VALIDATION_1.17.10.md](VALIDATION_1.17.10.md)。
+
+更新器、循环绝对提醒归属、最终公开历史审计和推送仍待完成；下面1.17.8/1.17.9是已完成历史阶段，不能用其旧“规划未实现”描述覆盖当前源码。
+
 ## 进行中：2026-10-31 双端体验更新
 
 1.17.8阶段完成Windows设置导航与左对齐、中文字体别名、12—22px字号及真实预览、取消/保存一致性、随字号调整的日历与输入框，以及设置/F1可打开的离线使用说明。Android迁移包保留桌面字号。验证和成品见 [VALIDATION_1.17.8.md](VALIDATION_1.17.8.md)。

@@ -44,13 +44,13 @@ internal static class DesktopCalendarTime
     {
         if (!edit.ReminderEnabled) return Array.Empty<long>();
         var at = edit.IsEvent ? edit.StartAtMillis : edit.DueAtMillis;
-        if (at is null or long.MaxValue) return Array.Empty<long>();
+        if (at is null or long.MaxValue) return edit.AbsoluteReminderTimes.Distinct().Order().ToArray();
         if (edit.IsEvent && edit.AllDay && !string.IsNullOrWhiteSpace(edit.AllDayReminderRulesJson)) {
             var date = Wall(at.Value, edit.EventTimeZoneId).Date;
-            return ParseRules(edit.AllDayReminderRulesJson).Select(rule => Millis(date.AddDays(-rule.DaysBefore).AddMinutes(rule.MinuteOfDay), edit.EventTimeZoneId)).Distinct().Order().ToArray();
+            return ParseRules(edit.AllDayReminderRulesJson).Select(rule => Millis(date.AddDays(-rule.DaysBefore).AddMinutes(rule.MinuteOfDay), edit.EventTimeZoneId)).Concat(edit.AbsoluteReminderTimes).Distinct().Order().ToArray();
         }
         var anchor = edit.IsEvent && edit.AllDay ? Millis(Wall(at.Value, edit.EventTimeZoneId).Date.AddHours(9), edit.EventTimeZoneId) : at.Value;
-        return edit.ReminderOffsets.Select(offset => anchor - offset * 60000L).Distinct().Order().ToArray();
+        return edit.ReminderOffsets.Select(offset => anchor - offset * 60000L).Concat(edit.AbsoluteReminderTimes).Distinct().Order().ToArray();
     }
 }
 

@@ -9,7 +9,7 @@ namespace PaykiTodo.Desktop;
 
 internal sealed partial class NativeWindow
 {
-    private UIElement PlanningPage()
+    private UIElement LegacyPlanningEditorPage()
     {
         var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) }); grid.ColumnDefinitions.Add(new ColumnDefinition());
         var list = Column(); var editor = new ContentControl { Margin = new Thickness(22, 0, 0, 0) }; Grid.SetColumn(editor, 1); grid.Children.Add(editor); grid.Children.Add(Scroll(list));

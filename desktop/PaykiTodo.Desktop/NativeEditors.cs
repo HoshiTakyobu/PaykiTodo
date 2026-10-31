@@ -196,7 +196,7 @@ internal static class NativeEditors
                 var endAt = allDay.IsChecked == true ? end.Value.Date.AddDays(1) : end.Value;
                 if (isEvent && endAt <= startAt) throw new InvalidOperationException("结束时间必须晚于开始时间");
                 var rulesJson = allDayReminders.Json;
-                if (reminder.IsChecked == true && (!isEvent && hasDue.IsChecked != true || (isEvent && allDay.IsChecked == true ? DesktopCalendarTime.ParseRules(rulesJson).Count == 0 : minutes.Count == 0))) throw new InvalidOperationException("开启提醒需要设置时间和至少一条提醒");
+                if (reminder.IsChecked == true && (value?.AbsoluteReminderTimes.Count ?? 0) == 0 && (!isEvent && hasDue.IsChecked != true || (isEvent && allDay.IsChecked == true ? DesktopCalendarTime.ParseRules(rulesJson).Count == 0 : minutes.Count == 0))) throw new InvalidOperationException("开启提醒需要设置时间和至少一条提醒");
                 var repeat = (recurrence.SelectedItem as Choice)?.Value ?? "NONE";
                 var weekdayCsv = string.Join(",", weekdays.Where(day => day.IsChecked == true).Select(day => day.Tag));
                 if (repeat == "WEEKLY" && weekdayCsv.Length == 0) throw new InvalidOperationException("请选择至少一个重复星期");
@@ -216,6 +216,8 @@ internal static class NativeEditors
                         RecurrenceInterval = (int)interval.SelectedItem, RecurrenceInvalidDatePolicy = ((Choice)policy.SelectedItem).Value,
                         RecurrenceMonthlyOrdinal = repeat == "MONTHLY_NTH_WEEKDAY" ? int.Parse(((Choice)ordinal.SelectedItem).Value) : null,
                         RecurrenceMonthlyWeekday = repeat == "MONTHLY_NTH_WEEKDAY" ? int.Parse(((Choice)ordinalWeekday.SelectedItem).Value) : null,
+                        AbsoluteReminderTimes = reminder.IsChecked == true ? value?.AbsoluteReminderTimes ?? Array.Empty<long>() : Array.Empty<long>(),
+                        RecurrenceMonthlyDay = value != null && repeat == value.RecurrenceType ? value.RecurrenceMonthlyDay : null,
                         AdditionalTimeSlots = extraSlots.Select(slot => new DesktopTimeSlot(DesktopCalendarTime.Millis(slot.Start.Value, ((Choice)zone.SelectedItem).Value), DesktopCalendarTime.Millis(slot.End.Value, ((Choice)zone.SelectedItem).Value))).ToList() };
                 dialog.DialogResult = true;
             } catch (Exception problem) { error.Text = problem.Message; }

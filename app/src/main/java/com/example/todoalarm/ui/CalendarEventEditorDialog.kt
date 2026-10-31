@@ -152,7 +152,7 @@ internal fun CalendarEventEditorDialog(
         mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: PaykiColorPresets.DefaultEvent)
     }
     val initialReminderEnabled = initialEvent?.reminderEnabled ?: seedDraft?.let {
-        it.normalizedAllReminderOffsetsMinutes.isNotEmpty() || (it.allDay && it.allDayReminderRulesJson !in listOf("", "[]"))
+        (it.normalizedAllReminderOffsetsMinutes.isNotEmpty() || it.absoluteReminderTimesMillis.isNotEmpty()) || (it.allDay && it.allDayReminderRulesJson !in listOf("", "[]"))
     } ?: workspace.settings.calendarTimedDefaultRemindersCsv.isNotBlank()
     var reminderEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialReminderEnabled)
@@ -347,6 +347,7 @@ internal fun CalendarEventEditorDialog(
                 accentColorHex = accentColorHex,
                 reminderMinutesBefore = normalizedOffsets.minOrNull(),
                 reminderOffsetsMinutes = normalizedOffsets,
+                absoluteReminderTimesMillis = if (reminderEnabled) initialEvent?.configuredAbsoluteReminderTimesMillis ?: seedDraft?.absoluteReminderTimesMillis.orEmpty() else emptyList(),
                 ringEnabled = ringEnabled,
                 vibrateEnabled = vibrateEnabled,
                 reminderDeliveryMode = reminderDeliveryMode,
@@ -362,7 +363,8 @@ internal fun CalendarEventEditorDialog(
                     endDate = if (recurrenceNeverEnds && !courseModeActive) null else recurrenceEndDate,
                     interval = recurrenceInterval.toIntOrNull() ?: 1,
                     invalidDatePolicy = recurrenceInvalidDatePolicy,
-                    monthlyOrdinal = monthlyOrdinal
+                    monthlyOrdinal = monthlyOrdinal,
+                    monthlyDay = initialEvent?.recurrenceMonthlyDay ?: seedDraft?.recurrence?.monthlyDay
                 ),
                 multiSlotBundleId = initialEvent?.multiSlotBundleId ?: seedDraft?.multiSlotBundleId,
                 groupId = selectedGroupId,
@@ -969,6 +971,7 @@ internal fun CalendarEventEditorDialog(
                                             accentColorHex = accentColorHex,
                                             reminderMinutesBefore = normalizedOffsets.minOrNull(),
                                             reminderOffsetsMinutes = normalizedOffsets,
+                absoluteReminderTimesMillis = if (reminderEnabled) initialEvent?.configuredAbsoluteReminderTimesMillis ?: seedDraft?.absoluteReminderTimesMillis.orEmpty() else emptyList(),
                                             ringEnabled = ringEnabled,
                                             vibrateEnabled = vibrateEnabled,
                                             reminderDeliveryMode = reminderDeliveryMode,
@@ -984,7 +987,8 @@ internal fun CalendarEventEditorDialog(
                                                 endDate = if (recurrenceNeverEnds) null else recurrenceEndDate,
                                                 interval = recurrenceInterval.toIntOrNull() ?: 1,
                                                 invalidDatePolicy = recurrenceInvalidDatePolicy,
-                                                monthlyOrdinal = monthlyOrdinal
+                                                monthlyOrdinal = monthlyOrdinal,
+                    monthlyDay = initialEvent?.recurrenceMonthlyDay ?: seedDraft?.recurrence?.monthlyDay
                                             ),
                                             groupId = selectedGroupId,
                                             groupName = sortedGroups.firstOrNull { it.id == selectedGroupId }?.name.orEmpty()

@@ -93,7 +93,7 @@ internal sealed partial class NativeWindow : Window
         var rail = new DockPanel { Background = B("#F8FAF9"), Margin = new Thickness(0) };
         var brand = Column(BrandHeading("PaykiTodo"), Text("把今天，安排得刚刚好", 12, Muted));
         brand.Margin = new Thickness(18, 24, 12, 24); DockPanel.SetDock(brand, Dock.Top); rail.Children.Add(brand);
-        foreach (var (icon, label) in new[] { ("\uE80F", "每日看板"), ("\uE73E", "待办"), ("\uE787", "日历"), ("\uE70B", "规划台"), ("\uE823", "倒数日"), ("\uE9D9", "AI 报告"), ("\uE713", "设置") })
+        foreach (var (icon, label) in new[] { ("\uE80F", "每日看板"), ("\uE73E", "待办"), ("\uE787", "日历"), ("\uE823", "倒数日"), ("\uE9D9", "AI 报告"), ("\uE713", "设置") })
         {
             var button = NavigationAction(icon, label, () => Navigate(label));
             navigationButtons[label] = button; navigation.Children.Add(button);

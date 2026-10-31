@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -118,6 +119,10 @@ fun DashboardScreen(
     uiState: TodoUiState,
     desktopSyncStatus: StateFlow<com.example.todoalarm.sync.DesktopSyncStatus>,
     planningNotes: StateFlow<List<PlanningNote>>,
+    planningCalendars: StateFlow<List<com.example.todoalarm.data.PlannerCalendar>>,
+    planningAccountGeneration: Long,
+    onRecognizeTransientPlanning: suspend (String, Boolean, LocalDateTime) -> com.example.todoalarm.data.TransientPlanningResult,
+    onImportTransientPlanning: suspend (List<com.example.todoalarm.data.TransientPlanningCandidate>, String, Long) -> String?,
     observeAiReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
     onGlobalSearch: suspend (String) -> GlobalSearchResult,
@@ -239,7 +244,8 @@ fun DashboardScreen(
     var editingTodoGroupIds by remember { mutableStateOf<List<Long>>(emptyList()) }
     var calendarDraftSeed by remember { mutableStateOf<CalendarEventDraft?>(null) }
     var todoBatchImportVisible by remember { mutableStateOf(false) }
-    var quickChecklistEditorVisible by rememberSaveable { mutableStateOf(false) }
+    var transientPlanningVisible by rememberSaveable { mutableStateOf(false) }
+    var legacyPlanningArchiveVisible by rememberSaveable { mutableStateOf(false) }
     var batchImportVisible by remember { mutableStateOf(false) }
     var editScope by remember { mutableStateOf(RecurrenceScope.CURRENT) }
     var scopeDialogTarget by remember { mutableStateOf<TodoItem?>(null) }
@@ -448,7 +454,7 @@ fun DashboardScreen(
             }
             todoBatchImportVisible -> todoBatchImportVisible = false
             batchImportVisible -> batchImportVisible = false
-            quickChecklistEditorVisible -> quickChecklistEditorVisible = false
+            transientPlanningVisible -> transientPlanningVisible = false
             quickPreviewTodo != null -> quickPreviewTodo = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
             section == DashboardSection.HISTORY -> section = DashboardSection.ACTIVE
@@ -596,12 +602,13 @@ fun DashboardScreen(
                                         Text(if (allVisibleTodosSelected) "清空" else "全选")
                                     }
                                 } else if (section == DashboardSection.BOARD) {
-                                    QuickChecklistActionButton(onClick = { quickChecklistEditorVisible = true })
+                                    IconButton(onClick = { transientPlanningVisible = true }) {
+                                        Icon(Icons.Rounded.PostAdd, contentDescription = "输入规划")
+                                    }
                                     IconButton(onClick = { searchVisible = true }) {
                                         Icon(Icons.Rounded.Search, contentDescription = "全局搜索")
                                     }
                                 } else if (section == DashboardSection.ACTIVE) {
-                                    QuickChecklistActionButton(onClick = { quickChecklistEditorVisible = true })
                                     IconButton(onClick = { section = DashboardSection.HISTORY }) {
                                         Icon(Icons.Rounded.History, contentDescription = "待办历史记录")
                                     }
@@ -642,7 +649,7 @@ fun DashboardScreen(
                     }
                 ) { padding ->
                 DashboardBody(
-                    section = section,
+                    section = if (section == DashboardSection.PLANNING) DashboardSection.BOARD else section,
                     planningHelpRequestSerial = planningHelpRequestSerial,
                     settingsInitialSectionKey = launchRoute?.settingsSectionKey,
                     settingsInitialSectionSerial = launchRouteSerial,
@@ -884,7 +891,7 @@ fun DashboardScreen(
                     onApplyPlanningConflictDocument = onApplyPlanningConflictDocument,
                     onApplyPlanningConflictItem = onApplyPlanningConflictItem,
                     onDismissOnboarding = onDismissOnboarding,
-                    onNavigatePlanning = { section = DashboardSection.PLANNING },
+                    onNavigatePlanning = { section = DashboardSection.BOARD; transientPlanningVisible = true },
                     onBoardCollapseStateChange = onBoardCollapseStateChange
                 )
             }
@@ -933,15 +940,27 @@ fun DashboardScreen(
         )
     }
 
-    if (quickChecklistEditorVisible) {
-        QuickChecklistEditorDialog(
-            onDismiss = { quickChecklistEditorVisible = false },
-            onSave = onCreateQuickChecklist,
-            onSaved = { title ->
-                quickChecklistEditorVisible = false
-                Toast.makeText(context, "已创建清单：$title", Toast.LENGTH_SHORT).show()
-            }
+    if (transientPlanningVisible) {
+        val availableCalendars by planningCalendars.collectAsState()
+        TransientPlanningDialog(
+            groups = uiState.groups, calendars = availableCalendars,
+            aiAvailable = uiState.settings.planningAiProviders.any { it.enabled && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank() },
+            accountGeneration = planningAccountGeneration,
+            onRecognize = onRecognizeTransientPlanning,
+            onImport = onImportTransientPlanning,
+            onDismiss = { transientPlanningVisible = false }
         )
+    }
+    if (legacyPlanningArchiveVisible) {
+        val oldNotes by planningNotes.collectAsState()
+        LegacyPlanningArchiveDialog(oldNotes, onExportPlanningNodesMarkdown,
+            onDismiss = { legacyPlanningArchiveVisible = false })
+    }
+    LaunchedEffect(section) {
+        if (section == DashboardSection.PLANNING) {
+            section = DashboardSection.BOARD
+            legacyPlanningArchiveVisible = true
+        }
     }
 
     if (searchVisible) {

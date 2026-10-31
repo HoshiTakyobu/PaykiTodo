@@ -96,6 +96,7 @@ data class TodoItem(
     val totalCheckInMinutes: Int = 0,
     val reminderAtMillis: Long?,
     val reminderOffsetsCsv: String = "",
+    @ColumnInfo(defaultValue = "''") val reminderAbsoluteTimesCsv: String = "",
     val reminderEnabled: Boolean,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
@@ -163,6 +164,8 @@ data class TodoItem(
 
     val configuredReminderOffsetsMinutes: List<Int>
         get() = decodeReminderOffsets(reminderOffsetsCsv, reminderOffsetMinutes)
+    val configuredAbsoluteReminderTimesMillis: List<Long>
+        get() = reminderAbsoluteTimesCsv.split(',').mapNotNull { it.trim().toLongOrNull() }.distinct().sorted()
 
     val configuredCheckInReminderOffsetsMinutes: List<Int>
         get() = decodeReminderOffsets(checkInReminderOffsetsCsv)

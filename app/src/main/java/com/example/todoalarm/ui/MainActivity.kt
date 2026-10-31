@@ -181,7 +181,11 @@ class MainActivity : ComponentActivity() {
                 } else DashboardScreen(
                     uiState = uiState,
                     desktopSyncStatus = viewModel.desktopSyncStatus,
-                    planningNotes = viewModel.planningNotes,
+                    planningNotes = viewModel.planningArchiveNotes,
+                    planningCalendars = viewModel.calendars,
+                    planningAccountGeneration = viewModel.planningAccountGeneration(),
+                    onRecognizeTransientPlanning = viewModel::recognizeTransientPlanning,
+                    onImportTransientPlanning = viewModel::importTransientPlanning,
                     observeAiReports = viewModel::observeAiReports,
                     onGetAiReport = viewModel::getAiReportById,
                     onGlobalSearch = viewModel::globalSearch,

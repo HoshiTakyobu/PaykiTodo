@@ -57,14 +57,10 @@
           <button class="nav-btn tab-btn active" data-tab="board">每日看板</button>
           <button class="nav-btn tab-btn" data-tab="todos">待办</button>
           <button class="nav-btn tab-btn" data-tab="events">日历</button>
-          <button class="nav-btn tab-btn" data-tab="planning">规划台</button>
           <button class="nav-btn tab-btn" data-tab="reports">AI 报告</button>
         </nav>
         <div class="desktop-header-actions">
-          <button id="open-quick-checklist" class="header-create-button quick-checklist-entry" title="快速清单" aria-label="快速清单">
-            <span aria-hidden="true" class="quick-checklist-entry-mark">!</span>
-            <span aria-hidden="true" class="quick-checklist-entry-book">▤</span>
-          </button>
+          <button id="open-transient-planning" class="header-create-button">输入规划</button>
           <button id="open-create" class="header-create-button">新增待办</button>
           <button id="open-event-create" class="header-create-button">创建日程</button>
         </div>
@@ -85,6 +81,7 @@
       <div id="announcements-banner" class="announcements-banner hidden"></div>
 
       <section id="board-panel" class="tab active">
+        <button id="open-legacy-planning" class="ghost mini">查看旧规划原文</button>
         <div id="desktop-daily-board" class="desktop-board"></div>
       </section>
 
@@ -159,45 +156,6 @@
         </div>
       </section>
 
-      <section id="planning-panel" class="tab">
-        <div class="card-panel planning-panel">
-          <div class="planning-toolbar">
-            <div>
-              <h2>规划台</h2>
-              <p class="muted">像备忘录一样写计划，点“识别计划”后在右侧预览确认。这里不再要求学习井号标签、大纲节点或 Markdown 语法。</p>
-            </div>
-            <div class="toolbar-row">
-              <select id="planning-note-select"></select>
-              <button id="planning-new" class="ghost mini" title="创建一个新的规划文档">新建文档</button>
-              <button id="planning-delete" class="ghost mini danger-lite-action" title="删除当前规划文档">删除文档</button>
-              <button id="planning-help" class="ghost mini">使用说明</button>
-              <button id="planning-parse" class="mini" title="识别左侧备忘录内容">识别计划</button>
-              <button id="planning-import" class="mini" title="导入右侧预览中勾选的候选项">导入选中</button>
-            </div>
-          </div>
-          <div class="planning-workspace">
-            <div class="planning-editor-pane">
-              <div id="planning-active-title" class="planning-active-title">我的规划</div>
-              <textarea id="planning-editor" class="planning-editor" placeholder="直接写就行，例如：
-
-10:00-12:00 写论文 @图书馆3楼
-12:00-13:00 吃饭
-任务M ddl 15:00
-明天 16:30 交材料
-整理保研材料
-打印成绩单"></textarea>
-            </div>
-            <div class="planning-preview-shell">
-              <div class="panel-head">
-                <h3>识别预览</h3>
-                <p id="planning-preview-meta" class="muted">写完后点“识别计划”，这里会让你检查标题、时间、地点、分组和提醒。</p>
-              </div>
-              <div id="planning-preview" class="planning-preview"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="reports-panel" class="tab">
         <div id="ai-report-status" class="report-workspace">
           <div class="empty-state">正在读取 AI 日报运行状态…</div>
@@ -206,26 +164,35 @@
     </main>
   </div>
 
-  <div id="quick-checklist-modal" class="modal-backdrop hidden">
-    <div class="modal-sheet wide-sheet quick-checklist-sheet">
+  <div id="transient-planning-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet wide-sheet">
       <div class="modal-head">
-        <button class="sheet-text-button" data-close-modal="quick-checklist-modal">取消</button>
-        <div class="modal-title-block">
-          <h2>快速待办清单</h2>
-          <p class="muted">标题可选，可直接写 - 任务。短横线数量表示层级，--# 添加说明，// 后内容不会保存。</p>
+        <button id="transient-planning-cancel" class="sheet-text-button">取消</button>
+        <div class="modal-title-block"><h2 id="transient-planning-title">输入规划</h2></div>
+        <button id="transient-planning-confirm" class="sheet-primary-action">识别</button>
+      </div>
+      <div class="transient-planning-body">
+        <p id="transient-planning-error" role="status" class="muted"></p>
+        <div id="transient-planning-input-page">
+          <p>标题必填；时间、地点和提醒可省略。无日期按手机端今天。</p>
+          <label>规划内容<textarea id="transient-planning-text" rows="12" spellcheck="false" placeholder="- 买水果, @超市, 16:30;&#10;- 阅读, 20:00&gt;20:30, (); #先读第二章"></textarea></label>
+          <div class="toolbar-row"><button id="transient-planning-outdent" class="ghost mini">减少缩进</button><button id="transient-planning-example" class="ghost mini">填入示例</button></div>
+          <label><input id="transient-planning-ai" type="checkbox" />使用手机端已配置的AI识别</label>
+          <p class="muted">不勾选即可离线识别。省略提醒默认提前5分钟和到点；()关闭。没有DDL的标题待办不安排默认相对提醒。</p>
+          <p class="muted">Enter：有顶层分号保持本级，无分号进入子级；Shift+Tab减少缩进。日程用&gt;，日期与时间可用空格或+。循环例如每周[周一 08:00&gt;09:40,周三 14:00&gt;15:40]；范围可省略。</p>
         </div>
-        <button id="save-quick-checklist" class="sheet-primary-action" disabled>确定</button>
+        <div id="transient-planning-preview-page" class="hidden">
+          <p>确认前不会创建事项。标题、时间、地点、提醒、范围、备注和归属都可在下面修改。</p>
+          <button id="transient-planning-back" class="ghost mini">返回原文修改</button>
+          <div id="transient-planning-preview"></div>
+        </div>
       </div>
-      <div class="quick-checklist-workspace">
-        <label class="quick-checklist-editor-pane">
-          <span>输入清单</span>
-          <textarea id="quick-checklist-input" spellcheck="false" placeholder="0913待办&#10;- 准备浙大的资料&#10;-- 1. 身份证复印件&#10;--# 使用本学年材料"></textarea>
-        </label>
-        <section class="quick-checklist-preview-pane">
-          <div id="quick-checklist-summary" class="muted">可直接输入 - 任务，标题可选。</div>
-          <div id="quick-checklist-preview" class="quick-checklist-preview"></div>
-        </section>
-      </div>
+    </div>
+  </div>
+  <div id="legacy-planning-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet wide-sheet">
+      <div class="modal-head"><h2>旧规划原文</h2><button data-close-modal="legacy-planning-modal" class="sheet-text-button">关闭</button></div>
+      <div id="legacy-planning-content" class="transient-planning-body"></div>
     </div>
   </div>
 
@@ -525,56 +492,8 @@
       <div class="form-dialog-body" id="form-fields"></div>
     </div>
   </div>
-  <div id="planning-help-modal" class="modal-backdrop hidden">
-    <div class="modal-sheet wide-sheet planning-help-sheet">
-      <div class="modal-handle"></div>
-      <div class="modal-head">
-        <button class="sheet-text-button" data-close-modal="planning-help-modal">返回</button>
-        <div class="modal-title-block">
-          <h2>规划台使用说明</h2>
-          <p class="muted">先像备忘录一样写；识别后在预览里确认，才进入正式待办和日程。</p>
-        </div>
-        <button class="sheet-primary-action" data-close-modal="planning-help-modal">知道了</button>
-      </div>
-      <div class="planning-help-body">
-        <section class="planning-help-card">
-          <h3>1. 直接写</h3>
-          <p>规划台就是上游备忘录。先把脑子里的任务、课程、DDL、会议和想办的事写下来，不需要先决定它属于待办还是日程。</p>
-          <pre><code>10:00-12:00 写论文 @图书馆3楼
-12:00-13:00 吃饭
-任务M ddl 15:00
-明天 16:30 交材料
-整理保研材料
-打印成绩单</code></pre>
-        </section>
-        <section class="planning-help-card">
-          <h3>2. 常见自然写法</h3>
-          <ul>
-            <li>日程：<code>10:00-12:00 写论文 @图书馆3楼</code></li>
-            <li>逗号日程：<code>10:00-12:00, 【课程】习思想, "@主楼B1-412"</code></li>
-            <li>DDL：<code>交材料 ddl 5.29 23:59</code>、<code>任务M ddl 15:00</code>、<code>明天 16:30 交材料</code></li>
-            <li>无 DDL 待办：<code>整理保研材料</code>。导入后会作为今日待办显示。</li>
-            <li>地点：可以写 <code>@图书馆3楼</code>、<code>地点：主楼B1-412</code>，也可以用引号包起来。</li>
-          </ul>
-        </section>
-        <section class="planning-help-card">
-          <h3>3. 识别和导入</h3>
-          <ol>
-            <li>写完后点“识别计划”。如果设置里启用了 AI 源，会优先走 AI；失败或未配置时回到本地规则。</li>
-            <li>右侧会出现待办、日程、跳过和错误条目。识别结果只是预览，不会直接入库。</li>
-            <li>在预览里修正标题、DDL、开始/结束时间、地点、分组、提醒和备注。</li>
-            <li>勾选需要导入的条目，点击“导入选中”。至少勾选一条有效候选后才能导入。</li>
-            <li>导入后不会往你的原文里追加井号标签；已导入状态由软件内部记录。</li>
-          </ol>
-        </section>
-        <section class="planning-help-card">
-          <h3>4. 写得乱也没关系</h3>
-          <p>规划台的目标不是逼你记语法，而是把“先粗略写下来”变成正式待办/日程之前的缓冲区。看不准的地方就在预览里改。</p>
-        </section>
-      </div>
-    </div>
-  </div>
   <script src="/vendor/xlsx.full.min.js?v=__PAYKI_VERSION__"></script>
   <script src="/app.js?v=__PAYKI_VERSION__"></script>
+  <script src="/transient-planning.js?v=__PAYKI_VERSION__"></script>
 </body>
 </html>

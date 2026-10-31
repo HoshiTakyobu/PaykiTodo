@@ -154,12 +154,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             refreshQuotesIfNeeded(force = false)
         }
         viewModelScope.launch {
-            val note = repository.ensureDefaultPlanningNote()
-            if (settingsStore.currentSettings().lastOpenedPlanningNoteId == null) {
-                settingsStore.updateLastOpenedPlanningNoteId(note.id)
-            }
-        }
-        viewModelScope.launch {
             while (true) {
                 repository.markMissedTasks()
                 dispatchDueReminders()
@@ -263,6 +257,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     val planningNotes = repository.observePlanningNotes().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
+    val planningArchiveNotes = repository.observePlanningArchive().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList()
@@ -396,6 +396,28 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 error.message ?: "快速清单创建失败"
             }
         }
+    }
+
+    fun planningAccountGeneration(): Long = app.remoteSyncCoordinator.currentAccountGeneration()
+
+    suspend fun recognizeTransientPlanning(text: String, useAi: Boolean, now: LocalDateTime = LocalDateTime.now()): com.example.todoalarm.data.TransientPlanningResult {
+        val prompt = if (useAi) withContext(Dispatchers.IO) {
+            app.assets.open("ai/planning-system.txt").bufferedReader().use { it.readText() }
+        } else ""
+        return com.example.todoalarm.data.TransientPlanningRecognition.recognize(text, settingsStore.currentSettings(), useAi, now, systemPrompt = prompt)
+    }
+
+    suspend fun importTransientPlanning(
+        candidates: List<com.example.todoalarm.data.TransientPlanningCandidate>, sessionId: String, accountGeneration: Long
+    ): String? = withContext(Dispatchers.IO) {
+        try {
+            val guard = { isAuthenticated() && planningAccountGeneration() == accountGeneration }
+            val items = repository.importTransientPlanning(candidates, sessionId, guard)
+            if (guard()) items.forEach { scheduleReminderOrDisable(it) }
+            autoBackupIfEnabled()
+            null
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: Exception) { error.message ?: "导入失败，草稿已保留" }
     }
 
     fun toggleQuickChecklistGroup(group: QuickChecklistGroup) {
@@ -973,9 +995,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         )?.let { return it }
 
         val affectedItems = repository.getActiveEventsForMultiSlotBundle(original).ifEmpty { listOf(original) }
-        clearReminderArtifacts(affectedItems)
-
         val updatedItems = repository.updateCalendarEventMultiSlotBundleSharedFields(original, draft)
+        clearReminderArtifacts(affectedItems)
         for (item in updatedItems) {
             scheduleReminderOrDisable(item)
         }

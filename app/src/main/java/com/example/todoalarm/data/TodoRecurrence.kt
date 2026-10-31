@@ -36,7 +36,8 @@ data class RecurrenceConfig(
     val endDate: LocalDate? = null,
     val interval: Int = 1,
     val invalidDatePolicy: String = "CLAMP",
-    val monthlyOrdinal: Int? = null
+    val monthlyOrdinal: Int? = null,
+    val monthlyDay: Int? = null
 ) {
     val isRecurring: Boolean
         get() = enabled && type != RecurrenceType.NONE
@@ -58,7 +59,9 @@ data class TodoDraft(
     val hiddenFromBoard: Boolean = false,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val reminderOffsetsMinutes: List<Int> = emptyList(),
-    val groupIds: List<Long> = emptyList()
+    val groupIds: List<Long> = emptyList(),
+    val absoluteReminderTimesMillis: List<Long> = emptyList(),
+    val location: String? = null
 ) {
     val normalizedReminderOffsetsMinutes: List<Int>
         get() {

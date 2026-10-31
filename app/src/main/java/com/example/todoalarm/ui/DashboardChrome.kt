@@ -270,8 +270,7 @@ internal fun DashboardDrawer(
                 listOf(
                     DashboardSection.BOARD,
                     DashboardSection.ACTIVE,
-                    DashboardSection.CALENDAR,
-                    DashboardSection.PLANNING
+                    DashboardSection.CALENDAR
                 ).forEach { section ->
                     DrawerSectionButton(
                         section = section,
@@ -1566,7 +1565,7 @@ private fun OnboardingCard(onDismiss: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("首次使用提示", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text("右下角 + 先记一条待办；抽屉里的「规划台」适合先把近期事情写下来。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+            Text("右下角 + 先记一条待办；每日看板的「输入规划」可一次写下多条待办和日程。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
             Text("正式使用前，去设置里检查提醒权限，避免错过 DDL。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Surface(

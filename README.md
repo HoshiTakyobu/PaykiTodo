@@ -14,16 +14,20 @@ PaykiTodo 为事项保留本地副本，支持日历、循环安排、倒数日�
 
 | 版本 | 当前状态 |
 | --- | --- |
-| 已公开发布 | v1.15.18，Android Release APK |
-| 当前开发源码 | Android 1.17.14 / versionCode 406；Windows 1.17.14.0 |
-| 本轮发布准备 | 1.17.13双端功能验收已完成；1.17.14公开包省略本机默认服务器配置，待安装包和签名更新资产终验后发布 |
+| 已公开发布 | [v1.17.14](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.14)：Android签名APK、Windows MSI与完整便携ZIP，附签名更新资产 |
+| 当前源码 | Android 1.17.14 / versionCode 406；Windows 1.17.14.0 |
+| 本轮交付 | 1.17.14安全公开包与更新资产已发布；保留已验收的临时规划、循环提醒、设置、字体、报告和双端更新能力 |
 
-当前源码包含发布版之后的增量，不能把源码版本当作已有公开安装包。[更新日志](CHANGELOG.md)记录各版本变化。
+当前1.17.14安装包已公开，包含v1.15.18以来的双端增量。[更新日志](CHANGELOG.md)记录各版本变化。
+
+- [Android签名APK](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-release.apk)
+- [Windows MSI](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-windows-x64.msi)与[完整便携ZIP](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-windows-x64.zip)
+- [SHA256校验清单](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/SHA256SUMS.txt)
 
 - Android：8.0 及以上。正式使用选择签名 Release APK；Debug 包与 Release 包签名不同，不能直接互相覆盖安装。
 - Windows：Windows 10 1809+ / Windows 11 x64，提供 MSI 安装版及完整便携目录。便携版不能只复制单个 EXE。账号验证使用 Microsoft Edge WebView2；安装包包含其安装入口。
 
-在“设置 → 关于”检查稳定版本。Android Release 支持后台下载、校验签名后交给系统安装；Debug 显示签名差异和发布页。Windows 自动检查并按发布灰度后台准备更新，手动下载可提前参与；更新包校验完成后下次启动切换，启动失败会回退。没有签名更新资产的旧发布仍通过发布页面安装。[更新资产维护说明](docs/current/WINDOWS_UPDATE_PROTOCOL.md)介绍发布流程。
+在“设置 → 关于”检查稳定版本。Android Release 支持后台下载、校验签名后交给系统安装；Debug 显示签名差异和发布页。Windows 自动检查并按发布灰度后台准备更新，手动下载可提前参与；更新包校验完成后下次启动切换，启动失败会回退。v1.17.14采用100% Windows自动检查范围；windows-x64.zip供完整便携安装，windows-full.zip供应用内更新，增量仅适用于1.17.13。没有更新器的旧版需先使用完整安装包。[更新资产维护说明](docs/current/WINDOWS_UPDATE_PROTOCOL.md)介绍发布流程。
 
 ## 先用起来
 
@@ -82,7 +86,7 @@ Android 使用 JDK 17（可使用 Android Studio 的 JBR）、Android SDK 34 和
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-Debug APK 位于 app/build/outputs/apk/debug/。签名配置从 keystore.properties.example 建立本地副本；真实密钥和密码不能进入 Git。
+公开分发须使用[公开构建说明](docs/current/PUBLIC_RELEASE_BUILD.md)中的 -PublicBuild 流程；Debug APK 位于 app/build/outputs/apk/debug/。签名配置从 keystore.properties.example 建立本地副本；真实密钥和密码不能进入 Git。
 
 Windows 使用 .NET 9 SDK；MSI 另需 WiX 4.0.6 和相应 UI 扩展：
 

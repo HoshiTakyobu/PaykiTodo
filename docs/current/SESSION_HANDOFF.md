@@ -1,10 +1,14 @@
 # Session Handoff
 
-## 2026-11-01 1.17.14发布候选与公开配置验收
+## 2026-11-01 v1.17.14正式发布与公开配置验收完成
 
-当前源码Android1.17.14/406、Windows1.17.14.0、Room34，安全公开包正在准备。Android公开构建不读取本机cloud.properties，新安装须在登录页选择有效服务器。已存非空remoteSyncServerUrl继续优先；此前只依赖旧编译默认地址、未存地址的安装可能需要重新选择。Android公开构建、270单测和Lint0错误已通过；Windows新包/更新资产与正式发布终验待补记，范围沿用已授权100%、增量基线1.17.13。公开Release仍v1.15.18；1.17.13功能验收为历史，旧七项目标保持complete，没有本轮设备操作或服务器部署。
+源码及 tag 为 a1ea844，公开模式 CI41246534777 已通过。7项实际公开下载哈希及两端生产更新解析器均核对通过；Windows 1.17.13选择delta，其他基线full，本版不误报更新。详细边界、首次辅助脚本失败与497文件交付见 [发布核对](PUBLIC_RELEASE_1.17.14.md)。当前没有待开发、待上传或待发布步骤；最后文档提交与main一致性以实际Git核对记录为准。
 
-Android证据在Scratch/PaykiTodo/release-publication-1.17.14/android-config-review.json和android-config-review.md。两变体生成BuildConfig、单测XML和Lint时间均位于此次公开构建窗口。最终APK证书、Windows包/更新资产、公开下载、CI及main/tag事实由实际终验填入，不沿用1.17.13成品哈希或宣称本轮重跑旧设备检查。
+已按既有授权正式发布稳定[v1.17.14](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.14)；Android1.17.14/406、Windows1.17.14.0、Room34。公开构建省略本机默认部署配置；新安装须自行选择有效服务器，已有非空地址继续优先，未存地址的旧安装可能需要重选。7项公开资产与真实下载哈希已核实，Windows范围100%，便携484条目、full 482条目、1.17.13增量4条目验签重建通过。1.17.13功能验收保留为历史，旧七项目标保持complete，本轮没有设备操作或服务器部署。
+
+Android证据在Scratch/PaykiTodo/release-publication-1.17.14/android-config-review.json和android-config-review.md。两变体生成BuildConfig、单测XML和Lint时间均位于此次公开构建窗口。新APK身份、Windows包/更新资产和公开下载已核实；实际CI/main/tag提交仍以Git和独立发布记录为准，不沿用1.17.13成品哈希或宣称本轮重跑旧设备检查。
+
+当前成品：app/build/outputs/apk/debug/PaykiTodo-1.17.14-debug.apk、app/build/outputs/apk/release/PaykiTodo-1.17.14-release.apk；MSI desktop/installer-output/PaykiTodo-1.17.14-windows-x64.msi。实际Windows payload为desktop/obj/installer/1.17.14-0697f0cea1af41289cdd3fc027ff4168/payload；交付Deliverables/PaykiTodo/1.17.14，证据Scratch/PaykiTodo/release-publication-1.17.14。旧交付与原用户资料保持。
 
 ## 历史准备：2026-11-01 正式发布授权后启动1.17.14公开构建
 

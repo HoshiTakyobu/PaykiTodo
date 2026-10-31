@@ -37,4 +37,4 @@ RSA-PSS/SHA256 更新清单验签通过，范围 100%、seed 为 PaykiTodo-1.17.
 
 证据在 `Scratch/PaykiTodo/release-publication-1.17.14`：android-artifact-verification.json、android-config-review.json/md、artifacts-windows.json、packaged/windows-regressions.trx、publish-preflight-result.json 及资产清单。
 
-本轮没有重跑旧完整功能/设备套件；不把构建、静态配置复核或下载校验扩展成真实手机覆盖安装、人工验证码、OEM 后台/锁屏行为、所有电脑升级或 MSI 完整生命周期的新验收。实际公开发布、真实下载和更新识别结果单独补记。
+本轮没有重跑旧完整功能/设备套件；不把构建、静态配置复核或下载校验扩展成真实手机覆盖安装、人工验证码、OEM 后台/锁屏行为、所有电脑升级或 MSI 完整生命周期的新验收。实际公开发布、真实下载和更新识别结果见 [发布核对](PUBLIC_RELEASE_1.17.14.md)。

@@ -2,6 +2,12 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
+## 进行中：2026-10-31 双端体验更新
+
+1.17.8阶段完成Windows设置导航与左对齐、中文字体别名、12—22px字号及真实预览、取消/保存一致性、随字号调整的日历与输入框，以及设置/F1可打开的离线使用说明。Android迁移包保留桌面字号。验证和成品见 [VALIDATION_1.17.8.md](VALIDATION_1.17.8.md)。
+
+统一规划输入尚待语法最终收敛及实现。已确认逗号字段、>日程、可省略字段、提醒默认5和0/空括号关闭、层级、#备注、首尾引号、循环方括号、多时段课程关联和可选范围。报告上下文/168小时过期、更新机制、全部历史清理和推送仍未完成。不得用本阶段测试代替整轮验收。
+
 ## Current local fix: 1.17.7 / 399
 
 Android and Windows persist acknowledged account/server-bound personal snapshots for conservative three-way reconciliation. Independent records and noncompeting settings merge automatically; task lifecycle actions can merge with snooze/passive missed state. Repeated identical completion/cancellation keeps the earliest action time and finished items cannot retain enabled reminders. Competing edits within a task's content/schedule section, opposite explicit actions, delete/edit, new-ID collisions and broken references remain conflicts. No baseline means no automatic choice between divergent legacy copies.

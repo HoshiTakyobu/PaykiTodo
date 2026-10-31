@@ -2,6 +2,13 @@
 
 ## Current Baseline
 
+- 当前源码及本地阶段构建：Android `1.17.8 / versionCode 400`、Windows `1.17.8.0`，Room33。完成Windows设置左对齐、中文字体与12—22px字号预览、离线使用说明；其余2026-10-31体验更新仍在进行。
+- Android237单测及Lint通过（0错误/134警告/30提示）；Windows最终71项通过、2项环境夹具跳过，另1条14阶段隔离UIA通过；MSI真实1.17.7升级、修复、文件哈希、已安装EXE、卸载及用户数据保留通过。
+- 新成品在 `Deliverables/PaykiTodo/1.17.8`，含Debug APK、MSI、完整便携目录。没有1.17.8签名Release，也未升级真实手机；`desktop/dist`保持旧版。详见 [1.17.8验证](VALIDATION_1.17.8.md)。
+- 用户已授权整轮完成后推送；公开Release实查仍为v1.15.18。起始54个未推送提交的历史初筛发现待清理内容，尚未推送。规划语法讨论记录在 [p2a-session](planning-input/p2a-session/PLAN.md)。
+
+## Previous completed baseline: 1.17.7
+
 - Android source and verified Debug/signed Release: `1.17.7 / versionCode 399`; Windows source/MSI/portable: `1.17.7.0`; Room remains `33`. Starting commit: `63fc037`.
 - Both clients now retain acknowledged personal snapshots and conservatively merge independent edits. Completion/cancellation can converge with snooze/passive missed state; ambiguous concurrent edits and legacy divergence without a baseline remain protected. Diagnostic logs and delayed callbacks without content changes no longer create false conflicts. See [1.17.7 validation](VALIDATION_1.17.7.md).
 - Passed: 237 Android units; Lint 0 errors/134 warnings/30 informational; 9 distinct account device tests after targeted retries plus 1 Android-to-already-open-Windows live test. Windows: 71 regressions passed, 2 environment-specific cases skipped, plus one 14-stage isolated UIA flow. MSI real 1.17.5 upgrade, repair, installed payload/app, uninstall and normal-user-data preservation passed. The live refresh measured 2083 ms once locally, not a network latency guarantee.

@@ -9,9 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PaykiTodo</AssemblyName>
     <RootNamespace>PaykiTodo.Desktop</RootNamespace>
-    <Version>1.17.7</Version>
-    <AssemblyVersion>1.17.7.0</AssemblyVersion>
-    <FileVersion>1.17.7.0</FileVersion>
+    <Version>1.17.8</Version>
+    <AssemblyVersion>1.17.8.0</AssemblyVersion>
+    <FileVersion>1.17.8.0</FileVersion>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\PaykiTodo.ico</ApplicationIcon>
@@ -24,6 +24,7 @@
   <ItemGroup>
     <Resource Include="Assets\*.png" />
     <Resource Include="Assets\*.ico" />
+    <Resource Include="..\..\docs\WINDOWS_USER_GUIDE.md" Link="Assets\WINDOWS_USER_GUIDE.md" />
     <Resource Include="..\..\app\src\main\res\font\payki_greeting.ttf" Link="Assets\payki_greeting.ttf" />
     <Resource Include="..\..\app\src\main\res\font\sarasa_ui_regular.ttf" Link="Assets\sarasa_ui_regular.ttf" />
     <Resource Include="..\..\app\src\main\res\font\sarasa_ui_semibold.ttf" Link="Assets\sarasa_ui_semibold.ttf" />

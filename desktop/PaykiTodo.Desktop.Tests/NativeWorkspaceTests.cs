@@ -224,7 +224,7 @@ public sealed class NativeWorkspaceTests
                     if (editor == null) return;
                     formTimer.Stop();
                     Assert.Same(window.Icon, editor.Icon);
-                    foreach (var input in Descendants<TextBox>(editor).Where(input => !input.AcceptsReturn && input.Height == 42)) AssertSingleLineFits(input);
+                    foreach (var input in Descendants<TextBox>(editor).Where(input => input.IsVisible && System.Windows.Automation.AutomationProperties.GetName(input) == "时间 HH:mm")) AssertSingleLineFits(input);
                     Descendants<TextBox>(editor).First().Text = "从原生编辑器创建";
                     var save = Descendants<Button>(editor).First(button => button.Content as string == "完成");
                     save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -321,19 +321,67 @@ public sealed class NativeWorkspaceTests
         Screenshot(window, Path.Combine(folder, "windows-calendar-ownership.png"));
 
         Navigate("设置");
+        var chineseFont = Assert.IsType<DesktopFontChoice>(DesktopFonts.Find("微软雅黑"));
+        Assert.Equal("Microsoft YaHei", chineseFont.Key);
+        Assert.Equal(chineseFont.Key, DesktopFonts.Find("Microsoft YaHei")!.Key);
         Modal("选择主字体", () => Click("选择字体"), dialog => {
-            Descendants<ComboBox>(dialog).Single().SelectedItem = "Segoe UI"; DialogClick(dialog, "取消");
+            Descendants<ComboBox>(dialog).Single().Text = "微软雅黑";
+            Descendants<Slider>(dialog).Single().Value = 22;
+            var preview = Descendants<TextBlock>(dialog).Single(text => System.Windows.Automation.AutomationProperties.GetName(text) == "字体预览正文");
+            Assert.Equal(22, preview.FontSize); Assert.Equal(chineseFont.Family.Source, preview.FontFamily.Source);
+            Screenshot(dialog, Path.Combine(folder, "windows-font-preview-22.png"));
+            DialogClick(dialog, "取消");
         });
         Assert.Null(workspace.Document.Settings["desktopFontFamily"]);
+        Assert.Equal(14, NativeUi.InterfaceFontSize);
+        Assert.Null(new DesktopWorkspace(store).Document!.Settings["desktopFontSize"]);
         Modal("选择主字体", () => Click("选择字体"), dialog => {
-            Descendants<ComboBox>(dialog).Single().SelectedItem = "Segoe UI"; DialogClick(dialog, "完成");
+            Descendants<ComboBox>(dialog).Single().Text = "这不是已安装字体";
+            DialogClick(dialog, "完成");
+            Assert.True(dialog.IsVisible); Assert.Null(workspace.Document.Settings["desktopFontFamily"]);
+            Descendants<ComboBox>(dialog).Single().Text = "微软雅黑";
+            Descendants<Slider>(dialog).Single().Value = 22; DialogClick(dialog, "完成");
         });
-        Assert.Equal("Segoe UI", new DesktopWorkspace(store).Document!.Settings["desktopFontFamily"]!.GetValue<string>());
+        var persisted = new DesktopWorkspace(store).Document!;
+        Assert.Equal("Microsoft YaHei", persisted.Settings["desktopFontFamily"]!.GetValue<string>());
+        Assert.Equal(22, DesktopFonts.ReadSize(persisted.Settings));
+        Assert.Equal(22, NativeUi.InterfaceFontSize);
+        foreach (var width in new[] { 1920d, 920d }) {
+            window.MinWidth = width; window.Width = width; window.UpdateLayout();
+            Assert.Equal(width, window.ActualWidth);
+            var section = Descendants<StackPanel>(window).Single(panel => System.Windows.Automation.AutomationProperties.GetAutomationId(panel) == "Settings.Section");
+            var layout = Descendants<Grid>(window).Single(panel => System.Windows.Automation.AutomationProperties.GetAutomationId(panel) == "Settings.Layout");
+            Assert.InRange(section.TransformToAncestor(layout).Transform(new Point()).X, layout.ColumnDefinitions[0].ActualWidth + 23, layout.ColumnDefinitions[0].ActualWidth + 25);
+            var fontButton = Descendants<Button>(window).Single(button => button.Content as string == "选择字体");
+            var bounds = fontButton.TransformToAncestor(window).TransformBounds(new Rect(fontButton.RenderSize));
+            Assert.True(bounds.Right < window.ActualWidth - 12); Assert.True(bounds.Bottom < window.ActualHeight);
+            Screenshot(window, Path.Combine(folder, $"windows-settings-font22-{width}.png"));
+        }
+        window.MinWidth = 900; window.Width = 1280;
+        Navigate("日历"); window.UpdateLayout(); Screenshot(window, Path.Combine(folder, "windows-calendar-font22.png"));
+        var create = Descendants<Button>(window).Single(button => button.Content as string == "＋ 创建日程");
+        Assert.True(create.ActualHeight >= create.DesiredSize.Height);
+        Assert.Equal(3, Descendants<Canvas>(window).Count(canvas => canvas.Tag is DateTime));
+        Modal("新增日程", () => Private("EditItem", true, null!, null!, null!), dialog => {
+            var clocks = Descendants<TextBox>(dialog).Where(input => input.IsVisible && !input.AcceptsReturn && System.Text.RegularExpressions.Regex.IsMatch(input.Text, "^\\d{2}:\\d{2}$")).ToArray();
+            Assert.NotEmpty(clocks);
+            foreach (var input in clocks) AssertSingleLineFits(input);
+            Screenshot(dialog, Path.Combine(folder, "windows-event-editor-font22.png")); DialogClick(dialog, "取消");
+        });
+        Navigate("设置");
         Modal("选择主字体", () => Click("选择字体"), dialog => {
-            Descendants<ComboBox>(dialog).Single().SelectedItem = "系统推荐"; DialogClick(dialog, "完成");
+            Descendants<ComboBox>(dialog).Single().Text = "系统推荐";
+            Descendants<Slider>(dialog).Single().Value = 14; DialogClick(dialog, "完成");
         });
         Click("数据与备份"); window.UpdateLayout(); Screenshot(window, Path.Combine(folder, "windows-backup-settings.png"));
-        Click("常规");
+        Click("常规"); window.UpdateLayout();
+        Modal("PaykiTodo 使用说明", () => Click("打开使用说明"), dialog => {
+            var chapter = Descendants<ComboBox>(dialog).Single();
+            Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("首次打开时选择登录服务器"));
+            chapter.SelectedItem = "字体、字号与主题"; dialog.UpdateLayout();
+            Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("12—22 px"));
+            Screenshot(dialog, Path.Combine(folder, "windows-offline-guide.png")); DialogClick(dialog, "关闭");
+        });
 
         long memorial = 0;
         workspace.Edit(document => memorial = document.SaveItem(NewItem(false, "完成纪念验收") with { CountdownEnabled = true, DueAtMillis = Millis(DateTime.Today.AddDays(-8)) }));

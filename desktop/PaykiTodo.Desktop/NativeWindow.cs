@@ -46,15 +46,16 @@ internal sealed partial class NativeWindow : Window
         this.workspace = workspace ?? new DesktopWorkspace(new DesktopSecureStore(this.profileDirectory));
         Dark = this.workspace.Document?.Settings["themeMode"]?.GetValue<string>() == "DARK";
         SetInterfaceFont(this.workspace.Document?.Settings["desktopFontFamily"]?.GetValue<string>());
+        SetInterfaceFontSize(DesktopFonts.ReadSize(this.workspace.Document?.Settings));
         Title = "PaykiTodo"; Width = 1280; Height = 850; MinWidth = 900; MinHeight = 620;
         Icon = AppIcon; UseLayoutRounding = true; SnapsToDevicePixels = true;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         FontFamily = InterfaceFont;
         ConfigureRendering(this);
-        FontSize = 14; Background = B("#EEF3F4");
+        FontSize = TextSize(14); Background = B("#EEF3F4");
         BuildShell();
         SizeChanged += (_, e) => {
-            if (page == "日历" && ((e.PreviousSize.Width < 1100) != (e.NewSize.Width < 1100) || (e.PreviousSize.Width < 1350) != (e.NewSize.Width < 1350)))
+            if (page == "日历" && ((e.PreviousSize.Width < TextSize(1100)) != (e.NewSize.Width < TextSize(1100)) || (e.PreviousSize.Width < TextSize(1350)) != (e.NewSize.Width < TextSize(1350))))
                 Dispatcher.BeginInvoke(new Action(() => { if (page == "日历") Render(); }));
         };
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && calendarDraft != null) { ClearCalendarDraft(); e.Handled = true; } };
@@ -95,7 +96,7 @@ internal sealed partial class NativeWindow : Window
         var top = new Grid { Margin = new Thickness(28, 22, 24, 14) };
         top.ColumnDefinitions.Add(new ColumnDefinition()); top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         title.VerticalAlignment = VerticalAlignment.Center; top.Children.Add(title);
-        search.MinHeight = 42; search.Margin = new Thickness(0); search.Padding = new Thickness(38, 9, 42, 9);
+        search.MinHeight = Math.Max(42, search.MinHeight); search.Margin = new Thickness(0); search.Padding = new Thickness(38, 9, 42, 9);
         search.TextWrapping = TextWrapping.NoWrap; search.ToolTip = "搜索标题、备注和地点 · Ctrl+F 定位 · Enter 查看";
         search.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) Navigate("搜索"); };
         System.Windows.Automation.AutomationProperties.SetName(search, "搜索事项");
@@ -120,6 +121,7 @@ internal sealed partial class NativeWindow : Window
         InputBindings.Add(keys);
         InputBindings.Add(new System.Windows.Input.KeyBinding(new NativeCommand(() => { search.Focus(); search.SelectAll(); }),
             new System.Windows.Input.KeyGesture(System.Windows.Input.Key.F, System.Windows.Input.ModifierKeys.Control)));
+        InputBindings.Add(new System.Windows.Input.KeyBinding(new NativeCommand(ShowUsageGuide), new System.Windows.Input.KeyGesture(System.Windows.Input.Key.F1)));
     }
 
     private void OnWorkspaceChanged()
@@ -138,6 +140,12 @@ internal sealed partial class NativeWindow : Window
     private void Navigate(string next) { editingPlanning = false; ClearCalendarDraft(); page = next; Render(); }
     private void Render()
     {
+        var settings = workspace.Document?.Settings;
+        var font = DesktopFonts.Find(settings?["desktopFontFamily"]?.GetValue<string>()) ?? DesktopFonts.Choices[0];
+        var size = DesktopFonts.ReadSize(settings);
+        if (InterfaceFont.Source != font.Family.Source || InterfaceFontSize != size) {
+            SetInterfaceFont(font.Key); SetInterfaceFontSize(size); FontFamily = InterfaceFont; FontSize = TextSize(14); BuildShell();
+        }
         calendarClock?.Stop();
         Resources["PaykiTodo.FocusBrush"] = page == "日历" ? Ocean : Forest;
         title.Text = workspace.Document == null ? "账号登录" : reauthenticating ? "重新登录" : page; status.Text = workspace.Status;

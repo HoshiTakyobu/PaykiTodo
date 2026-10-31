@@ -38,13 +38,14 @@ class FeedbackDataTest {
         val source = BackupSnapshot(exportedAtMillis = 1, groups = DefaultTaskGroups.seed, templates = emptyList(),
             tasks = listOf(item(10).copy(calendarId = "courses", countdownPastMode = "KEEP", completed = true)),
             calendars = listOf(PlannerCalendar(), PlannerCalendar("courses", "课程表", "#7955CC", 1)),
-            settings = AppSettings(countdownPastDays = 14, hiddenCalendarIds = setOf("courses"), mainFont = "SARASA", desktopFontFamily = "Segoe UI"))
+            settings = AppSettings(countdownPastDays = 14, hiddenCalendarIds = setOf("courses"), mainFont = "SARASA", desktopFontFamily = "微软雅黑", desktopFontSize = 20))
         val restored = BackupArchiveCodec.decode(BackupArchiveCodec.encode(source))
         assertEquals(source.tasks, restored.tasks)
         assertEquals(source.calendars, restored.calendars)
         assertEquals(source.settings.countdownPastDays, restored.settings.countdownPastDays)
         assertEquals(source.settings.hiddenCalendarIds, restored.settings.hiddenCalendarIds)
         assertEquals(source.settings.desktopFontFamily, restored.settings.desktopFontFamily)
+        assertEquals(20, restored.settings.desktopFontSize)
         assertNotEquals(BackupArchiveCodec.dataFingerprint(source), BackupArchiveCodec.dataFingerprint(source.copy(calendars = listOf(PlannerCalendar()))))
         val legacy = source.toJson().apply { remove("calendars"); getJSONArray("tasks").getJSONObject(0).remove("calendarId"); getJSONArray("tasks").getJSONObject(0).remove("countdownPastMode") }
         val old = backupSnapshotFromJson(legacy)

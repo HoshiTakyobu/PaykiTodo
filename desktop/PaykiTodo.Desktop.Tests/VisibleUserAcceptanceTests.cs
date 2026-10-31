@@ -167,7 +167,7 @@ public sealed class VisibleUserAcceptanceTests
                         }
                         return true;
                     });
-                    var times = UI(() => Descendants<TextBox>(Current()).Where(input => input.Height == 42).ToList());
+                    var times = UI(() => Descendants<TextBox>(Current()).Where(input => AutomationProperties.GetName(input) == "时间 HH:mm").ToList());
                     Assert.Equal(2, times.Count);
                     await Type(times[0], "10:15"); await Type(times[1], "11:45");
                     UI(() => { foreach (var time in times) NativeWorkspaceTests.AssertSingleLineFits(time); return true; });

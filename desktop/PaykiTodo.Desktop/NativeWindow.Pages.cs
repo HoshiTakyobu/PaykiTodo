@@ -23,7 +23,7 @@ internal sealed partial class NativeWindow
             (item.DueAtMillis == long.MaxValue || Local(item.DueAtMillis).Date <= today)).ToList();
         var schedules = EventsOn(today).Where(item => Local(item.EndAtMillis) > DateTime.Now).ToList();
         var greeting = Text(DateTime.Now.Hour < 12 ? "早上好，开启新的一天" : DateTime.Now.Hour < 18 ? "下午好，按自己的节奏来" : "晚上好，给今天一个好结尾", 28, Ocean);
-        greeting.FontFamily = HeadingFont;
+        greeting.FontFamily = HeadingFont; greeting.FontSize = 28;
         var greetingCard = Card(Column(greeting, Text(today.ToString("yyyy年M月d日  dddd", CultureInfo.GetCultureInfo("zh-CN")), 14, Muted)), 24);
         greetingCard.CornerRadius = new CornerRadius(8, 8, 28, 28);
         var body = Column(greetingCard);

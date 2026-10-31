@@ -50,6 +50,7 @@ data class AppSettings(
     val mainFont: String = "SYSTEM",
     val customFontPath: String = "",
     val desktopFontFamily: String? = null,
+    val desktopFontSize: Int = 14,
     val desktopCalendarEventStyle: String = "MODERN",
     val countdownPastDays: Int = 7,
     val hiddenCalendarIds: Set<String> = emptySet(),
@@ -635,6 +636,7 @@ class AppSettingsStore(context: Context) {
             .putString(KEY_THEME_MODE, settings.themeMode.name)
             .putString("main_font", settings.mainFont)
             .putString("desktop_font_family", settings.desktopFontFamily)
+            .putInt("desktop_font_size", settings.desktopFontSize.coerceIn(12, 22))
             .putString("desktop_calendar_event_style", settings.desktopCalendarEventStyle)
             .putInt("countdown_past_days", settings.countdownPastDays.coerceIn(0, 365))
             .putStringSet("hidden_calendar_ids", settings.hiddenCalendarIds)
@@ -744,6 +746,7 @@ class AppSettingsStore(context: Context) {
             mainFont = preferences.getString("main_font", "SYSTEM") ?: "SYSTEM",
             customFontPath = preferences.getString("custom_font_path", "") ?: "",
             desktopFontFamily = preferences.getString("desktop_font_family", null),
+            desktopFontSize = preferences.getInt("desktop_font_size", 14).coerceIn(12, 22),
             desktopCalendarEventStyle = preferences.getString("desktop_calendar_event_style", "MODERN") ?: "MODERN",
             countdownPastDays = preferences.getInt("countdown_past_days", 7).coerceIn(0, 365),
             hiddenCalendarIds = preferences.getStringSet("hidden_calendar_ids", emptySet())?.toSet() ?: emptySet(),

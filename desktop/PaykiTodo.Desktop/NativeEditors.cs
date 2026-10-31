@@ -28,7 +28,7 @@ internal static class NativeEditors
         if (isEvent) dialog.Background = Paper;
         if (anchorScreen is { } anchor) PositionNear(dialog, owner, anchor);
         DesktopItemEdit? result = null;
-        var title = Input(value?.Title ?? "", true); title.MinHeight = 54; title.MaxHeight = 100; title.FontSize = 18;
+        var title = Input(value?.Title ?? "", true); title.MinHeight = 54; title.MaxHeight = 100; title.FontSize = TextSize(18);
         var notes = Input(value?.Notes ?? "", true); notes.MinHeight = 54; notes.MaxHeight = 100;
         var location = Input(value?.Location ?? "");
         var due = new TimeField(value?.DueAtMillis, seed.Date.AddHours(23).AddMinutes(59));
@@ -227,7 +227,7 @@ internal static class NativeEditors
     {
         var dialog = Dialog(owner, "快速清单", 960, 720); QuickChecklistDraft? result = null;
         var source = Input("", true); source.MinHeight = 330; source.Height = 380;
-        source.FontFamily = InterfaceFont; source.FontSize = 15;
+        source.FontFamily = InterfaceFont; source.FontSize = TextSize(15);
         System.Windows.Automation.AutomationProperties.SetName(source, "快速清单源码");
         var preview = new StackPanel(); var error = Text("", 13, B("#AF3A32"));
         var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition());
@@ -305,8 +305,8 @@ internal static class NativeEditors
         public TimeField(long? millis, DateTime fallback, string? zoneId = null)
         {
             var value = millis is { } existing ? DesktopCalendarTime.Wall(existing, zoneId) : fallback;
-            date = new DatePicker { SelectedDate = value, Width = 200, Height = 42, Margin = new Thickness(0, 4, 12, 8) };
-            time = Input(value.ToString("HH:mm")); time.Width = 100; time.Height = 42; time.TextAlignment = TextAlignment.Center;
+            date = new DatePicker { SelectedDate = value, Width = Math.Max(200, TextSize(180)), MinHeight = 42, Margin = new Thickness(0, 4, 12, 8) };
+            time = Input(value.ToString("HH:mm")); time.Width = Math.Max(100, TextSize(85)); time.MinHeight = Math.Max(42, time.MinHeight); time.TextAlignment = TextAlignment.Center;
             time.Margin = new Thickness(0, 4, 0, 8);
             System.Windows.Automation.AutomationProperties.SetName(time, "时间 HH:mm"); Control = Row(date, time);
         }

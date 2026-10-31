@@ -43,9 +43,9 @@ internal sealed partial class NativeWindow
             var current = e.GetPosition(grid);
             if (!dragging && (current - point).Length < 5) return;
             dragging = true;
-            var columnWidth = Math.Max(1, (grid.ActualWidth - 56) / count);
+            var columnWidth = Math.Max(1, (grid.ActualWidth - TimeAxisWidth) / count);
             var oldColumn = ((DateTime)dayCanvas.Tag - visibleStart).Days;
-            var newColumn = Math.Clamp((int)((current.X - 56) / columnWidth), 0, count - 1);
+            var newColumn = Math.Clamp((int)((current.X - TimeAxisWidth) / columnWidth), 0, count - 1);
             var edit = workspace.Document?.EditFor(item.Id); if (edit == null) { Reset(); return; }
             try { candidate = CalendarDragEdit(edit, newColumn - oldColumn, current.Y - point.Y, resizing, workspace.Document?.CalendarDisplayTimeZoneId); }
             catch (InvalidOperationException) { candidate = null; overlay?.Children.Clear(); return; }
@@ -56,7 +56,7 @@ internal sealed partial class NativeWindow
             var ghost = new Border { Width = columnWidth - 5, Height = Math.Max(24, Math.Min(24 * HourHeight, (end - at).TotalMinutes * HourHeight / 60)),
                 Background = B("#3370FF"), CornerRadius = new CornerRadius(4), Padding = new Thickness(5), Opacity = .85,
                 Child = Column(Text(item.Title, 12, B("#FFFFFF"), true), Text($"{at:MM-dd HH:mm} – {end:MM-dd HH:mm}", 11, B("#FFFFFF"))) };
-            Canvas.SetLeft(ghost, 56 + columnWidth * column + 2); Canvas.SetTop(ghost, TimeInset + at.TimeOfDay.TotalMinutes * HourHeight / 60); overlay.Children.Add(ghost);
+            Canvas.SetLeft(ghost, TimeAxisWidth + columnWidth * column + 2); Canvas.SetTop(ghost, TimeInset + at.TimeOfDay.TotalMinutes * HourHeight / 60); overlay.Children.Add(ghost);
             e.Handled = true;
         };
         tile.MouseLeftButtonUp += (_, e) => {

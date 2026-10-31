@@ -112,7 +112,7 @@ internal sealed partial class NativeWindow
         var accountLabels = Column(Text(workspace.Account?.Username ?? "本地账号", 20, bold: true), Text("账号与设备", 13, Muted));
         Grid.SetColumn(accountLabels, 1); identity.Children.Add(accountLabels);
         body.Children.Add(Card(Column(identity,
-            Text("本机修改自动同步，每 15 秒检查云端；登录过期后仍可离线编辑和提醒。", 14, Muted),
+            Text("本机修改自动同步，运行期间每 3 秒检查云端；登录过期后仍可离线编辑和提醒。", 14, Muted),
             new Border { Height = 1, Background = Outline, Margin = new Thickness(0, 12, 0, 16) },
             SettingRow("登录服务器", ReadServerPreference(), Action("管理服务器", () => ChooseLoginServer())),
             Row(Action("账号和设备", ShowAccountDetails), Action("立即同步", async () => await workspace.SyncAsync(), true), Action("重新登录", () => { reauthenticating = true; Render(); }), Action("退出登录", async () => {
@@ -128,8 +128,9 @@ internal sealed partial class NativeWindow
         pastDays.SelectionChanged += (_, _) => { if (pastDays.SelectedItem is int days) Change(document => document.Settings["countdownPastDays"] = days); };
         body.Children.Add(Card(Column(Text("外观与习惯", 20, bold: true),
             SettingRow("界面主题", "选择适合当前环境的显示方式", theme),
-            SettingRow("主字体", workspace.Document.Settings["desktopFontFamily"]?.GetValue<string>() ?? "系统推荐 · Microsoft YaHei UI", Action("选择字体", ChooseInterfaceFont)),
-            SettingRow("历史倒数日", "目标日期过去多少天后自动隐藏；保留纪念的事项始终展示", pastDays))));
+            SettingRow("字体与字号", (DesktopFonts.Find(workspace.Document.Settings["desktopFontFamily"]?.GetValue<string>())?.DisplayName ?? "系统推荐") + $" · {InterfaceFontSize:0} px", Action("选择字体", ChooseInterfaceFont)),
+            SettingRow("历史倒数日", "目标日期过去多少天后自动隐藏；保留纪念的事项始终展示", pastDays),
+            SettingRow("使用说明", "离线阅读操作方法、提醒与备份说明；也可以按 F1 打开", Action("打开使用说明", ShowUsageGuide)))));
         body.Children.Add(Card(Column(Text("数据与备份", 20, bold: true), Text("迁移包可在手机与电脑间导入。导入或切换云端版本前会自动保留本机安全副本。", 13, Muted),
             SettingRow("导出迁移包", "保存可在手机和电脑恢复的数据副本", Action("导出备份", () => {
                 var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "PaykiTodo 迁移包|*.paykibak", FileName = "PaykiTodo-" + DateTime.Now.ToString("yyyyMMdd-HHmm") + ".paykibak" };
@@ -165,42 +166,85 @@ internal sealed partial class NativeWindow
         body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 " + typeof(NativeWindow).Assembly.GetName().Version?.ToString(3), 14, Muted),
             Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
         var categories = new[] { "账号与同步", "常规", "数据与备份", "分组管理", "AI 与规划", "连接手机", "关于" };
-        var shell = new Grid { Margin = new Thickness(18, 0, 18, 18) };
-        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(154) }); shell.ColumnDefinitions.Add(new ColumnDefinition());
+        var shell = new Grid { Margin = new Thickness(28, 0, 24, 18) };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(shell, "Settings.Layout");
+        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(168, TextSize(126) + 32)) }); shell.ColumnDefinitions.Add(new ColumnDefinition());
         var rail = Column();
         for (var index = 0; index < categories.Length; index++) {
             var target = index; var entry = Action(categories[index], () => { settingsCategory = target; Render(); });
-            entry.HorizontalContentAlignment = HorizontalAlignment.Left; entry.Margin = new Thickness(0, 2, 8, 4); entry.BorderThickness = new Thickness(0);
-            entry.Background = index == settingsCategory ? B("#E8F0FF") : B("#F5F7FA"); rail.Children.Add(entry);
+            entry.HorizontalContentAlignment = HorizontalAlignment.Left; entry.Margin = new Thickness(0, 2, 8, 4);
+            entry.Padding = new Thickness(12, 10, 8, 10);
+            entry.BorderThickness = new Thickness(index == settingsCategory ? 3 : 0, 0, 0, 0);
+            entry.BorderBrush = Ocean; entry.Foreground = index == settingsCategory ? Ocean : Ink;
+            entry.Background = index == settingsCategory ? B("#E8F0FF") : System.Windows.Media.Brushes.Transparent;
+            System.Windows.Automation.AutomationProperties.SetAutomationId(entry, "Settings.Category." + index);
+            rail.Children.Add(entry);
         }
-        shell.Children.Add(new Border { Background = B("#F5F7FA"), Padding = new Thickness(8, 16, 4, 8), Child = rail });
+        shell.Children.Add(new Border { Background = System.Windows.Media.Brushes.Transparent, BorderBrush = B("#E1E7F0"),
+            BorderThickness = new Thickness(0, 0, 1, 0), Padding = new Thickness(0, 12, 4, 8), Child = Scroll(rail) });
         var chosen = body.Children[settingsCategory]; body.Children.Remove(chosen);
         var section = Column(Text(categories[settingsCategory], 23, bold: true), Text("按你的习惯，安排每一天。", 13, Muted), chosen);
-        section.MaxWidth = 850; section.HorizontalAlignment = HorizontalAlignment.Stretch; section.Margin = new Thickness(24, 12, 12, 0);
+        section.MaxWidth = 1000; section.HorizontalAlignment = HorizontalAlignment.Left; section.Margin = new Thickness(24, 12, 0, 0);
+        System.Windows.Automation.AutomationProperties.SetAutomationId(section, "Settings.Section");
         var scroll = Scroll(section); Grid.SetColumn(scroll, 1); shell.Children.Add(scroll); return shell;
     }
 
     private static UIElement SettingRow(string title, string summary, UIElement control)
     {
         var row = new Grid { Margin = new Thickness(0, 14, 0, 14) }; row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var labels = Column(Text(title, 15, bold: true), Text(summary, 12, Muted)); labels.Margin = new Thickness(0, 0, 20, 0); row.Children.Add(labels);
         ((FrameworkElement)control).VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(control, 1); row.Children.Add(control);
+        row.SizeChanged += (_, _) => {
+            var stacked = row.ActualWidth < TextSize(440);
+            Grid.SetColumn(control, stacked ? 0 : 1); Grid.SetRow(control, stacked ? 1 : 0);
+            Grid.SetColumnSpan(control, stacked ? 2 : 1); Grid.SetColumnSpan(labels, stacked ? 2 : 1);
+            ((FrameworkElement)control).HorizontalAlignment = HorizontalAlignment.Left;
+        };
         return new Border { BorderBrush = Outline, BorderThickness = new Thickness(0, 0, 0, 0.5), Child = row };
     }
 
     private void ChooseInterfaceFont()
     {
-        var dialog = Dialog(this, "选择主字体", 570, 430);
-        var names = new[] { "系统推荐", "Sarasa UI SC" }.Concat(System.Windows.Media.Fonts.SystemFontFamilies.Select(font => font.Source).OrderBy(name => name)).Distinct().ToList();
-        var choice = new System.Windows.Controls.ComboBox { ItemsSource = names, SelectedItem = workspace.Document!.Settings["desktopFontFamily"]?.GetValue<string>() ?? "系统推荐" };
+        var dialog = Dialog(this, "选择主字体", 640, 600);
+        var names = DesktopFonts.Choices;
+        var current = DesktopFonts.Find(workspace.Document!.Settings["desktopFontFamily"]?.GetValue<string>()) ?? names[0];
+        var choice = new ComboBox { ItemsSource = names, DisplayMemberPath = nameof(DesktopFontChoice.DisplayName),
+            IsEditable = true, IsTextSearchEnabled = true, SelectedItem = names.First(font => font.Key == current.Key), MaxDropDownHeight = 280 };
+        TextSearch.SetTextPath(choice, nameof(DesktopFontChoice.DisplayName));
         System.Windows.Automation.AutomationProperties.SetName(choice, "主字体");
-        var preview = Text("把今天安排得刚刚好\nPaykiTodo · 09:30 · DDL 2026-10-23", 18);
-        void PreviewFont() { var name = choice.SelectedItem?.ToString(); preview.FontFamily = name == "Sarasa UI SC" ? BundledFont : new System.Windows.Media.FontFamily(name == "系统推荐" ? "Microsoft YaHei UI, Segoe UI" : name + ", Microsoft YaHei UI, Segoe UI"); }
-        choice.SelectionChanged += (_, _) => PreviewFont(); PreviewFont();
-        dialog.Content = DialogLayout(Column(BrandHeading("主字体", "用于正文和编辑器；品牌、导航和问候语保持固定。"), choice, new Border { Padding = new Thickness(16), Background = Paper, Child = preview }),
+        var size = new Slider { Minimum = DesktopFonts.MinimumSize, Maximum = DesktopFonts.MaximumSize,
+            Value = InterfaceFontSize, TickFrequency = 1, IsSnapToTickEnabled = true, SmallChange = 1, LargeChange = 2, Margin = new Thickness(0, 12, 0, 12) };
+        System.Windows.Automation.AutomationProperties.SetName(size, "正文字号");
+        var sizeLabel = Text("");
+        var previewTitle = Text("整理今天的计划 Today", 19);
+        var previewTime = Text("截止 明天 18:30 · 提前 5 分钟提醒", 16, Muted);
+        var previewBody = Text("中英文、数字与标点 Aa 0123456789，。！？", 14);
+        var previewInput = Input("输入框预览：明天 09:00-10:00 阅读"); previewInput.IsReadOnly = true; previewInput.Margin = new Thickness(0, 12, 0, 0);
+        System.Windows.Automation.AutomationProperties.SetName(previewBody, "字体预览正文");
+        var error = Text("", 13, B("#BD4747"));
+        void PreviewFont() {
+            var font = DesktopFonts.Find(choice.Text);
+            error.Text = font == null ? "未找到此字体，请输入本机字体的中文或英文名称，或从列表选择。" : "";
+            if (font == null) return;
+            foreach (var (text, originalSize) in new[] { (previewTitle, 19d), (previewTime, 16d), (previewBody, 14d) }) {
+                text.FontFamily = font.Family; text.FontSize = originalSize * size.Value / DesktopFonts.DefaultSize;
+            }
+            previewInput.FontFamily = font.Family; previewInput.FontSize = size.Value;
+            sizeLabel.Text = $"正文字号：{size.Value:0} px（默认 14）";
+        }
+        choice.AddHandler(TextBox.TextChangedEvent, new TextChangedEventHandler((_, _) => PreviewFont()));
+        size.ValueChanged += (_, _) => PreviewFont();
+        choice.Text = current.DisplayName; PreviewFont();
+        dialog.Content = DialogLayout(Column(BrandHeading("字体与字号", "输入中文或英文名称查找字体；拖动滑块查看实际文字大小。"), choice, sizeLabel, size,
+            new Border { Padding = new Thickness(16), Background = Paper, Child = Column(previewTitle, previewTime, previewBody, previewInput) }, error),
             Action("取消", () => dialog.Close()), Action("完成", () => {
-                var name = choice.SelectedItem?.ToString(); if (name == "系统推荐") name = null;
-                SetInterfaceFont(name); dialog.Close(); FontFamily = InterfaceFont; BuildShell(); Change(document => document.Settings["desktopFontFamily"] = name); Render();
+                var font = DesktopFonts.Find(choice.Text); if (font == null) { PreviewFont(); return; }
+                try {
+                    workspace.Edit(document => { document.Settings["desktopFontFamily"] = font.Key.Length == 0 ? null : font.Key; document.Settings["desktopFontSize"] = (int)size.Value; });
+                    SetInterfaceFont(font.Key); SetInterfaceFontSize(size.Value); dialog.Close();
+                    FontFamily = InterfaceFont; FontSize = TextSize(14); BuildShell(); Render();
+                } catch (Exception failure) { error.Text = DesktopWorkspace.FriendlyError(failure); }
             }, true));
         dialog.ShowDialog();
     }

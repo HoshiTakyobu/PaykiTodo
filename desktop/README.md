@@ -1,51 +1,54 @@
 # PaykiTodo Windows 客户端
 
-当前 Windows 客户端是独立的原生 WPF 工作区，拥有自己的本地数据副本，不是手机 LAN 网页的壳。它通过账号连接云端加密快照；手机不在线时仍可编辑本机副本，联网后按版本同步，冲突会停下来提示处理。
+Windows 客户端以原生 WPF 提供每日看板、待办、日历、规划、倒数日、AI 报告、提醒与设置。它有独立本地副本，通过账号服务器与 Android 同步；手机无需持续在线。WebView2 仅用于账号人机验证。
 
-主工作区包含每日看板、待办与快速清单、历史恢复、日历（日/周/月/列表）、倒数日、规划台、AI 报告、分组、备份、提醒、深色模式以及账号和设备管理。普通编辑先写入本地草稿，点击“完成”才提交。提醒在客户端运行期间通过托盘通知和置顶窗口送达；关机、退出或睡眠期间没有后台提醒保证。
+用户操作见 [Windows 使用说明](../docs/WINDOWS_USER_GUIDE.md)，客户端“设置 → 常规 → 使用说明”或 F1 可离线打开同一份文档。安装方法见 [MSI 说明](installer/README.md)。
 
-账号登录和注册使用 WebView2 承载现有 Turnstile 人机验证。其余工作区、编辑器和页面均为原生 WPF 控件；WebView2 不承载主界面。
+## 当前版本
 
-`1.16.21` 增加可选记住账号与 DPAPI 加密记住密码，登录过期时保留离线编辑和提醒。设置提供“检查云端并恢复”“保留本机上传”和“恢复操作前副本”；确认时核对账号、本机修改和云端版本，并先保留双方副本。
+源码为 1.17.8.0。设置内容靠左，分类导航采用同底色；字体支持中文名称与12—22 px字号预览，完成后保存。原有日历、循环、多时段、OCR、账号同步和备份能力保留。
 
-深色模式使用中性蓝灰表面，工具栏随窗口宽度换行；规划草稿可跨导航保留，后台同步状态更新不会重建编辑器。周/日历中的重叠日程分栏显示，编辑器用星期复选框选择每周循环。无标题快速清单可直接从 `- 任务` 开始。
+整个双端体验更新仍在进行，最新公开 Release 为 v1.15.18。不要将本地构建路径当作公开下载链接。
 
-尚未完全对齐手机的功能包括农历循环创建、OCR 识别和多时段批量创建；编辑已有手机记录会保留相应特殊字段。Android 锁屏、通知权限、无障碍和小组件属于手机系统入口。
+## 开发与构建
 
-`1.16.24` 使用无衬线标题、导航和正文，清刻本悦宋仅用于问候；日历新增小月历、本周/今日标记、时区、固定日期栏及连续时间红线，采用蓝色动作。搜索框提示、账号卡片顺序、一体清单图标和辅助功能完成/恢复操作已修复。自动续传、离线副本和历史提醒不补发规则延续；手机较新、电脑副本过旧时见[同步恢复说明](../docs/current/SYNC_RECOVERY_1.16.23.md)。
+需要 Windows 10 1809+/Windows 11 x64 和 .NET 9 SDK。主工程是 PaykiTodo.Desktop/，测试工程是 PaykiTodo.Desktop.Tests/。
 
-`1.16.22` 统一中文无衬线字体、原品牌窗口/托盘图标、导航与浅深色控件，编辑弹窗固定操作区，提醒居中，窄窗口看板改为单列，规划台固定底部操作。账号退出后明确显示登录标题。默认测试不再占用用户的系统指针。
-
-## 手机 LAN 兼容路径
-
-“连接电脑”仍然是单独的浏览器路径：
-
-```text
-电脑浏览器 -> 手机:18765 -> 手机本地 Room 数据库
-```
-
-手机必须主动开启该功能。手机断开或关闭后，LAN Web 会关闭编辑弹窗并丢弃未提交草稿。该路径直接操作手机数据，不创建 Windows 本地副本；正式 Windows 客户端不依赖 `18765`。
-
-## 构建和分发
-
-在仓库根目录运行：
+在仓库根目录执行：
 
 ```powershell
+dotnet build desktop/PaykiTodo.Desktop/PaykiTodo.Desktop.csproj
 .\tools\Build-PaykiTodoDesktop.ps1
 ```
 
-脚本输出完整的 self-contained `win-x64` 目录到 `desktop\dist\`，入口为 `desktop\dist\PaykiTodo.exe`，不能只复制单个 EXE。目标电脑无需安装 .NET Runtime，但需要 Microsoft Edge WebView2 Runtime。`-FrameworkDependent` 可生成依赖 .NET Runtime 的较小版本。
+第二条脚本生成完整的 self-contained win-x64 目录到 desktop/dist/，入口为 PaykiTodo.exe。便携分发必须保留整个目录。可用 -FrameworkDependent 构建依赖已安装 .NET Runtime 的版本。
 
-客户端首选 `user\cloud.properties` 中的本地服务器地址写入被忽略的 `client-config.json`；真实域名、证书、服务器 IP、管理员密码和环境变量不得提交到 Git。
-
-默认数据目录仍为 `%LOCALAPPDATA%\PaykiTodo`。测试或独立资料副本可使用 `PaykiTodo.exe --data-directory <目录>`；本地数据、记忆凭据、服务器偏好及验证浏览器资料均隔离到该目录，不会复制正式账号或绕过登录锁定。
-
-## 不干扰日常操作的验收
+本地构建脚本可以从忽略的用户配置读取服务器默认值。公开分发前须检查生成的 client-config.json 和所有配置，不得携带私有部署地址、账号或凭据。MSI 公共构建可以不传 -ServerConfig，由用户在首次登录选择服务器。
 
 ```powershell
-.\tools\tests\Invoke-DesktopAcceptance.ps1 -PackagedExe .\desktop\dist\PaykiTodo.exe
+pwsh -File tools/build/Build-WindowsInstaller.ps1 -WixPath <wix.exe路径>
 ```
 
-从仓库根目录执行。脚本把测试进程绑定到独立 Win32 桌面，通过 WPF UI Automation 控件接口编辑、确认、导航；不切换用户桌面、不注入全局输入、不使用剪贴板。少量渲染图片辅助排版检查，不是仅启动或看日志。直接 `dotnet test` 会跳过需要桌面隔离的界面用例。单独设置 `PAYKI_VISIBLE_ACCEPTANCE=1` 的物理输入模式会占用鼠标/键盘，不能在用户日常操作时运行。
+MSI 需要 WiX 4.0.6 和 WixToolset.UI.wixext/4.0.6，输出到 desktop/installer-output/。脚本使用全新 payload 目录并输出文件哈希清单。
 
-控件自动化不等于物理鼠标命中或全局键盘输入。成品启动检查与专门测试账号的实际客户端同步/提醒流程分别记录；人机验证由用户完成。逐项范围见 [VALIDATION_1.16.24.md](../docs/current/VALIDATION_1.16.24.md)。
+## 数据与界面约定
+
+- 默认用户目录为 %LOCALAPPDATA%/PaykiTodo。测试与独立工作区使用 --data-directory 指向专用目录，隔离数据、凭据、服务器选择和验证浏览器资料。
+- 普通编辑在“完成”前只保留草稿，关闭或取消不提交。同步中的独立修改可以合并，真实冲突保留明确恢复选择及安全副本。
+- 手机的“连接电脑”是独立局域网浏览器入口，直接操作手机数据；它不是 Windows 账号同步的替代路径。
+- 提醒依赖桌面程序保持运行。Android 通知、锁屏、权限和小组件由手机端管理。
+- 主字体和字号影响正文、编辑器和常规控件；品牌、导航图形和问候字样沿用固定设计。字体资源遵守各自许可。
+- 内置说明直接嵌入 docs/WINDOWS_USER_GUIDE.md；变更用户流程时更新该文件并重新构建。
+
+## 验证
+
+```powershell
+.\tools\tests\Invoke-DesktopAcceptance.ps1 -Evidence <专用证据目录>
+.\tools\tests\Invoke-DesktopAcceptance.ps1 -PackagedExe <完整便携目录中的PaykiTodo.exe> -Evidence <专用证据目录>
+```
+
+默认验证在独立 Win32 桌面中使用 UI Automation，不接管日常鼠标、键盘或剪贴板。直接 dotnet test 会跳过需要隔离的界面用例。实物输入模式必须另行安排。
+
+MSI 生命周期验证使用 tools/tests/Test-WindowsInstaller.ps1。它拒绝覆盖已有用户安装，在专用目录验证升级、修复、已安装 EXE、卸载及用户数据保留。测试结果区分数据回归、控件流程、打包 EXE 启动与安装生命周期，不将某一项通过作为所有用户场景都正常的保证。
+
+真实用户数据、签名材料、服务地址和令牌不能进入源码、公开日志或测试截图。具体轮次证据见 docs/current/ 下对应验收记录。

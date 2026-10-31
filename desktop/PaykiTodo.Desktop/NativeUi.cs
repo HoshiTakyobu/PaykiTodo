@@ -23,12 +23,14 @@ internal static class NativeUi
     private const string StyleKey = "PaykiTodo.ControlStyles";
     public static FontFamily BundledFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
     public static FontFamily InterfaceFont { get; private set; } = new("Microsoft YaHei UI");
+    public static double InterfaceFontSize { get; private set; } = DesktopFonts.DefaultSize;
+    public static double TextSize(double size) => size * InterfaceFontSize / DesktopFonts.DefaultSize;
+    public static void SetInterfaceFontSize(double size) => InterfaceFontSize = DesktopFonts.ValidSize(size);
     public static FontWeight EmphasisWeight { get; private set; } = FontWeights.Bold;
     public static FontFamily UtilityFont => InterfaceFont;
     public static void SetInterfaceFont(string? name)
     {
-        InterfaceFont = name == "Sarasa UI SC" ? BundledFont :
-            string.IsNullOrWhiteSpace(name) || !Fonts.SystemFontFamilies.Any(font => font.Source == name) ? new FontFamily("Microsoft YaHei UI") : new FontFamily(name);
+        InterfaceFont = (DesktopFonts.Find(name) ?? DesktopFonts.Choices[0]).Family;
         // Never manufacture a heavy outline for a font that ships only one face.
         EmphasisWeight = InterfaceFont.GetTypefaces()
             .Where(face => face.Style == FontStyles.Normal && face.Weight.ToOpenTypeWeight() >= 600 &&
@@ -67,8 +69,8 @@ internal static class NativeUi
     public static TextBlock Text(string value, double size = 14, Brush? color = null, bool bold = false) => new()
     {
         Text = value, FontFamily = InterfaceFont,
-        FontSize = size, Foreground = color ?? Ink, TextWrapping = TextWrapping.Wrap,
-        LineHeight = Math.Ceiling(size * 1.4), LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+        FontSize = TextSize(size), Foreground = color ?? Ink, TextWrapping = TextWrapping.Wrap,
+        LineHeight = double.NaN, LineStackingStrategy = LineStackingStrategy.MaxHeight,
         FontWeight = bold ? EmphasisWeight : FontWeights.Normal,
         Margin = new Thickness(0, 1, 0, 3)
     };
@@ -137,7 +139,7 @@ internal static class NativeUi
     };
     public static Button Action(string label, Action click, bool primary = false)
     {
-        var button = new Button { Content = label, FontFamily = InterfaceFont, FontSize = 14, MinHeight = 40,
+        var button = new Button { Content = label, FontFamily = InterfaceFont, FontSize = TextSize(14), MinHeight = 40,
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
             FontWeight = primary ? EmphasisWeight : FontWeights.Normal, Padding = new Thickness(16, 9, 16, 9),
             Margin = new Thickness(0, 0, 8, 6), Background = primary ? B("#326F59") : B("#EAF0ED"),
@@ -201,9 +203,9 @@ internal static class NativeUi
     }
     public static TextBox Input(string value = "", bool multiline = false) => new()
     {
-        Text = value, FontFamily = UtilityFont, FontSize = 14, Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 4, 0, 16),
+        Text = value, FontFamily = UtilityFont, FontSize = TextSize(14), Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 4, 0, 16),
         VerticalContentAlignment = multiline ? VerticalAlignment.Top : VerticalAlignment.Center,
-        MinHeight = multiline ? 110 : 40, AcceptsReturn = multiline, TextWrapping = TextWrapping.Wrap,
+        MinHeight = multiline ? 110 : Math.Max(40, Math.Ceiling(TextSize(14) * Math.Max(1.4, UtilityFont.LineSpacing)) + 20), AcceptsReturn = multiline, TextWrapping = TextWrapping.Wrap,
         VerticalScrollBarVisibility = multiline ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden,
         BorderBrush = Outline, BorderThickness = new Thickness(1), Background = Paper, Foreground = Ink
     };
@@ -216,7 +218,7 @@ internal static class NativeUi
         Width = Math.Min(width, SystemParameters.WorkArea.Width * 0.95), Height = Math.Min(height, SystemParameters.WorkArea.Height * 0.95),
         MinWidth = Math.Min(420, width), MinHeight = Math.Min(320, height),
         WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = B("#F1F5F3"),
-        FontFamily = InterfaceFont, FontSize = 14, Foreground = Ink, UseLayoutRounding = true, SnapsToDevicePixels = true,
+        FontFamily = InterfaceFont, FontSize = TextSize(14), Foreground = Ink, UseLayoutRounding = true, SnapsToDevicePixels = true,
         ShowInTaskbar = false, Resources = owner.Resources
         };
         ConfigureRendering(window);
@@ -333,8 +335,8 @@ internal static class NativeUi
             style.Setters.Add(new Setter(Control.BackgroundProperty, Paper));
             style.Setters.Add(new Setter(Control.BorderBrushProperty, Outline));
             style.Setters.Add(new Setter(Control.FontFamilyProperty, type == typeof(TextBox) || type == typeof(PasswordBox) || type == typeof(DatePicker) ? UtilityFont : InterfaceFont));
-            style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Medium));
-            style.Setters.Add(new Setter(Control.FontSizeProperty, 14d));
+            style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Normal));
+            style.Setters.Add(new Setter(Control.FontSizeProperty, TextSize(14)));
             styles[type] = style;
         }
         resources[StyleKey] = styles; resources.MergedDictionaries.Add(styles);

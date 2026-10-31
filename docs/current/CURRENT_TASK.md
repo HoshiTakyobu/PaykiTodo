@@ -1,5 +1,11 @@
 # Current Task
 
+## 后续：1.17.13本地发布材料准备完成
+
+旧七项目标与源码push均已完成，用户再要求继续但尚未指定新开发或公开Release范围。本轮准备了[发布候选](RELEASE_CANDIDATE_1.17.13.md)，材料与审核在Scratch/PaykiTodo/release-preparation-1.17.13。APK/MSI保持已验收原成品，另打484条目便携ZIP，核对旧公开APK同证书/包名及更新资产。
+
+现有Windows签名清单为100%自动更新范围；实际公开发布为新步骤，等待用户明确。不以未回复或时间经过视为发布批准。未创建tag/Release、上传资产或改变线上灰度；公开Release仍v1.15.18，旧goal不重新启动。
+
 ## 2026-11-01 原七项目标已完成：1.17.13验收、交付与审计后推送
 
 首次GitHub CI的无签名配置空路径错误已由61ae359修正；[实际CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41243078175)单测、Debug构建及空白检查全部通过。独立公开副本Debug配置成功，无配置Release仍明确拒绝；见[公开构建验收](VALIDATION_PUBLIC_BUILD_20261101.md)。未改变已验收产品行为或重建本地1.17.13成品。

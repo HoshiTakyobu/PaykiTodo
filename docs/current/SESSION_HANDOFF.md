@@ -1,5 +1,13 @@
 # Session Handoff
 
+## 2026-11-01 后续本地发布候选已准备，尚未公开发布
+
+旧七项目标已完成后用户再次要求继续，尚未指定新功能或公开发布范围。本轮仅整理[1.17.13发布候选](RELEASE_CANDIDATE_1.17.13.md)：公众发布说明、7项资产清单/校验和、新484条目完整便携ZIP。已有APK/MSI/更新资产哈希保持；未重建APK，最新仍Deliverables/PaykiTodo/1.17.13/PaykiTodo-1.17.13-release.apk。公开v1.15.18与候选APK签名有效、证书与包名一致，360→405；没有执行真实手机升级。
+
+候选源码基线70d892a与最终CI已通过；材料在Scratch/PaykiTodo/release-preparation-1.17.13。现有Windows签名manifest为100%自动更新范围，不是小范围灰度；full更新ZIP482条目不同于完整便携ZIP484条目。若公开发布，应先备齐资产再一次发布稳定v1.17.13；更改灰度需要重新签名。异步问题等待用户说明公开发布还是新开发，不能以未回复当作发布批准。
+
+没有创建tag/Release、上传安装包、push本轮文档或部署，也没有操作用户资料/模拟器；旧goal保持complete。原未跟踪规划Prompt保留。后续先读取本节与候选说明，再按用户实际新指令继续，不重新实现或验收已通过的七项。
+
 ## 2026-11-01 1.17.13原七项目标与源码推送完成
 
 首次GitHub CI的无签名配置空路径错误已由61ae359修正；[实际CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41243078175)单测、Debug构建及空白检查全部通过。独立公开副本Debug配置成功，无配置Release仍明确拒绝；见[公开构建验收](VALIDATION_PUBLIC_BUILD_20261101.md)。未改变已验收产品行为或重建本地1.17.13成品。

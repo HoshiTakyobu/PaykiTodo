@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$SkipDebugBuild,
+    [switch]$PublicBuild,
     [switch]$OpenOutput
 )
 
@@ -31,15 +32,19 @@ $releaseApk = Join-Path $repo "app\build\outputs\apk\release\PaykiTodo-$versionN
 Write-Host 'PaykiTodo release builder'
 Write-Host "Source version: $versionName / versionCode $versionCode"
 Write-Host 'Release is rebuilt from source with the release configuration and signing key; it is not a binary conversion of a Debug APK.'
+$gradleBuildOptions = @('--console=plain', "-PpaykiPublicBuild=$($PublicBuild.IsPresent.ToString().ToLowerInvariant())")
+if ($PublicBuild) {
+    Write-Host 'Public build: local cloud configuration is omitted; select a login server in the app.'
+}
 
 if (-not $SkipDebugBuild -or -not (Test-Path -LiteralPath $debugApk)) {
     Write-Host 'Checking that the Debug build succeeds...'
-    & $gradle ':app:assembleDebug' '--console=plain'
+    & $gradle ':app:assembleDebug' @gradleBuildOptions
     if ($LASTEXITCODE -ne 0) { throw "Debug build failed with exit code $LASTEXITCODE" }
 }
 
 Write-Host 'Building the signed Release APK with R8 and resource shrinking...'
-& $gradle ':app:assembleRelease' '--console=plain'
+& $gradle ':app:assembleRelease' @gradleBuildOptions
 if ($LASTEXITCODE -ne 0) { throw "Release build failed with exit code $LASTEXITCODE" }
 if (-not (Test-Path -LiteralPath $releaseApk)) { throw "Build completed but output was not found: $releaseApk" }
 

@@ -1,6 +1,18 @@
 # Project Status
 
-## Current baseline: 1.17.13 recurring absolute planning
+## Current candidate: 1.17.14 public packages
+
+当前源码Android1.17.14/406、Windows1.17.14.0、Room34，安全公开包正在准备。Android公开构建不读取本机cloud.properties，新安装须在登录页选择有效服务器。已存非空remoteSyncServerUrl继续优先；此前只依赖旧编译默认地址、未存地址的安装可能需要重新选择。Android公开构建、270单测和Lint0错误已通过；Windows新包/更新资产与正式发布终验待补记，范围沿用已授权100%、增量基线1.17.13。公开Release仍v1.15.18；1.17.13功能验收为历史，旧七项目标保持complete，没有本轮设备操作或服务器部署。
+
+## Historical preparation: 1.17.14 safe public build started
+
+用户在明确的正式发布及100%Windows更新候选后要求继续，发布授权有效。上传前扫描发现1.17.13本地APK的DEX含私有默认部署地址，尚未创建或上传Release。已确认服务器选择、已存配置优先和服务端人机验证流程可保留；新增公开构建模式完全跳过本机cloud.properties。按AGENTS新交付版本规则准备Android1.17.14/406、Windows1.17.14.0、Room34，公开构建与打包验收进行中，不能把新源码号当作已验收成品。
+
+既有1.17.13本地成品和配置保持，旧七项目标仍为complete；这次是发布前必要的公开配置修正。Windows仍采用已授权100%更新范围。公开Release目前仍v1.15.18，真实手机和原模拟器用户资料未操作。新证据目录Scratch/PaykiTodo/release-publication-1.17.14，当前动作是公开包构建、隐私复扫和必要验收，后续才上传完整草稿并正式发布。
+
+下方1.17.13为已完成历史基线。
+
+## Historical verified source baseline: 1.17.13 recurring absolute planning
 
 首次GitHub CI的无签名配置空路径错误已由61ae359修正；[实际CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41243078175)单测、Debug构建及空白检查全部通过。独立公开副本Debug配置成功，无配置Release仍明确拒绝；见[公开构建验收](VALIDATION_PUBLIC_BUILD_20261101.md)。未改变已验收产品行为或重建本地1.17.13成品。
 

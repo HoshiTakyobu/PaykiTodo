@@ -1,6 +1,10 @@
 # PaykiTodo Session Ledger
 
-## Current 1.17.13 round
+## Current candidate: 1.17.14 public packages
+
+当前源码Android1.17.14/406、Windows1.17.14.0、Room34，安全公开包正在准备。Android公开构建不读取本机cloud.properties，新安装须在登录页选择有效服务器。已存非空remoteSyncServerUrl继续优先；此前只依赖旧编译默认地址、未存地址的安装可能需要重新选择。Android公开构建、270单测和Lint0错误已通过；Windows新包/更新资产与正式发布终验待补记，范围沿用已授权100%、增量基线1.17.13。公开Release仍v1.15.18；1.17.13功能验收为历史，旧七项目标保持complete，没有本轮设备操作或服务器部署。
+
+## Historical verified 1.17.13 round
 
 2026-11-01按决策014本轮继续执行并实施循环课程绝对提醒全课唯一归属。Android1.17.13/405、Windows1.17.13.0、Room34；Start>=absolute最近合法实例，相等本次、并列时段顺序，相对每次，窗口外提前物化且补齐不跳过中间，有限范围无目标事务拒绝，取消/改单次/共同字段不重新分配或复制。三端预览显示并在编辑后重算。
 

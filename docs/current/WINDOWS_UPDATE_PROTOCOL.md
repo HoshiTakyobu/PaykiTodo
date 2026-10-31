@@ -1,14 +1,16 @@
 # Windows 更新资产与启动协议
 
-1.17.11增加真实 GitHub 稳定发布检查、后台下载、灰度、文件增量重建和独立启动器。公开 Release 仍为 v1.15.18；本协议和本地生成资产不代表已发布新版。
+1.17.11引入GitHub稳定发布检查、后台下载、灰度、文件增量重建和独立启动器。当前准备1.17.14公开包，Windows候选清单范围为100%、增量基线为1.17.13；公开Release仍为v1.15.18，候选资产不等于正式发布。
+
+完整便携ZIP包含启动器及update-files.json；应用内完整更新ZIP不包含该基线元数据和调试符号。1.17.14候选预期分别为484和482条目，须以实际包终验为准；不能把windows-full.zip当作完整便携安装包。
 
 ## 维护者生成资产
 
 先通过 tools/build/Build-WindowsInstaller.ps1 或 tools/Build-PaykiTodoDesktop.ps1 构建完整含启动器的版本目录。使用 PowerShell 7运行：
 
 ```powershell
-./tools/build/New-WindowsUpdateRelease.ps1 -PayloadDirectory <版本目录> -OutputDirectory <新的输出目录> -Version 1.17.11 -RolloutPercent 10 -RolloutSeed release-1.17.11
-# 后续版本可以追加 -BaselineDirectory <旧完整目录> -BaselineVersion <旧版本>
+./tools/build/New-WindowsUpdateRelease.ps1 -PayloadDirectory <1.17.14版本目录> -OutputDirectory <新的输出目录> -Version 1.17.14 -RolloutPercent 100 -RolloutSeed PaykiTodo-1.17.14 -BaselineDirectory <1.17.13旧完整目录> -BaselineVersion 1.17.13
+# 100代表所有具备更新器的旧版本客户端均在自动检查范围内；调整比例必须重新签名。
 ```
 
 输出为完整zip、可选增量zip和 PaykiTodo-update-manifest.json。只打包发布程序；本机 client-config.json、调试符号、数据库和认证材料不进入资产。签名清单包含所有目标文件的相对路径、大小和SHA-256、压缩包大小/哈希、版本、灰度比例/种子，以及增量所需基线文件清单哈希。update-files.json写入本地目标目录，为下一次增量提供基线；它自身不进入文件清单。

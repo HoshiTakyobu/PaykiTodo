@@ -1,6 +1,14 @@
 # PaykiTodo 当前源码与验收地图
 
-双端1.17.13，Android405、Windows1.17.13.0、Room34。原七项目标的实施、验收、成品、数据保护、文档、审计和main源码推送已完成。先读[整体指南](MODEL_HANDOFF_20261101.md)、[语法契约](planning-input/INPUT_CONTRACT_20261101.md)和SESSION_HANDOFF，核对基线后仅按新的用户任务继续。用rg定位符号，不照旧1.17.9入口重建模块或重问过期选择。
+## 当前1.17.14公开构建入口
+
+当前源码Android1.17.14/406、Windows1.17.14.0、Room34，安全公开包正在准备。Android公开构建不读取本机cloud.properties，新安装须在登录页选择有效服务器。已存非空remoteSyncServerUrl继续优先；此前只依赖旧编译默认地址、未存地址的安装可能需要重新选择。Android公开构建、270单测和Lint0错误已通过；Windows新包/更新资产与正式发布终验待补记，范围沿用已授权100%、增量基线1.17.13。公开Release仍v1.15.18；1.17.13功能验收为历史，旧七项目标保持complete，没有本轮设备操作或服务器部署。
+
+Android公开开关：app/build.gradle.kts的paykiPublicBuild严格布尔，true时不读取user/cloud.properties；tools/Build-PaykiTodoRelease.ps1的-PublicBuild传给Debug和Release。RemoteSyncCoordinator.cloudServerUrl和MainActivity/AccountSettingsPanel优先已存服务器；AppSettingsStore持久化地址，challenge由选定服务器/v2/auth/challenge提供。
+
+## 1.17.13已验收实现与历史证据
+
+下列历史功能基线为双端1.17.13，Android405、Windows1.17.13.0、Room34。原七项目标的实施、验收、成品、数据保护、文档、审计和main源码推送已完成。先读[整体指南](MODEL_HANDOFF_20261101.md)、[语法契约](planning-input/INPUT_CONTRACT_20261101.md)和SESSION_HANDOFF，核对基线后仅按新的用户任务继续。用rg定位符号，不照旧1.17.9入口重建模块或重问过期选择。
 
 ## 规划与循环提醒
 
@@ -61,7 +69,7 @@ Gradle包装脚本会选择可用JDK，不硬设不存在的旧JAVA_HOME。Windo
 
 ADB为C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe。复用emulator-5554/Pixel_8，仅user11执行测试后已停应用/测试、回user10主页，核身份后qemu PID20332恢复原暂停（353线程Wait Suspended）。原user0 646/646和user10 148/148逐文件哈希完全相同，零增删改；user11 after218文件保留备份，前后副本在Backups/PaykiTodo/planning-absolute-1.17.13。不能因ADB shell等待重启/清空，不动真实手机。主Activity完整类名com.example.todoalarm.ui.MainActivity。
 
-## 成品与证据定位
+## 1.17.13历史成品与证据定位
 
 - Android本轮Debug：app/build/outputs/apk/debug/PaykiTodo-1.17.13-debug.apk；签名Release：app/build/outputs/apk/release/PaykiTodo-1.17.13-release.apk。270单测、Lint0错误/137警告/30信息、三种构建、APK405元数据/同1.17.12证书/三类资产字节一致已核；64设备条目63通过/1旧跨端fixture条件跳过，本轮17新增全通过，见[1.17.13验收](VALIDATION_1.17.13.md)。
 - WindowsMSI：desktop/installer-output/PaykiTodo-1.17.13-windows-x64.msi；payload：desktop/obj/installer/1.17.13-15bbf1bf1431488690872e90c2ae6327/payload。62项不同检查（60针对+2实际包）及逐文件清单通过，不拿旧desktop/dist代替。

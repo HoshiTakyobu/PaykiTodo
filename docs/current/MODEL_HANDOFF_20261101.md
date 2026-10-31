@@ -1,8 +1,14 @@
 # PaykiTodo 整轮实施指南与模型交接
 
+## 当前：1.17.14发布候选
+
+当前源码Android1.17.14/406、Windows1.17.14.0、Room34，安全公开包正在准备。Android公开构建不读取本机cloud.properties，新安装须在登录页选择有效服务器。已存非空remoteSyncServerUrl继续优先；此前只依赖旧编译默认地址、未存地址的安装可能需要重新选择。Android公开构建、270单测和Lint0错误已通过；Windows新包/更新资产与正式发布终验待补记，范围沿用已授权100%、增量基线1.17.13。公开Release仍v1.15.18；1.17.13功能验收为历史，旧七项目标保持complete，没有本轮设备操作或服务器部署。
+
+## 已完成历史基线：1.17.13
+
 首次GitHub CI的无签名配置空路径错误已由61ae359修正；[实际CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41243078175)单测、Debug构建及空白检查全部通过。独立公开副本Debug配置成功，无配置Release仍明确拒绝；见[公开构建验收](VALIDATION_PUBLIC_BUILD_20261101.md)。未改变已验收产品行为或重建本地1.17.13成品。
 
-当前源码及已验收成品Android1.17.13/405、Windows1.17.13.0、Room34。原七项目标的产品实施、验收、成品、数据保护、文档、历史审计和实际main源码推送均已完成，远端与本地已核实一致。循环绝对提醒按决策014已实现，不重新等待旧两分支选择，也不重做已完成模块。后续继续应先核基线并按新的用户任务执行，不重新驱动本轮目标。
+1.17.13历史源码及已验收成品为Android1.17.13/405、Windows1.17.13.0、Room34。原七项目标的产品实施、验收、成品、数据保护、文档、历史审计和实际main源码推送均已完成，远端与本地已核实一致。循环绝对提醒按决策014已实现，不重新等待旧两分支选择，也不重做已完成模块。后续继续应先核基线并按新的用户任务执行，不重新驱动本轮目标。
 
 ## 恢复与基线
 
@@ -39,7 +45,7 @@
 
 具体实现与验收入口见[循环绝对提醒实施说明](planning-input/RECURRING_ABSOLUTE_IMPLEMENTATION_20261101.md)。Android普通直接新建含绝对字段的无归属循环草稿仍提示从规划预览确认所属实例；不能把这个保护误写成规划不支持绝对提醒。
 
-## 已完成与后续恢复
+## 1.17.13已完成与后续恢复（历史开发阶段）
 
 1. 本轮测试、成品、数据保护、功能与独立归档提交、全量审计及main推送均已完成，直接使用VALIDATION_1.17.13和PUBLIC_HISTORY_AUDIT_20261101及原始证据。
 2. 最终推送结果文档补记从83ff5cf同一旧远端基线完整复扫并随main推送；本记录不预写未知文档提交SHA或未经实查的计数。原未跟踪Prompt保持排除。
@@ -53,7 +59,7 @@ Android/Windows各自本地保存数据；手机LAN兼容服务和正式Windows�
 
 过程输出Scratch/PaykiTodo，备份Backups/PaykiTodo，成品Deliverables/PaykiTodo。更新签名私钥只在忽略的user/update-signing目录，不能打印或提交。
 
-## 成品与证据
+## 1.17.13历史成品与证据
 
 当前构建路径：app/build/outputs/apk/debug/PaykiTodo-1.17.13-debug.apk、app/build/outputs/apk/release/PaykiTodo-1.17.13-release.apk、desktop/installer-output/PaykiTodo-1.17.13-windows-x64.msi。真实Windows payload为desktop/obj/installer/1.17.13-15bbf1bf1431488690872e90c2ae6327/payload，不用旧desktop/dist或单个EXE代替。
 

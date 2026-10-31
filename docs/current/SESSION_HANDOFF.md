@@ -1,5 +1,21 @@
 # Session Handoff
 
+## 2026-11-01 1.17.14发布候选与公开配置验收
+
+当前源码Android1.17.14/406、Windows1.17.14.0、Room34，安全公开包正在准备。Android公开构建不读取本机cloud.properties，新安装须在登录页选择有效服务器。已存非空remoteSyncServerUrl继续优先；此前只依赖旧编译默认地址、未存地址的安装可能需要重新选择。Android公开构建、270单测和Lint0错误已通过；Windows新包/更新资产与正式发布终验待补记，范围沿用已授权100%、增量基线1.17.13。公开Release仍v1.15.18；1.17.13功能验收为历史，旧七项目标保持complete，没有本轮设备操作或服务器部署。
+
+Android证据在Scratch/PaykiTodo/release-publication-1.17.14/android-config-review.json和android-config-review.md。两变体生成BuildConfig、单测XML和Lint时间均位于此次公开构建窗口。最终APK证书、Windows包/更新资产、公开下载、CI及main/tag事实由实际终验填入，不沿用1.17.13成品哈希或宣称本轮重跑旧设备检查。
+
+## 历史准备：2026-11-01 正式发布授权后启动1.17.14公开构建
+
+用户回复继续对应上轮明确单一v1.17.13正式发布/100%Windows范围提案，授权有效，不重复请求发布许可。上传前预检发现本地APK classes.dex存在真实私有默认部署地址，密钥/凭据0，Windows真实地址/凭据0；微软库与MSI的7条原始模式命中已复核为假阳性。没有创建tag/Release或上传资产，证据Scratch/PaykiTodo/release-publication-1.17.13/publish-preflight-result.json。
+
+确认现有Android优先已存remoteSyncServerUrl，人机验证由选定服务器提供；公开编译可以不读本地cloud.properties。已加严格paykiPublicBuild布尔标志和Release脚本-PublicBuild，默认私有本机构建保持；公开包新安装需选服务器，不覆盖已有选择。按AGENTS安装版本递增规则准备Android1.17.14/406、Windows1.17.14.0、Room34，原1.17.13包与真实配置不改。已给用户可选版本偏好机会，新明确指令优先；当前按推荐安全新版本推进。
+
+Android正在-PpaykiPublicBuild=true运行270单测/Lint/Debug/AndroidTest/Release，Windows代理另打新MSI、便携及100%签名full/delta。原版无需重复全部功能套件；必要检查为新包身份/隐私/签名、服务器配置行为、实际Windows包与更新重建。证据Scratch/PaykiTodo/release-publication-1.17.14。后续完整草稿上传、实查再公开、真实下载/更新识别、文档与历史审计推送。原七项目标仍complete；目前公开v1.15.18，无真实手机操作或模拟器恢复动作。
+
+以下是旧候选准备与已完成阶段记录，不覆盖本节。
+
 ## 2026-11-01 后续本地发布候选已准备，尚未公开发布
 
 旧七项目标已完成后用户再次要求继续，尚未指定新功能或公开发布范围。本轮仅整理[1.17.13发布候选](RELEASE_CANDIDATE_1.17.13.md)：公众发布说明、7项资产清单/校验和、新484条目完整便携ZIP。已有APK/MSI/更新资产哈希保持；未重建APK，最新仍Deliverables/PaykiTodo/1.17.13/PaykiTodo-1.17.13-release.apk。公开v1.15.18与候选APK签名有效、证书与包名一致，360→405；没有执行真实手机升级。

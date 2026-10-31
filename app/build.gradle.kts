@@ -7,12 +7,16 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.17.13"
-val paykiVersionCode = 405
+val paykiVersionName = "1.17.14"
+val paykiVersionCode = 406
 
+val paykiPublicBuild = providers.gradleProperty("paykiPublicBuild")
+    .map { value -> value.toBooleanStrict() }
+    .orElse(false)
+    .get()
 val paykiCloudProperties = Properties().apply {
     val file = rootProject.file("user/cloud.properties")
-    if (file.isFile) file.inputStream().use(::load)
+    if (!paykiPublicBuild && file.isFile) file.inputStream().use(::load)
 }
 val paykiCloudBaseUrl = paykiCloudProperties.getProperty("baseUrl", "https://paykitodo.invalid")
     .trim()

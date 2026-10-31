@@ -2,7 +2,11 @@
 
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
-## Current 1.17.13: recurring absolute planning
+## Current candidate: 1.17.14 public packages
+
+当前源码Android1.17.14/406、Windows1.17.14.0、Room34，安全公开包正在准备。Android公开构建不读取本机cloud.properties，新安装须在登录页选择有效服务器。已存非空remoteSyncServerUrl继续优先；此前只依赖旧编译默认地址、未存地址的安装可能需要重新选择。Android公开构建、270单测和Lint0错误已通过；Windows新包/更新资产与正式发布终验待补记，范围沿用已授权100%、增量基线1.17.13。公开Release仍v1.15.18；1.17.13功能验收为历史，旧七项目标保持complete，没有本轮设备操作或服务器部署。
+
+## Historical 1.17.13: recurring absolute planning
 
 三端规划已支持每个绝对时刻全课唯一归属，Start>=absolute最近合法实例、相等本次、并列输入顺序；相对每次，重复时刻去重，过去不补响。窗口外拥有者提前物化，补齐检查中间缺口；有限范围无目标整批拒绝。编辑预览显示并重算归属，LAN冻结原session日期与账号保护，派生字段不能绕过最终校验。1.17.12实例保护保持，不因取消/改单次/共同字段修改自动重新分配或复制。
 

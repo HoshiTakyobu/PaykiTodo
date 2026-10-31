@@ -48,7 +48,7 @@ jobs:
           fi
 
       - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest
+        run: ./gradlew -PpaykiPublicBuild=true :app:testDebugUnitTest
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+        run: ./gradlew -PpaykiPublicBuild=true :app:assembleDebug

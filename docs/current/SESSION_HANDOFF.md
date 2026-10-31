@@ -1,5 +1,13 @@
 # Session Handoff
 
+## 2026-11-01 当前交接指南消除旧待做指令
+
+恢复核对3e3b5c2、Android1.17.12/404、Windows1.17.12.0、Room34及原未跟踪Prompt。审查发现MODEL_HANDOFF、IMPLEMENTATION_MAP和START_NEXT_MODEL虽在顶部追加新状态，正文仍称1.17.9为实际基线、规划/更新器不存在，并要求重问已确认的备注/跨午夜。本轮将三份文档整理为当前实际入口、七项状态、唯一待选规则和剩余执行顺序；旧版完整副本在Backups/PaykiTodo/handoff-docs-20261101-3e3b5c2，Git历史也保留。
+
+纯文档修正，没有源码/版本/嵌入帮助资源修改，不构建APK/MSI、不重跑已通过套件、不操作模拟器/真实手机/用户资料。最新APK仍app/build/outputs/apk/debug/PaykiTodo-1.17.12-debug.apk和app/build/outputs/apk/release/PaykiTodo-1.17.12-release.apk；交付与1.17.12验收保持。原Prompt不混入提交。前序已实查65提交/1710blob/167已分类URL无未解决命中，当前文档提交后须再全量复扫，私有结果保存为Scratch/PaykiTodo/history-scrub-20261101/after-current-handoff-refresh-verification.json。
+
+循环文本绝对提醒仍需要明确选择，候选校验保持；原目标未完成，未push/发布/部署。后续模型读更新后的三份指南，不按旧1.17.9交接重做已完成模块。
+
 ## 2026-11-01 Android循环单次提醒保护完成
 
 从02e32c5恢复，Android升1.17.12/404、Room34，Windows保持已验收1.17.12.0。首次循环生成不继承绝对时刻，单次转循环保留原ID拥有者；全部/后续/整课修改按日期锚点匹配实例保留提醒，不因新ID复制或丢失。仍有效的已生成远期日期保留；无提醒实例改名不误关其他纯绝对拥有者，显式关闭按所选范围生效。待办编辑纳入事务，生成失败回滚。新循环文本归属仍待明确选择，当前候选校验保持，不能把“继续”解释为选项。

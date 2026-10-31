@@ -1,125 +1,72 @@
-# 下一模型的源码、验证与运行环境地图
+# PaykiTodo 当前源码与验收地图
 
-最新双端1.17.12提醒保护：Windows DesktopRecurrence.cs的ResetOccurrence、WithOccurrenceReminders、RefreshOccurrenceReminders已通过51项检查和MSI/484文件便携验收。Android1.17.12/404、Room34在TodoRepository的generateRecurringItems/EventItems、convertSingleTodo/EventToRecurring、updateRecurringSeries/CalendarSeries、整课共同字段入口及withReplacementReminders按锚点匹配新ID、保留实例绝对提醒与有效远期日期；待办编辑事务回滚。新增RecurringAbsoluteReminderRepositoryTest共20项，累计42数据库设备检查、258单测及Lint通过，Debug/同证书Release交付，见VALIDATION_ANDROID_1.17.12。规划绝对循环归属仍待确认，不能借本修复撤销候选校验。
+双端1.17.12，Android404、Room34。规划和更新器已经落地；只有循环文本绝对提醒的规则及对应分支、最终复核/push待完成。先读[整体指南](MODEL_HANDOFF_20261101.md)、[语法契约](planning-input/INPUT_CONTRACT_20261101.md)和SESSION_HANDOFF。用rg定位符号，不照旧1.17.9入口重建已完成模块。
 
-2026-11-01完成60提交历史清理，阶段归档HEAD为83e2a45，更新功能提交092afab，规划功能提交6f8d24d；469个实现/资源/工具/CI文件与验收版本相同。旧编号指清理前历史，见[审计](PUBLIC_HISTORY_AUDIT_20261101.md)。仅待循环绝对提醒归属及对应实现、最终复核和push；下面旧未实现定位不覆盖最新交接。
+## 规划与循环提醒
 
-最新1.17.11更新模块：Android update/GithubRelease.kt、AppUpdater.kt、ApkUpdateIdentity.kt和ui/AppUpdatePanel.kt；Windows DesktopUpdateProtocol/Store/Updater及NativeWindow.Updates；desktop/PaykiTodo.Launcher是独立启动器。tools/build/New-WindowsUpdateRelease.ps1生成签名资产，Write-WindowsUpdateBaseline.ps1进入MSI和便携构建。验收见VALIDATION_1.17.11，协议见WINDOWS_UPDATE_PROTOCOL。下面“更新模块尚无实现”是旧定位。Windows构建可传-WebView2Bootstrapper复用已验证微软签名的缓存，避免重复等待下载。
+下列Android文件相对app/src/main/java/com/example/todoalarm/，Windows文件相对desktop/PaykiTodo.Desktop/。
 
-> 2026-11-01后续实现：1.17.10规划主体已落代码并通过阶段验收，见 [当前交接](SESSION_HANDOFF.md) 和 [验收](VALIDATION_1.17.10.md)。下面“尚未实现”描述是1.17.9交接时的历史定位。新入口为TransientPlanningInput/Recognition、TransientPlanningDialog、TodoRepository.importTransientPlanning，Windows同名新解析/导入/NativeWindow.TransientPlanning，LAN复用TransientPlanningWeb及transient-planning.js。更新模块仍待实现。
-
-配合 [整体指南](MODEL_HANDOFF_20261101.md) 使用。这里只列本轮相关入口，行号可能随实现变化；用 `rg` 定位符号，不全盘扫描工作区。
-
-## 代码基线与可复用能力
-
-1.17.9功能基线为 `87240cd`。没有新的规划语法实现、临时规划编辑器、GitHub检查器、更新下载服务、更新签名密钥或增量包工具。本次在用户要求交接前仅只读查看过更新入口，整体指南中的更新架构是建议。
-
-### 规划：Android
-
-下表路径相对于 `app/src/main/java/com/example/todoalarm/`。
-
-| 入口 | 用途/修改重点 |
+| Android入口 | 当前用途 |
 | --- | --- |
-| `ui/DashboardScreen.kt` | 当前每日看板的 `QuickChecklistActionButton` 与编辑器显示状态；替换入口 |
-| `ui/DashboardChrome.kt` | 独立 `PlanningDeskPanel` 路由/导航；取消独立模块时一并检查 |
-| `ui/PlanningDeskPanel.kt` | 旧文档选择、新建/保存、识别预览流程；复用适合的编辑控件，不保留新文档持久化 |
-| `ui/QuickChecklistUi.kt` | 原快速清单输入与父子任务呈现；入口可移除，已存任务能力要保留 |
-| `data/PlanningMarkdownParser.kt` | 旧本地语法；新扫描器应与旧解析边界明确，避免兼容规则覆盖用户已确认新写法 |
-| `data/PlanningRecognitionService.kt`、`PlanningAiRecognizer.kt`、`PlanningAiCaller.kt` | 旧本地/AI识别协调、请求和服务选择；新候选必须支持绝对提醒及课程多时段 |
-| `data/PlanningImportCandidate.kt` | 旧候选与校验，存在下述已核实冲突，不能直接视作新合同 |
-| `data/PlanningNode.kt`、`PlanningNote.kt`、`PlanningLineMapping.kt` | 旧文档/节点/关联数据，仅取消入口不等于可删除这些数据和备份兼容 |
-| `data/QuickChecklist.kt`、`TodoItem.kt` | 父子待办、排序、折叠等字段，包含 `parentTodoId`；新导入要保留关系 |
-| `data/TodoRepository.kt` | 真实写入、旧文档默认创建、导入、同步快照和循环补齐；查 `createQuickChecklist`、`ensureDefaultPlanningNote`、`ensurePlanningNodeLinkedItems`、`exportSnapshot`、`importSnapshot` |
-| `data/CalendarEventMultiSlot.kt` | `buildWeeklyMultiSlotEventDrafts`，已有 `multiSlotBundleId`；当前默认90天结束且重建每周配置，不能原样支持无限期/每2周合同 |
-| `data/TodoRecurrence.kt`、`RecurringTaskTemplate.kt`、`CalendarSemantics.kt` | 已有循环、间隔、锚点、月末/闰日策略，可复用但须验证跨时段一致性 |
-| `alarm/AlarmScheduler.kt`、`ReminderDispatchTracker.kt` | 实际调度与派发；过去提醒不补响及避免重复提醒，不应只在预览文本“模拟支持” |
-| `data/BackupManager.kt`、`BackupArchiveCodec.kt`、`AppDatabase.kt`、`DatabaseMigrations.kt` | 新持久化字段如有需要，必须贯穿Room迁移、备份、跨端读写及完整性校验 |
+| data/TransientPlanningInput.kt | 已实现本地扫描、日期/提醒/循环合同、候选校验和定位诊断；循环绝对提醒仍拒绝 |
+| data/TransientPlanningRecognition.kt | 本地/可选AI识别，同一候选合同与校验 |
+| ui/TransientPlanningDialog.kt | 每日看板临时草稿、编辑预览和确认，不保存新文档 |
+| data/TodoRepository.kt | importTransientPlanning事务和稳定候选关系；循环生成、转换、系列/整课修改、滚动补齐；1.17.12实例绝对提醒保护 |
+| data/CalendarSemantics.kt、TodoRecurrence.kt、RecurringTaskTemplate.kt | 时区、循环间隔/范围/锚点、CLAMP和持续滚动；模板不保存单次绝对提醒 |
+| data/TodoItem.kt、CalendarEventDraft.kt、BackupManager.kt、AppDatabase.kt、DatabaseMigrations.kt | Room34绝对字段、草稿、备份/跨端合同，已有迁移不能遗漏 |
+| sync/TransientPlanningWeb.kt | LAN临时规划接口，复用手机解析/导入 |
+| ui/PlanningDeskPanel.kt及旧Planning*数据类型 | 旧原文只读与备份兼容；不作为新规划主路径，不删除历史数据 |
 
-已经核实的旧候选冲突：
-
-1. `PlanningImportCandidate.validate` 对待办提醒有“必须晚于当前时间”检查，与新语法允许历史时刻冲突。
-2. 无DDL且 `reminderEnabled=true` 时拒绝保存；标题-only条目若套默认 `(5,0)`，不能因此变成不可创建。
-3. `recurrenceError` 强制 `endDate` 非空，与范围可省略/无限循环冲突。
-4. `reminderOffsetsMinutes` 只代表分钟偏移；新语法允许多个绝对提醒，不可把它们简单丢弃、合成一个时点或钳制成0。
-5. `buildWeeklyMultiSlotEventDrafts` 缺省 `baseDate + 90天`；新无限循环必须修复真实持久化和补齐逻辑，不能仅改提示文案。
-
-### 规划：Windows与LAN
-
-Windows目录：`desktop/PaykiTodo.Desktop/`。
-
-| 文件 | 用途 |
+| Windows入口 | 当前用途 |
 | --- | --- |
-| `NativeWindow.cs`、`NativeWindow.Pages.cs` | 导航、每日看板、搜索及刷新，保留编辑草稿和账号代际保护 |
-| `NativeWindow.Planning.cs` | 旧规划文档编辑/保存页面与报告页；规划改造不能误删已完成报告功能 |
-| `NativeWindow.Ai.cs`、`DesktopAi.cs` | 旧AI候选识别与预览，必须加入本地识别及相同候选校验 |
-| `QuickChecklistParser.cs`、`QuickChecklistEditorDialog.cs` | 旧批量父子待办输入，需整理重复入口 |
-| `DesktopSnapshotDocument.cs` | JSON模型与事务候选写入，`DesktopItemEdit`/`SaveItem`/归档编码 |
-| `DesktopRecurrence.cs` | `SaveEventSlots`、`SaveRecurringItem`、实例生成和修改范围；保留bundle，补齐整门课管理 |
-| `NativeEditors.cs`、`NativeCalendarEditors.cs` | 可复用事项编辑器与循环范围UI；取消不得写入 |
-| `DesktopWorkspace.cs`、`PersonalSnapshotMerge.cs` | 本地持久化、编辑代际和同步合并；新字段要兼容，不能绕开现有事务流程 |
+| TransientPlanningInput.cs | 与手机一致的本地候选合同及校验 |
+| DesktopTransientPlanning.cs | AI合同与确认导入、父子关系/课程bundle |
+| NativeWindow.TransientPlanning.cs | 临时输入、预览编辑和确认入口 |
+| DesktopRecurrence.cs | 补齐/系列作用域；ResetOccurrence清空新实例绝对字段，WithOccurrenceReminders保留目标，RefreshOccurrenceReminders重算触发 |
+| DesktopSnapshotDocument.cs、DesktopWorkspace.cs、PersonalSnapshotMerge.cs | 本地事务/持久化/跨端合并，保留数据和账号代际保护 |
 
-LAN页面为 `app/src/main/assets/desktop-web/`。后台在 `sync/DesktopSyncCoordinator.kt`，目前同时存在 `/api/quick-checklists/*` 与 `/api/planning/notes`、`/api/planning/parse`、`/api/planning/import` 等旧路径。新规划应摆脱新建note依赖，保持权限校验和明确确认。修改JS后至少做语法检查及适当浏览器流程验证。
+LAN前端位于app/src/main/assets/desktop-web/，新入口复用transient-planning.js；新前端只读展示旧文档。旧planning/notes等接口仍保留兼容的读写操作，新规划流程不调用它创建文档，不能把新界面只读描述成旧API全部只读。
 
-### 更新机制入口
+选择分支后修改入口与必要验收见[循环绝对提醒实施定位](planning-input/RECURRING_ABSOLUTE_IMPLEMENTATION_20261101.md)。当前实例保护与新文本归属是两个问题，不提前撤销候选校验。
 
-- Android `ui/SettingsPanel.kt` 中 `AboutPanel` 目前只有版本等信息，仍含“本地单机/仅保存在当前设备”的旧文案；加入更新入口时一并对齐现有账号同步事实。`TodoApplication.kt`可管理应用级检查生命周期。尚无 `DownloadManager` 更新逻辑或GitHub Release检查器。
-- Windows设置位于 **`NativeWindow.Account.cs` 的 `SettingsPage()`**，不是不存在的 `NativeWindow.Settings.cs`。`Program.cs`现在直接启动WPF，尚无更新启动器/版本切换。
-- `.github/workflows/android-ci.yml`目前是Android测试/Debug构建，不是完整双端发布或增量包流水线。
-- `tools/build/Build-WindowsInstaller.ps1`能生成自包含payload和MSI及文件哈希清单；当前清单不是自动更新的签名信任机制。
-- `tools/Build-PaykiTodoRelease.ps1`构建签名Android Release并核验签名，不发布GitHub Release。真实签名材料在忽略路径，不能抄录。
+## 已实现的更新、报告与帮助
 
-### 已完成模块，后续保持回归
+| 模块 | 入口/合同 |
+| --- | --- |
+| Android更新 | update/GithubRelease.kt、AppUpdater.kt、ApkUpdateIdentity.kt及ui/AppUpdatePanel.kt；稳定Release、系统下载状态恢复、包名/版本/签名核对及系统安装入口 |
+| Windows更新 | DesktopUpdateProtocol.cs、DesktopUpdateStore.cs、DesktopUpdater.cs、NativeWindow.Updates.cs及desktop/PaykiTodo.Launcher；签名/灰度/增量/full回退/nonce和失败回退 |
+| 发布工具 | tools/build/New-WindowsUpdateRelease.ps1、Write-WindowsUpdateBaseline.ps1、Build-WindowsInstaller.ps1；协议见WINDOWS_UPDATE_PROTOCOL.md，私钥只在忽略目录 |
+| 报告 | Android data/AiReportContext.kt、AiReportPolicy.kt和alarm/AiReportExpiryJobService.kt；Windows DesktopReportContext.cs、DesktopReportPolicy.cs；共用app/src/main/assets/ai/report-system.txt |
+| 字体和帮助 | Windows DesktopFonts.cs、NativeUi.cs、NativeWindow.Help.cs；docs/WINDOWS_USER_GUIDE.md嵌入资源，设置/F1离线打开 |
 
-- 报告：`AiReportContext.kt`、`AiReportPolicy.kt`、`AiReportExpiryJobService.kt`、`DailyReportGenerator.kt`；Windows `DesktopReportContext.cs`、`DesktopReportPolicy.cs`。共同prompt在 `app/src/main/assets/ai/report-system.txt`，Windows嵌入同一资源。
-- 字体：`DesktopFonts.cs`、`NativeUi.cs`、设置字体对话框；中文/英文别名和12–22px事务预览已完成。
-- 帮助：`NativeWindow.Help.cs`将 `docs/WINDOWS_USER_GUIDE.md` 嵌入，设置/F1离线打开。改说明后要重建Windows资源。
+新增行为才补相应回归，不重写这些模块；未来公开Release、真实手机系统安装和OEM后台行为没有被模拟验收证明。
 
-## 验证环境与命令
+## 测试入口与命令
 
-在仓库根运行。功能变化先按AGENTS规则升版本；把下面的版本、文件名、证据子目录改成当前轮，避免覆盖上轮证据。
+Android单测TransientPlanningParserTest、CalendarSemanticsTest、TodoRepositoryRecurrenceAlignmentTest；设备RecurringAbsoluteReminderRepositoryTest、TransientPlanningRepositoryTest、CalendarUpdateDataContractTest、TransientPlanningUiTest、TransientPlanningWebContractTest。Windows针对TransientPlanningTests、RecurrenceScopeTests、CalendarSemanticsTests及实际包检查扩展，不重复计数重跑。
+
+在仓库根执行，先核对版本与工作树。下面是必要时使用的命令，不是要求重跑已通过套件：
 
 ```powershell
 git status --short
 git log -1 --oneline --decorate
 rg -n 'paykiVersionName|paykiVersionCode' app/build.gradle.kts
-
-$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest --console=plain
-
-.\tools\tests\Invoke-DesktopAcceptance.ps1 -Evidence G:\Workspace\Scratch\PaykiTodo\<本轮目录>
-node --check app/src/main/assets/desktop-web/app.js
-
-.\tools\build\Build-WindowsInstaller.ps1 -WixPath G:\Workspace\Tools\PaykiTodo\wix\wix.exe
+.\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
+.\tools\tests\Invoke-DesktopAcceptance.ps1 -Evidence G:\Workspace\Scratch\PaykiTodo\<本轮目录> -PackagedExe <本轮payload/PaykiTodo.exe>
+node --check app/src/main/assets/desktop-web/transient-planning.js
 ```
 
-`Invoke-DesktopAcceptance.ps1`在独立Win32桌面启动整个测试进程，不注入全局键鼠、不改剪贴板。需要测试打包EXE时用 `-PackagedExe <本轮payload/PaykiTodo.exe>`。不要开启物理输入模式来完成普通验收。WPF有进程级Application/资源线程归属约束；新界面检查优先复用既有原生UI测试线程，避免每个测试新起一个争用静态资源的WPF线程。
+Gradle包装脚本会选择可用JDK，不硬设不存在的旧JAVA_HOME。Windows测试运行在独立Win32桌面，不开启物理输入模式或操作用户剪贴板。MSI生命周期只在有相关新变化时运行，成品构建成功与真实安装/升级验收分别记录。
 
-`Test-WindowsInstaller.ps1`可验证升级/修复/安装后成品/卸载和数据保留。先读脚本与当前安装状态，不覆盖用户正在用的安装；有相关新变化才重复生命周期验收。不要把“MSI构建成功”写成“安装升级已经实测”。
+ADB为C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe。复用emulator-5554/Pixel_8，最后user10主页、应用/测试停止，qemu PID20332暂停。先核对实际AVD/PID/线程状态再恢复，不能因ADB shell等待盲目重启。user0/user10是原用户，user11专用测试；安装前备份且最终比哈希，不动真实手机。主Activity完整类名为com.example.todoalarm.ui.MainActivity。
 
-### Android模拟器：先看状态，不能盲目重启
+## 成品与证据定位
 
-- ADB：`C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`。
-- AVD为Pixel_8；最后配置为无窗口，停在user10主页，应用与测试包均停止。qemu进程最后观测PID20332，**已按原状态暂停**；PID会变化，必须核对实际进程参数/状态，不能硬编码后直接恢复/暂停别的进程。
-- 暂停时 `adb devices` 可能仍显示device，但shell命令会一直等。用进程状态辨别，不因一次观察超时就启动第二个实例或清空AVD。
-- user0是需保护的原用户；user10也保留资料；user11为既有独立测试用户。升级安装包会更新共享APK版本；数据库/UI测试仅在独立用户执行，先备份原用户文件并比较哈希。
-- 无窗口ADB设备不能作为“用户已经看见交互页面”的证明。需要人操作时先确认可见镜像/窗口；无需人参与的Compose/Room检查可保持隔离。
-- 最近完整AVD及各用户前后备份：`G:\Workspace\Backups\PaykiTodo\reports-1.17.9`，含 `Pixel_8-before-restart`、清单与tar。不自动删除或拿旧副本覆盖较新的用户内容。
+- Android最新Debug：app/build/outputs/apk/debug/PaykiTodo-1.17.12-debug.apk；签名Release：app/build/outputs/apk/release/PaykiTodo-1.17.12-release.apk；同证书及数据保留见[Android验收](VALIDATION_ANDROID_1.17.12.md)。258单测、Lint0错误、42数据库检查；冷启动等待超时与暖启动正常分别记录。
+- WindowsMSI：desktop/installer-output/PaykiTodo-1.17.12-windows-x64.msi；payload：desktop/obj/installer/1.17.12-773fce09cffd481888a0003a9a2ecb1d/payload。51项不同检查及484文件便携清单见[Windows验收](VALIDATION_1.17.12.md)，不拿旧desktop/dist代替。
+- Deliverables/PaykiTodo/1.17.12包含两APK、MSI、完整Windows-portable、说明和490文件哈希；当前公开Release仍v1.15.18。
+- 本轮数据/失败/启动/签名证据：Scratch/PaykiTodo/recurrence-reminders-1.17.12；备份：Backups/PaykiTodo/recurrence-reminders-1.17.12。原user0 646/646、user10 148/148哈希相同，所有中途副本保留。
+- 规划/更新阶段详见[1.17.10](VALIDATION_1.17.10.md)、[1.17.11](VALIDATION_1.17.11.md)；其证据位于对应阶段Scratch/Backups，旧成功套件不重跑。
+- 未推送历史扫描/私有策略：Scratch/PaykiTodo/history-scrub-20261101，最近完整验证after-android-archive-1.17.12-verification.json（65提交/1710blob/167已分类URL，零未解决命中）；原始bundle保留于Backups/PaykiTodo/unpublished-before-scrub-20261101。新提交要再次复扫，不能把当前树干净等同于整个历史安全。
 
-独立用户测试命令示例（先确认当前连接/用户/备份）：
-
-```powershell
-& 'C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe' -s emulator-5554 install --user 11 -r app/build/outputs/apk/debug/PaykiTodo-<版本>-debug.apk
-& 'C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe' -s emulator-5554 install --user 11 -r app/build/outputs/apk/androidTest/debug/PaykiTodo-<版本>-debug-androidTest.apk
-& 'C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe' -s emulator-5554 shell am instrument --user 11 -w -r -e class <测试类> com.paykitodo.app.test/androidx.test.runner.AndroidJUnitRunner
-```
-
-## 现有证据与成品
-
-- [1.17.8验收](VALIDATION_1.17.8.md)：设置、字体、帮助、MSI真实升级/修复/卸载等。
-- [1.17.9验收](VALIDATION_1.17.9.md)：242 Android单测、Lint0错误/134警告/30提示、4模拟器检查；75项不同Windows回归及另1条14阶段UIA。两项Android联动夹具未启用，不能写成已通过。
-- 1.17.9新MSI已构建，482个payload文件校验通过；本阶段没有再做MSI生命周期，没有签名Release或真实手机升级，没有调用真实AI提供者作输出质量验收。
-- 最新已存在APK：`app/build/outputs/apk/debug/PaykiTodo-1.17.9-debug.apk`。交付副本在 `G:\Workspace\Deliverables\PaykiTodo\1.17.9`，包含MSI、完整Windows-portable、使用说明和SHA256.json。
-- 1.17.9 Windows真实payload：`desktop/obj/installer/1.17.9-62e3a88bd42b4160a79c1d38aa57d972/payload`。`desktop/dist`仍旧，不能用它代替1.17.9成品做新版本验收。
-- 验证日志在 `G:\Workspace\Scratch\PaykiTodo\experience-20261031`，报告阶段以 `reports-` 开头。历史初筛结果也在此，但包含私有复核内容，不得提交或直接打印。
-
-新增功能需要自己的验收证据。已有测试通过意味着原有范围通过，不能借用它证明规划新语法、后台增量更新或历史清理已经完成。
+旧1.17.9源码地图保留在Git历史及Backups/PaykiTodo/handoff-docs-20261101-3e3b5c2，仅作历史定位，不作为当前待实施指南。

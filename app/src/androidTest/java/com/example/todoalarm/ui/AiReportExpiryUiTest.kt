@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.example.todoalarm.data.*
@@ -23,9 +24,27 @@ class AiReportExpiryUiTest {
                 targetReportId = 42, targetReportSerial = 1, onDeleteReport = { null }
             )
         } } }
-        compose.waitUntil(5_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText(text).assertIsDisplayed()
-        compose.waitUntil(12_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("Report.Reader").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("Report.Reader").assertIsDisplayed()
+        compose.waitUntil(12_000) { compose.onAllNodesWithTag("Report.Reader").fetchSemanticsNodes().isEmpty() }
         compose.onAllNodesWithText("独立日报正文", substring = true).assertCountEquals(0)
+    }
+
+    @Test fun accountChangeWithdrawsAnOpenReaderEvenWhenTheReportIdIsReused() {
+        val report = AiReport(42, AiReportType.WEEKLY, System.currentTimeMillis(), 0, 1, "前一账号报告正文")
+        val account = mutableStateOf("account-a")
+        compose.setContent { TodoAlarmTheme { Surface {
+            val identity = account.value
+            AiReportPanel(
+                observeReports = { _, _, _, _, _ -> flowOf(if (identity == "account-a") listOf(report) else emptyList()) },
+                onGetReport = { if (identity == "account-a") report else null },
+                targetReportId = 42, targetReportSerial = 1, onDeleteReport = { null }, accountIdentity = identity
+            )
+        } } }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("Report.Reader").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("Report.Reader").assertIsDisplayed()
+        compose.runOnIdle { account.value = "account-b" }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("Report.Reader").fetchSemanticsNodes().isEmpty() }
+        compose.onAllNodesWithText("前一账号报告正文", substring = true).assertCountEquals(0)
     }
 }

@@ -16,8 +16,12 @@ data class DailyBoardSnapshot(
     val todoItems: List<TodoItem>,
     val allTodayEvents: List<TodoItem>,
     val visibleTodayEvents: List<TodoItem>,
-    val tomorrowEvents: List<TodoItem>
-)
+    val tomorrowEvents: List<TodoItem>,
+    val tomorrowTodoItems: List<TodoItem> = emptyList()
+) {
+    val todayArrangement get() = BoardArrangement.ordered(todoItems, visibleTodayEvents)
+    val tomorrowArrangement get() = BoardArrangement.ordered(tomorrowTodoItems, tomorrowEvents)
+}
 
 data class CountdownRemainingDisplay(
     val primary: String,
@@ -37,7 +41,7 @@ object DailyBoardSnapshotBuilder {
             items.filter { it.groupId == groupId }
         } ?: items
         val activeTaskItems = filteredItems
-            .filter { it.isTodo && it.isActive }
+            .filter { it.isTodo && it.isActive && !it.hiddenFromBoard }
             .sortedBy { it.dueAtMillis }
         val calendarItems = items
             .filter { it.isEvent && it.isActive }
@@ -50,7 +54,7 @@ object DailyBoardSnapshotBuilder {
                 compareBy<TodoItem> { countdownTargetMillis(it) ?: Long.MAX_VALUE }
                     .thenBy { it.createdAtMillis }
             )
-        val todayTodos = activeTaskItems.filter { !it.missed && (!it.hasDueDate || it.dueDate() == today) }
+        val todayTodos = activeTaskItems.filter { !it.missed && (!it.hasDueDate || !it.dueDate().isAfter(today)) }
         val missedTodos = activeTaskItems.filter { it.missed }
         val boardTodos = (missedTodos + todayTodos)
             .distinctBy { it.id }
@@ -71,18 +75,16 @@ object DailyBoardSnapshotBuilder {
             todoItems = boardTodos,
             allTodayEvents = allTodayEvents,
             visibleTodayEvents = visibleTodayEvents,
-            tomorrowEvents = tomorrowEvents
+            tomorrowEvents = tomorrowEvents,
+            tomorrowTodoItems = activeTaskItems.filter { it.hasDueDate && it.dueDate() == today.plusDays(1) }
         )
     }
 
     fun eventOverlapsDay(item: TodoItem, date: LocalDate): Boolean {
-        val start = item.startAtMillis?.let(::millisToLocalDateTime)?.toLocalDate() ?: return false
-        val end = if (item.allDay) {
-            item.endAtMillis?.let(::millisToLocalDateTime)?.toLocalDate()?.minusDays(1) ?: start
-        } else {
-            item.endAtMillis?.let(::millisToLocalDateTime)?.toLocalDate() ?: start
-        }
-        return !date.isBefore(start) && !date.isAfter(end)
+        val start = item.startAtMillis?.let(::millisToLocalDateTime) ?: return false
+        val end = item.endAtMillis?.let(::millisToLocalDateTime) ?: start
+        // Calendar days use an exclusive end. An event ending exactly at midnight does not enter the next day.
+        return start.isBefore(date.plusDays(1).atStartOfDay()) && end.isAfter(date.atStartOfDay())
     }
 
     fun eventVisibleForToday(item: TodoItem, today: LocalDate, now: LocalDateTime): Boolean {

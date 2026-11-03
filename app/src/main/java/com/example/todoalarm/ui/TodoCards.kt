@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -195,17 +201,19 @@ internal fun ActiveTodoCard(
 }
 
 @Composable
-private fun LightweightCompletionToggle(
+internal fun LightweightCompletionToggle(
     checked: Boolean,
     enabled: Boolean,
-    onCheck: () -> Unit
+    onCheck: () -> Unit,
+    name: String? = null
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val outline = MaterialTheme.colorScheme.outline
     Box(
         modifier = Modifier
             .size(44.dp)
-            .clickable(enabled = enabled, onClick = onCheck),
+            .semantics { role = Role.Checkbox; if (name != null) contentDescription = name; stateDescription = if (checked) "已选中" else "未选中" }
+            .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = { onCheck() }),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(28.dp)) {

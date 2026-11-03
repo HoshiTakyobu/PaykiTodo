@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,7 +49,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,6 +84,21 @@ private enum class AiReportRangeFilter(val label: String, val days: Long?) {
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun AiReportPanel(
+    observeReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
+    onGetReport: suspend (Long) -> AiReport?,
+    targetReportId: Long?,
+    targetReportSerial: Int,
+    onDeleteReport: suspend (Long) -> String?,
+    accountIdentity: String = ""
+) {
+    androidx.compose.runtime.key(accountIdentity) {
+        AiReportPanelContent(observeReports, onGetReport, targetReportId, targetReportSerial, onDeleteReport)
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun AiReportPanelContent(
     observeReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetReport: suspend (Long) -> AiReport?,
     targetReportId: Long?,
@@ -377,8 +395,8 @@ private fun AiReportDetail(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 18.dp, end = 18.dp, bottom = 26.dp)
-            .verticalScroll(rememberScrollState()),
+            .fillMaxHeight(0.9f)
+            .padding(start = 18.dp, end = 18.dp, bottom = 26.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(
@@ -417,18 +435,14 @@ private fun AiReportDetail(
             }
         }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
-        ) {
-            Text(
-                text = report.content.ifBlank { "（空报告）" },
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        val context = LocalContext.current
+        TextButton(onClick = {
+            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("报告原文", report.content))
+        }) { Text("复制原文") }
+        OfflineContentReader(report.content, MaterialTheme.colorScheme.surface.luminance() < 0.3f,
+            MaterialTheme.typography.bodyLarge.fontSize.value * androidx.compose.ui.platform.LocalDensity.current.fontScale,
+            Modifier.fillMaxWidth().weight(1f).testTag("Report.Reader"))
     }
 }
 

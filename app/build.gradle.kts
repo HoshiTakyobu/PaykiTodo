@@ -7,8 +7,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.17.14"
-val paykiVersionCode = 406
+val paykiVersionName = "1.17.15"
+val paykiVersionCode = 407
 
 val paykiPublicBuild = providers.gradleProperty("paykiPublicBuild")
     .map { value -> value.toBooleanStrict() }
@@ -125,6 +125,7 @@ android {
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 
     sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
+    sourceSets["androidTest"].assets.srcDir(rootProject.file("tools/tests/fixtures"))
 }
 
 ksp {

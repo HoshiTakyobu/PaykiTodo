@@ -65,9 +65,37 @@ internal sealed partial class NativeWindow
         foreach (var report in reports) {
             var heading = (report["type"]?.GetValue<string>() == "WEEKLY" ? "每周回顾" : "每日回顾") + " · " + Local(report["generatedAtMillis"]?.GetValue<long>()).ToString("yyyy-MM-dd HH:mm");
             var text = report["content"]?.GetValue<string>() ?? report["contentMarkdown"]?.GetValue<string>() ?? report["reportText"]?.GetValue<string>() ?? "";
-            body.Children.Add(Card(Column(Text(heading, 20, Forest, true), Text(text))));
+            var summary = Text(text.Length <= 80 ? text : text[..80] + "…"); summary.MaxHeight = LineHeight(14) * 3; summary.TextTrimming = System.Windows.TextTrimming.CharacterEllipsis;
+            var source = report["providerName"]?.GetValue<string>() ?? "未知来源";
+            body.Children.Add(Card(Column(Text(heading, 20, Forest, true), Text("来源：" + source, 12, Muted), summary, Action("阅读报告", () => OpenReport(report, heading)))));
         }
         if (reports.Count == 0) body.Children.Add(Card(Text("暂无报告。手机生成的报告会随账号数据同步到这里。", 15, Muted)));
         return Page(body);
     }
+    private void OpenReport(JsonObject report, string heading) {
+        var account = workspace.AccountGeneration;
+        var id = report["id"]?.ToJsonString(); var generated = report["generatedAtMillis"]?.ToJsonString();
+        var raw = report["content"]?.GetValue<string>() ?? report["contentMarkdown"]?.GetValue<string>() ?? report["reportText"]?.GetValue<string>() ?? "";
+        var dialog = Dialog(this, heading, 860, 740);
+        var content = new NativeContentReader(raw, profileDirectory);
+        var layout = new DockPanel { Margin = new Thickness(16) };
+        var close = Action("关闭", () => dialog.Close()); close.IsCancel = true;
+        var actions = Row(Action("复制原文", () => System.Windows.Clipboard.SetText(raw)), close);
+        actions.Children.Insert(1, Action("删除报告", () => {
+            if (!Confirmation(dialog, "删除这份报告？删除结果会随账号数据同步。")) return;
+            workspace.Edit(value => value.DeleteReport(id, generated, raw));
+        }));
+        DockPanel.SetDock(actions, Dock.Top); layout.Children.Add(actions); layout.Children.Add(content); dialog.Content = layout;
+        var metadata = Column(Text("来源：" + (report["providerName"]?.GetValue<string>() ?? "未知来源") + (report["isLocalFallback"]?.GetValue<bool>() == true ? " · 本地模板" : ""), 13, Muted));
+        if (report["periodStartMillis"]?.GetValue<long>() is { } start && report["periodEndMillis"]?.GetValue<long>() is { } end)
+            metadata.Children.Add(Text($"覆盖周期：{Local(start):yyyy-MM-dd} – {Local(end):yyyy-MM-dd}", 13, Muted));
+        DockPanel.SetDock(metadata, Dock.Top); layout.Children.Insert(1, metadata);
+        void Changed() {
+            if (workspace.AccountGeneration != account || workspace.Document?.Reports.Any(value => value["id"]?.ToJsonString() == id && value["generatedAtMillis"]?.ToJsonString() == generated && ReportContent(value) == raw) != true)
+                dialog.Dispatcher.Invoke(() => dialog.Close());
+        }
+        workspace.Changed += Changed;
+        try { dialog.ShowDialog(); } finally { workspace.Changed -= Changed; content.Dispose(); }
+    }
+    private static string ReportContent(JsonObject report) => report["content"]?.GetValue<string>() ?? report["contentMarkdown"]?.GetValue<string>() ?? report["reportText"]?.GetValue<string>() ?? "";
 }

@@ -1,5 +1,11 @@
 # Feature Ledger
 
+## Current local implementation: 1.17.15 UX repairs completed
+
+Android 1.17.15/407、Windows 1.17.15.0、Room 34：关闭到托盘与真正退出、Windows 待办/日程选色色块及矢量下拉箭头、三行标题/紧凑日程/现代经典预览/所选周列表、双端离线 Markdown 报告与 HTML 帮助、双端统一今日安排已完成本地实现及验收。保留用户字体和真实字重，修正正式 EXE 的 PerMonitorV2 声明与文字行高/对比度；业务时间、提醒、循环、报告原文及跨端样式字段保持。手机待办沿用主分组取色，日程保留独立色块；LAN 与小组件保留原布局及兼容字段。
+
+273 Android 单测、12 不同模拟器检查、Lint 0 错误；Windows 141 不同检查中 139 通过/0 失败/2 同期网络 fixture 跳过，含独立 UIA、字体与实际包；共享 Chromium 7 项通过。实际 APK/MSI/484 文件便携目录与资源、证书及 490 文件交付核对完成。详见 [验收与未验证边界](VALIDATION_UX_1.17.15.md)。公开 Release 仍 v1.17.14，没有发布、push、部署或真实设备安装。
+
 This ledger distinguishes completed capabilities from the active update. Historical entries describe their stated versions.
 
 ## Current release: v1.17.14 Android and Windows

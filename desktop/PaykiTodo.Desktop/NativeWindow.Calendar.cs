@@ -68,7 +68,7 @@ internal sealed partial class NativeWindow
     {
         calendarClock?.Stop();
         ClearCalendarDraft();
-        var count = calendarView == "日" ? 1 : ActualWidth < TextSize(1100) ? 3 : 7;
+        var count = calendarView == "列表" ? 7 : calendarView == "日" ? 1 : ActualWidth < TextSize(1100) ? 3 : 7;
         var sunday = workspace.Document!.Settings["weekStartMode"]?.GetValue<string>() == "SUNDAY";
         var start = count != 7 ? selectedDay.Date : WeekStart(selectedDay, sunday);
         var root = new Grid { Background = Paper, Margin = new Thickness(18, 0, 18, 14) };
@@ -79,10 +79,13 @@ internal sealed partial class NativeWindow
         var toolbar = new Grid { Margin = new Thickness(0, 0, 0, 6) };
         toolbar.ColumnDefinitions.Add(new ColumnDefinition()); toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         toolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); if (compact) toolbar.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        void Move(int direction) { selectedDay = calendarView == "月" ? selectedDay.AddMonths(direction) : selectedDay.AddDays(direction * (calendarView == "周" ? count : 1)); miniMonth = selectedDay; Render(); }
-        var range = calendarView == "月" ? selectedDay.ToString("yyyy年M月") : calendarView == "周" ? $"{start:yyyy年M月d日} – {start.AddDays(count - 1):M月d日}" : selectedDay.ToString("yyyy年M月d日");
+        void Move(int direction) { selectedDay = calendarView == "月" ? selectedDay.AddMonths(direction) : selectedDay.AddDays(direction * (calendarView is "周" or "列表" ? count : 1)); miniMonth = selectedDay; Render(); }
+        var range = calendarView == "月" ? selectedDay.ToString("yyyy年M月") : calendarView is "周" or "列表" ? $"{start:yyyy年M月d日} – {start.AddDays(count - 1):yyyy年M月d日}" : selectedDay.ToString("yyyy年M月d日");
         var rangeText = Text(range, 16, bold: true); rangeText.Margin = new Thickness(8, 0, 0, 0); rangeText.VerticalAlignment = VerticalAlignment.Center;
-        var navigation = Row(CalendarAction("今天", () => { selectedDay = CalendarNow.Date; miniMonth = selectedDay; calendarScrollKey = null; calendarScrollOffset = null; Render(); }), CalendarAction("‹", () => Move(-1)), CalendarAction("›", () => Move(1)), rangeText);
+        var previous = CalendarAction("‹", () => Move(-1)); var next = CalendarAction("›", () => Move(1));
+        System.Windows.Automation.AutomationProperties.SetName(previous, calendarView == "列表" ? "上一周" : "上一页");
+        System.Windows.Automation.AutomationProperties.SetName(next, calendarView == "列表" ? "下一周" : "下一页");
+        var navigation = Row(CalendarAction("今天", () => { selectedDay = CalendarNow.Date; miniMonth = selectedDay; calendarScrollKey = null; calendarScrollOffset = null; Render(); }), previous, next, rangeText);
         navigation.VerticalAlignment = VerticalAlignment.Center; toolbar.Children.Add(navigation);
         if (compact) Grid.SetColumnSpan(navigation, 2);
         var view = new ComboBox { ItemsSource = new[] { "日", "周", "月", "列表" }, SelectedItem = calendarView, Width = Math.Max(76, TextSize(48) + 28), MinHeight = Math.Max(34, TextSize(24) + 10), Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0, 0, 8, 0) };
@@ -94,8 +97,16 @@ internal sealed partial class NativeWindow
         if (calendarView == "月") main.Children.Add(MonthCalendar(sunday));
         else if (calendarView == "列表") {
             var list = Column();
-            foreach (var item in Active.Where(item => item.IsEvent && CalendarLocal(item, item.EndAtMillis) >= selectedDay.Date && CalendarVisible(item))) list.Children.Add(Card(EventRow(item)));
-            if (list.Children.Count == 0) list.Children.Add(Text("暂无日程", 16, Muted)); main.Children.Add(Scroll(list));
+            var total = 0;
+            for (var i = 0; i < 7; i++) {
+                var day = start.AddDays(i);
+                list.Children.Add(Text(day.ToString("M月d日 dddd", CalendarCulture), 16, bold: true));
+                var items = EventsOn(day).Where(CalendarVisible).OrderByDescending(item => item.AllDay).ThenBy(item => item.StartAtMillis).ThenBy(item => item.Id).ToList();
+                total += items.Count;
+                foreach (var item in items) list.Children.Add(EventRow(item));
+                if (items.Count == 0) list.Children.Add(Text("本日暂无日程", 13, Muted));
+            }
+            if (total == 0) list.Children.Insert(0, Text("本周暂无日程", 16, Muted)); main.Children.Add(Scroll(list));
         } else main.Children.Add(CalendarTimeline(start, count));
         return root;
     }
@@ -129,7 +140,7 @@ internal sealed partial class NativeWindow
             var circle = new Border { Width = TextSize(26), Height = TextSize(26), CornerRadius = new CornerRadius(TextSize(13)), BorderBrush = day == CalendarNow.Date ? Ocean : null, BorderThickness = new Thickness(day == CalendarNow.Date ? 1 : 0), Child = label };
             var button = CalendarAction(day.ToString("yyyy-MM-dd"), () => { selectedDay = day; miniMonth = day; Render(); });
             button.Content = circle; button.MinHeight = TextSize(34); button.Padding = new Thickness(0); button.Margin = new Thickness(0); button.BorderThickness = new Thickness(0);
-            button.Background = calendarView == "周" && day >= selectedWeek && day < selectedWeek.AddDays(7) || day == selectedDay.Date ? B("#E8F0FF") : B("#F5F7FA");
+            button.Background = calendarView is "周" or "列表" && day >= selectedWeek && day < selectedWeek.AddDays(7) || day == selectedDay.Date ? B("#E8F0FF") : B("#F5F7FA");
             button.Template = miniDateTemplate ??= (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
                 <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Button">
                   <Border Background="{TemplateBinding Background}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
@@ -176,7 +187,7 @@ internal sealed partial class NativeWindow
             var strip = new Grid { Margin = new Thickness(0, 0, SystemParameters.VerticalScrollBarWidth, 0), Background = B("#F7FAFF") };
             strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TimeAxisWidth) }); strip.Children.Add(Text("全天", 11, Muted));
             for (var i = 0; i < count; i++) { strip.ColumnDefinitions.Add(new ColumnDefinition()); var stack = Column(); foreach (var item in allDayEvents[i]) {
-                var action = CalendarAction(item.Title, () => Preview(item)); action.Foreground = B(item.AccentColor); stack.Children.Add(action);
+                var action = CalendarAction(item.Title, () => Preview(item)); action.Foreground = EventInk(item.AccentColor, workspace.Document!.ClassicCalendarColors); action.Background = EventSurface(item.AccentColor, workspace.Document.ClassicCalendarColors); stack.Children.Add(action);
             } Grid.SetColumn(stack, i + 1); strip.Children.Add(stack); }
             DockPanel.SetDock(strip, Dock.Top); body.Children.Add(strip);
         }
@@ -184,7 +195,7 @@ internal sealed partial class NativeWindow
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(TimeAxisWidth) });
         var axis = new Canvas { ClipToBounds = true }; grid.Children.Add(axis);
         for (var hour = 0; hour <= 24; hour++) {
-            var label = Text($"{hour:00}:00", 11, Muted); label.Margin = new Thickness(0); label.Width = TextSize(50); label.TextAlignment = TextAlignment.Center; label.Height = TextSize(16);
+            var label = Text($"{hour:00}:00", 11, Muted); label.Margin = new Thickness(0); label.Width = TextSize(50); label.TextAlignment = TextAlignment.Center; label.Height = LineHeight(11);
             Canvas.SetTop(label, TimeInset + hour * HourHeight - label.Height / 2); axis.Children.Add(label);
             if (!string.IsNullOrEmpty(auxiliaryZoneId)) {
                 var wall = start.AddHours(hour); DateTime? auxiliary = null;
@@ -212,27 +223,34 @@ internal sealed partial class NativeWindow
             var layout = CalendarEventLayout.Arrange(events, day);
             foreach (var item in events) {
                 var itemStart = CalendarLocal(item, item.StartAtMillis); var itemEnd = CalendarLocal(item, item.EndAtMillis);
-                var minute = Math.Max(0, (itemStart - day).TotalMinutes); var duration = Math.Max(28, (Math.Min(1440, (itemEnd - day).TotalMinutes) - minute) * HourHeight / 60);
+                var minute = Math.Max(0, (itemStart - day).TotalMinutes); var duration = Math.Max(12, (Math.Min(1440, (itemEnd - day).TotalMinutes) - minute) * HourHeight / 60);
                 var position = layout[item.Id];
                 var classic = workspace.Document!.ClassicCalendarColors;
-                var ink = classic ? B("#FFFFFF") : AccentInk(item.AccentColor);
-                var eventTitle = Text(item.Title, 14, ink); eventTitle.TextWrapping = TextWrapping.NoWrap;
-                eventTitle.TextTrimming = TextTrimming.CharacterEllipsis; eventTitle.Margin = new Thickness(0);
-                var eventText = Column(eventTitle);
-                if (duration >= TextSize(48)) {
-                    var eventTime = Text(itemStart.ToString("HH:mm") + "–" + itemEnd.ToString("HH:mm"), 12, ink);
-                    eventTime.TextWrapping = TextWrapping.NoWrap; eventTime.TextTrimming = TextTrimming.CharacterEllipsis;
-                    eventText.Children.Add(eventTime);
-                }
-                var tile = new Border { Background = classic ? B(item.AccentColor) : AccentSurface(item.AccentColor),
-                    BorderBrush = B(item.AccentColor), BorderThickness = new Thickness(4, 0, 0, 0),
-                    CornerRadius = new CornerRadius(5), Padding = new Thickness(6, duration < TextSize(32) ? 0 : 3, 4, 0), Height = duration - 2,
-                    Child = eventText, ClipToBounds = true,
-                    Opacity = itemEnd < CalendarNow ? 0.65 : 1, ToolTip = item.Title + "\n" + TimeLabel(item) + "\n" + item.Location };
+                var ended = itemEnd < CalendarNow;
+                var ink = EventInk(item.AccentColor, classic, ended);
+                var titleLine = LineHeight(14); var detailLine = LineHeight(12);
+                var topPadding = duration >= titleLine + 5 ? 3 : 0;
+                var room = Math.Max(0, duration - 2 - topPadding);
+                var showTitle = room >= titleLine;
+                var showTime = room >= titleLine + detailLine + 2;
+                var showLocation = item.Location.Length > 0 && room >= titleLine + detailLine * 2 + 4;
+                var lines = Math.Clamp((int)Math.Floor((room - (showTime ? detailLine + 2 : 0) - (showLocation ? detailLine + 2 : 0)) / titleLine), 1, 3);
+                var eventText = Column();
+                if (showTitle) eventText.Children.Add(LimitedTitle(item.Title, 14, ink, lines));
+                else eventText.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M 1,3 L 1,3 M 6,3 L 6,3 M 11,3 L 11,3"), Stroke = ink, StrokeThickness = 3, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Width = 14, Height = 6, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center });
+                void Detail(string value) { var text = Text(value, 12, ink); text.Margin = new Thickness(0, 2, 0, 0); text.TextWrapping = TextWrapping.NoWrap; text.TextTrimming = TextTrimming.CharacterEllipsis; eventText.Children.Add(text); }
+                if (showTime) Detail(itemStart.ToString("HH:mm") + "–" + itemEnd.ToString("HH:mm"));
+                if (showLocation) Detail(item.Location);
+                var tile = new Border { Background = EventSurface(item.AccentColor, classic, ended),
+                    BorderBrush = ColorBrush(item.AccentColor), BorderThickness = new Thickness(4, 0, 0, 0),
+                    CornerRadius = new CornerRadius(5), Padding = new Thickness(6, topPadding, 4, 0), Height = duration - 2,
+                    Child = eventText, ClipToBounds = true, ToolTip = item.Title + "\n" + TimeLabel(item) + "\n" + item.Location };
                 System.Windows.Automation.AutomationProperties.SetAutomationId(tile, "Calendar.Event." + item.Id);
                 void Position() { tile.Width = Math.Max(10, (canvas.ActualWidth - 4) / position.Columns - 3); Canvas.SetLeft(tile, position.Lane * (canvas.ActualWidth - 4) / position.Columns + 2); }
                 canvas.SizeChanged += (_, _) => Position(); Canvas.SetTop(tile, TimeInset + minute * HourHeight / 60); canvas.Children.Add(tile);
                 AttachCalendarDrag(tile, item, canvas, grid, start, count);
+                System.Windows.Automation.AutomationProperties.SetName(tile, item.Title);
+                System.Windows.Automation.AutomationProperties.SetHelpText(tile, (showTitle ? "" : "短时段，点击查看完整内容。\n") + TimeLabel(item) + "\n" + item.Location + "\n拖动改期，拖动下边缘调整结束，Esc 取消。");
             }
         }
         var clock = new CalendarTimeLine(start, count, zoneId) { IsHitTestVisible = false }; Grid.SetColumnSpan(clock, count + 1); grid.Children.Add(clock);
@@ -284,7 +302,7 @@ internal sealed partial class NativeWindow
             var day = first.AddDays(i); var events = EventsOn(day).Where(item => CalendarVisible(item)).ToList();
             var date = Text(day.ToString("M/d"), 15, day == CalendarNow.Date ? Ocean : Muted, day == CalendarNow.Date);
             var box = Column(date);
-            foreach (var item in events.Take(3)) box.Children.Add(Text(item.Title, 12, B(item.AccentColor)));
+            foreach (var item in events.Take(3)) box.Children.Add(new Border { Background = EventSurface(item.AccentColor, workspace.Document!.ClassicCalendarColors), Padding = new Thickness(3), Margin = new Thickness(0, 2, 0, 0), Child = LimitedTitle(item.Title, 12, EventInk(item.AccentColor, workspace.Document.ClassicCalendarColors), 1) });
             if (events.Count > 3) box.Children.Add(Text($"还有 {events.Count - 3} 项", 11, Muted));
             var cell = new Border { Child = box, Padding = new Thickness(8), Background = day == CalendarNow.Date ? B("#E8F0FF") : Paper,
                 BorderBrush = B("#E1E7F0"), BorderThickness = new Thickness(0, 0, 1, 1), Opacity = day.Month == selectedDay.Month ? 1 : 0.55, Cursor = System.Windows.Input.Cursors.Hand };

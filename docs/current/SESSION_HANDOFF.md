@@ -1,5 +1,27 @@
 # Session Handoff
 
+## 2026-11-03：1.17.15 十项体验修复本地完成
+
+261103-2 从 main / 50c217e 增量完成 R1–R10，Android 1.17.15/407、Windows 1.17.15.0、Room 34。原需求交接/验收表的“本轮未实施”是前期文档轮状态，当前以 [1.17.15 验收](VALIDATION_UX_1.17.15.md) 为准。本轮没有待重新实施的必项；后续先核实际 git/版本，再按新的用户任务继续，旧发布目标不重启。中文聚焦提交以实际 git log 为准，原未跟踪 `docs/goals/PaykiTodo_规划台实现Prompt.md` 保留且排除提交。
+
+已通过 273 Android 单测、12 不同设备检查、Lint 0 错误/138 警告/30 信息；Windows 141 不同检查中 139 通过/0 失败/2 同期跨端网络 fixture 跳过，139 包括 14 阶段独立 UIA、字体矩阵及实际包，不再另行累加。共享 Chromium 7 项通过。修正过 Android 原生消息来源误拒绝、正式 Windows DPI 声明未落实和会话结束生命周期；所有初次失败及最终复验保留在本轮 Scratch。
+
+实际新包：`app/build/outputs/apk/debug/PaykiTodo-1.17.15-debug.apk`、`app/build/outputs/apk/release/PaykiTodo-1.17.15-release.apk`、`desktop/installer-output/PaykiTodo-1.17.15-windows-x64.msi`。实际 payload 为 `desktop/obj/installer/1.17.15-bdd224c8b65b4a47aa9243752c34e968/payload`，不是旧 desktop/dist。交付 `G:\Workspace\Deliverables\PaykiTodo\1.17.15` 共 490 文件，完整 Windows-portable 484 文件；SHA256.json 覆盖其余 489，资源/证书/逐文件哈希已核。
+
+测试使用独立 Win32 桌面与 profile，不接管键鼠。新无窗口 AVD PaykiUx / emulator-5580 使用本轮 APK，仅测试合成资料；最终停止应用与 Instrumentation 并关闭新模拟器，AVD 实体和证据保留在 Scratch/PaykiTodo/ux-implementation-20261103。旧 Pixel_8、真实手机、真实账号及正常 Windows 资料未操作。本轮没有公开发布、push 或服务器部署；真实生产同步、多 DPI 跨屏、OEM 行为及 MSI 实机升级安装未验证。下方旧历史不作为待做指令。
+
+## 2026-11-03：需求理解与文档交接完成，等待用户启动实施
+
+本轮用户只要求整理 10 项体验问题，明确不改代码。已核实实际工作树基线为 `main / 50c217e`，Android `1.17.14 / versionCode 406`、Windows `1.17.14.0`；源文件与当前文档一致。原未跟踪 `docs/goals/PaykiTodo_规划台实现Prompt.md` 保留。
+
+下一模型先读 [实施交接](UX_IMPLEMENTATION_HANDOFF_20261103.md) 和 [逐项验收](UX_ACCEPTANCE_20261103.md)，用户可直接使用 [启动提示词](START_UX_IMPLEMENTATION_20261103.txt)。文档包含每项实际代码入口、已知原因/待查原因、分步实施、范围建议与验收样例。当前尚未修复任何产品问题，不能沿用旧轮测试宣称本轮通过。
+
+关键发现：托盘已有但主窗口关闭会销毁；颜色下拉绑定原始色值；日程标题强制单行且地点仅在提示；双色模式已有；Windows 周列表缺少上界且按天翻页；两端报告正文是普通文本；Windows 帮助未 HTML 化、手机帮助部分内容及窄屏布局过时；DPI 与字体根因需真实运行取证。看板两个平台都存在独立数据/渲染入口，不能仅改 Android SnapshotBuilder。
+
+用户图原样副本在 `G:\Workspace\Scratch\PaykiTodo\ux-handoff-20261103\`。外部资料查阅及证据边界记录在 `G:\Workspace\Notes\CalendarStudy\REQUEST_REFERENCE_20261103.md`，该独立库原有 `FOLLOWUP_20261026.md` 改动未碰。没有恢复已删除研究截图，也没有把第三方观察复制进主工程。
+
+本轮仅新建交接/验收/提示词文档、外部来源索引和截图副本，并在本文件与 CURRENT_TASK 顶部补记。未改版本、代码、数据库、凭据、用户设备或线上状态，未构建、提交或推送。既有 `app/build/outputs/apk/release/PaykiTodo-1.17.14-release.apk` 实际存在，本轮没有新 APK。后续只有在用户要求实施时才执行产品修复；先重新核 Git 与版本，下面为旧发布历史。
+
 ## 2026-11-01 v1.17.14正式发布与公开配置验收完成
 
 源码及 tag 为 a1ea844，公开模式 CI41246534777 已通过。7项实际公开下载哈希及两端生产更新解析器均核对通过；Windows 1.17.13选择delta，其他基线full，本版不误报更新。详细边界、首次辅助脚本失败与497文件交付见 [发布核对](PUBLIC_RELEASE_1.17.14.md)。当前没有待开发、待上传或待发布步骤；最后文档提交与main一致性以实际Git核对记录为准。

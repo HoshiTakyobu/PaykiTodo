@@ -66,6 +66,7 @@ internal static class NativeEditors
         var colors = new[] { "#4CB782", "#3B82F6", "#EF6A67", "#E9A23B", "#8B5CF6", "#14B8A6" };
         var initialColor = value?.AccentColor ?? (isEvent ? ((DesktopCalendar)calendar.SelectedItem).ColorHex : colors[0]);
         var color = new ComboBox { ItemsSource = colors.Append(initialColor).Distinct().ToList(), SelectedItem = initialColor };
+        NativeColorChoice.Apply(color);
         calendar.SelectionChanged += (_, _) => {
             if (calendar.SelectedItem is not DesktopCalendar selected) return;
             participants.SetCalendar(selected);

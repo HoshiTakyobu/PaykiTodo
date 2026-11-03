@@ -1,5 +1,13 @@
 # Project Status
 
+## Current local version: 1.17.15 UX repairs verified
+
+本轮从 main / 50c217e 增量完成 10 项体验修复，Android 1.17.15 / versionCode 407、Windows 1.17.15.0，Room 34 保持。托盘关闭与退出、色块与矢量箭头、日历三行/短日程/双色预览/周列表、双端离线报告与 HTML 帮助、统一今日安排已实现；正式 Windows EXE 的 DPI 声明修为 PerMonitorV2。最新提交以实际 git log 为准，原未跟踪规划 Prompt 保留并排除本轮提交。公开版本仍为 v1.17.14，本轮没有 push、公开发布、服务器部署或真实设备安装。
+
+本轮通过 273 Android 单测、12 个不同模拟器检查；Lint 0 错误/138 警告/30 信息。Windows 按最终测试名去重为 141 项：139 通过、0 失败、2 同期跨端网络 fixture 缺失而跳过，139 已包括字体矩阵、14 阶段独立 UIA 及实际包检查。共享源资源 Chromium 7 项通过，0 页面错误/外部请求。最终包内资源、Release 同证书及交付哈希已核对；详见 [1.17.15 验收](VALIDATION_UX_1.17.15.md)。
+
+成品为 `app/build/outputs/apk/debug/PaykiTodo-1.17.15-debug.apk`、`app/build/outputs/apk/release/PaykiTodo-1.17.15-release.apk`、`desktop/installer-output/PaykiTodo-1.17.15-windows-x64.msi`；实际 Windows payload 为 `desktop/obj/installer/1.17.15-bdd224c8b65b4a47aa9243752c34e968/payload`。交付 `G:\Workspace\Deliverables\PaykiTodo\1.17.15` 共 490 文件，SHA256.json 覆盖其余 489，完整便携目录 484 文件与 payload 逐文件匹配。证据在 Scratch/PaykiTodo/ux-implementation-20261103，新独立 PaykiUx / emulator-5580 已停止并关闭，AVD 实体与证据保留。多 DPI 跨屏、真实账号同步及 OEM 行为边界见验收；没有待重复实施的本轮必项。
+
 ## Current release: v1.17.14 Android and Windows
 
 发布源码及 tag 为 a1ea844，公开模式 [CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41246534777) 已通过。实际下载、生产更新解析器、497 文件交付及保护范围见 [发布核对](PUBLIC_RELEASE_1.17.14.md)。

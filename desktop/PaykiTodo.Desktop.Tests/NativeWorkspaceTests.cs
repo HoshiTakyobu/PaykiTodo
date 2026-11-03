@@ -105,7 +105,7 @@ public sealed class NativeWorkspaceTests
         var thread = new Thread(() => {
             try {
                 desktop = new IsolatedDesktop();
-                var app = new System.Windows.Application();
+                var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                 var folder = NewDirectory(); var store = new DesktopSecureStore(folder); var document = DesktopSnapshotDocument.CreateEmpty();
                 document.SaveItem(NewItem(false, "论文实验结果整理") with { DueAtMillis = Millis(DateTime.Today.AddHours(22)), ReminderEnabled = true, ReminderOffsets = new[] { 0 } });
                 document.SaveItem(NewItem(false, "阅读相关工作"));
@@ -216,11 +216,18 @@ public sealed class NativeWorkspaceTests
                 var edit = NativeEditors.Item(window, false, document.Groups, null, DateTime.Today);
                 Assert.Equal("从原生编辑器创建", edit!.Title);
                 Assert.Null(edit.DueAtMillis);
+                UxUiChecks.VerifyCalendarAndLifecycle(window, workspace, shotFolder);
+                UxUiChecks.VerifyColorsAndStyle(window, workspace, shotFolder);
+                UxUiChecks.VerifyWeeklyList(window, workspace, shotFolder);
+                UxUiChecks.VerifyReport(window, workspace, shotFolder);
+                UxUiChecks.VerifyReaderFailure(window, shotFolder);
                 VerifyLoginServerChoice(window, shotFolder);
-                window.Close(); app.Shutdown();
+                window.Close();
+                UxUiChecks.VerifyProductionTrayCallbacks(shotFolder);
+                app.Shutdown();
             } catch (Exception error) { failure = error; }
         });
-        thread.SetApartmentState(ApartmentState.STA); thread.Start(); Assert.True(thread.Join(TimeSpan.FromSeconds(40)), "Native UI test did not finish");
+        thread.SetApartmentState(ApartmentState.STA); thread.Start(); Assert.True(thread.Join(TimeSpan.FromSeconds(90)), "Native UI test did not finish");
         desktop?.Dispose();
         if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
     }
@@ -459,10 +466,7 @@ public sealed class NativeWorkspaceTests
         Click("数据与备份"); window.UpdateLayout(); Screenshot(window, Path.Combine(folder, "windows-backup-settings.png"));
         Click("常规"); window.UpdateLayout();
         Modal("PaykiTodo 使用说明", () => Click("打开使用说明"), dialog => {
-            var chapter = Descendants<ComboBox>(dialog).Single();
-            Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("首次打开时选择登录服务器"));
-            chapter.SelectedItem = "字体、字号与主题"; dialog.UpdateLayout();
-            Assert.Contains(Descendants<TextBlock>(dialog), text => text.Text.Contains("12—22 px"));
+            UxUiChecks.VerifyGuide(dialog, folder);
             Screenshot(dialog, Path.Combine(folder, "windows-offline-guide.png")); DialogClick(dialog, "关闭");
         });
 

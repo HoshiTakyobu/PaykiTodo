@@ -16,53 +16,58 @@ namespace PaykiTodo.Desktop;
 internal sealed partial class NativeWindow
 {
     private readonly HashSet<string> expandedTodoSeries = new();
+    private double boardScrollOffset;
+    private ScrollViewer? activeBoardScroll;
     private UIElement BoardPage()
     {
         var today = DateTime.Today;
         var tasks = Active.Where(item => !item.IsEvent && !workspace.Document!.HiddenOnBoard(item.Id) &&
             (item.DueAtMillis == long.MaxValue || Local(item.DueAtMillis).Date <= today)).ToList();
-        var schedules = EventsOn(today).Where(item => Local(item.EndAtMillis) > DateTime.Now).ToList();
+        var schedules = Active.Where(item => BoardArrangement.OnDay(item, today) && CalendarVisible(item) && (item.AllDay || Local(item.EndAtMillis) > DateTime.Now)).ToList();
         var greeting = Text(DateTime.Now.Hour < 12 ? "早上好，开启新的一天" : DateTime.Now.Hour < 18 ? "下午好，按自己的节奏来" : "晚上好，给今天一个好结尾", 28, Ocean);
         greeting.FontFamily = HeadingFont; greeting.FontSize = 28;
         var greetingCard = Card(Column(greeting, Text(today.ToString("yyyy年M月d日  dddd", CultureInfo.GetCultureInfo("zh-CN")), 14, Muted)), 24);
         greetingCard.CornerRadius = new CornerRadius(8, 8, 28, 28);
         var body = Column(greetingCard);
-        var columns = new Grid(); columns.ColumnDefinitions.Add(new ColumnDefinition()); columns.ColumnDefinitions.Add(new ColumnDefinition());
-        columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        var left = Column(SectionHeader($"今日待办（{tasks.Count}）", Action("输入规划", CreateTransientPlanning)));
-        left.Margin = new Thickness(0, 0, 18, 0);
-        AppendTodos(left, tasks);
-        if (tasks.Count == 0) left.Children.Add(Card(Text("今天还没有安排任务。", 14, Muted)));
-        left.Children.Add(Action("＋ 新增待办", () => EditItem(false), true));
-        var right = Column(SectionHeader($"今日日程（{schedules.Count}）", Action("查看日历", () => Navigate("日历"))));
+        body.Children.Add(SectionHeader($"今日安排（{tasks.Count + schedules.Count}）", Row(Action("输入规划", CreateTransientPlanning), Action("查看日历", () => Navigate("日历")))));
         var date = Column(Text(today.ToString("M月"), 14, Muted, true), Text(today.ToString("ddd", CultureInfo.GetCultureInfo("zh-CN")), 16, B("#568BC5"), true), Text(today.Day.ToString(), 40, bold: true));
-        date.Width = 64;
+        date.Width = TextSize(64);
         foreach (var label in date.Children.OfType<TextBlock>()) label.TextAlignment = TextAlignment.Center;
         date.Margin = new Thickness(0, 0, 12, 0);
         var scheduleBody = Column();
-        foreach (var item in schedules) scheduleBody.Children.Add(EventRow(item));
-        if (schedules.Count == 0) scheduleBody.Children.Add(Text("暂无日程", 14, Muted));
-        var tomorrow = EventsOn(today.AddDays(1)).ToList();
-        scheduleBody.Children.Add(Text($"明天（{tomorrow.Count}）", 19, Muted, true));
-        foreach (var item in tomorrow) scheduleBody.Children.Add(EventRow(item));
-        if (tomorrow.Count == 0) scheduleBody.Children.Add(Text("明天暂无日程", 16, Muted));
+        void AppendArrangement(IEnumerable<DesktopItem> todos, IEnumerable<DesktopItem> events) {
+            var entries = BoardArrangement.Ordered(todos, events); int? section = null;
+            foreach (var item in entries) {
+                var next = BoardArrangement.Section(item);
+                if (section != next) { section = next; scheduleBody.Children.Add(Text(next == 0 ? "全天" : next == 2 ? "未定时间" : "按时间", 13, Muted)); }
+                if (item.IsEvent) scheduleBody.Children.Add(EventRow(item));
+                else {
+                    var parent = workspace.Document!.Items.FirstOrDefault(value => value.Id == item.ParentTodoId);
+                    scheduleBody.Children.Add(Column(Text(parent == null ? "待办" : "待办 · " + parent.Title, 12, Muted), TodoRow(item)));
+                }
+            }
+            if (entries.Count == 0) scheduleBody.Children.Add(Text("暂无安排", 14, Muted));
+        }
+        AppendArrangement(tasks, schedules);
+        var tomorrow = Active.Where(item => BoardArrangement.OnDay(item, today.AddDays(1)) && CalendarVisible(item)).ToList();
+        var tomorrowTasks = Active.Where(item => !item.IsEvent && !workspace.Document!.HiddenOnBoard(item.Id) && item.DueAtMillis != long.MaxValue && Local(item.DueAtMillis).Date == today.AddDays(1)).ToList();
+        scheduleBody.Children.Add(Text($"明天（{tomorrow.Count + tomorrowTasks.Count}）", 19, Muted, true));
+        AppendArrangement(tomorrowTasks, tomorrow);
         var dayGrid = new Grid(); dayGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); dayGrid.ColumnDefinitions.Add(new ColumnDefinition());
         dayGrid.Children.Add(date); Grid.SetColumn(scheduleBody, 1); dayGrid.Children.Add(scheduleBody);
-        right.Children.Add(Card(dayGrid));
+        body.Children.Add(Card(dayGrid));
+        body.Children.Add(Row(Action("＋ 新增待办", () => EditItem(false), true), Action("＋ 新增日程", () => EditItem(true))));
         var countdowns = workspace.Document!.Items.Where(item => workspace.Document.CountdownVisible(item, DateTime.Now)).Take(3).ToList();
         if (countdowns.Count > 0) {
-            right.Children.Add(Text("值得期待", 20, bold: true));
-            foreach (var item in countdowns) right.Children.Add(CountdownRow(item));
+            body.Children.Add(Text("值得期待", 20, bold: true));
+            foreach (var item in countdowns) body.Children.Add(CountdownRow(item));
         }
-        columns.Children.Add(left); Grid.SetColumn(right, 1); columns.Children.Add(right);
-        columns.SizeChanged += (_, _) => {
-            var compact = columns.ActualWidth < 760;
-            columns.ColumnDefinitions[1].Width = compact ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
-            Grid.SetColumn(right, compact ? 0 : 1); Grid.SetRow(right, compact ? 1 : 0);
-            left.Margin = compact ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 18, 0);
-        };
-        body.Children.Add(columns);
-        return Page(body, true);
+        var frame = (Border)Page(body, true);
+        var scroll = (ScrollViewer)frame.Child; activeBoardScroll = scroll;
+        var ready = false;
+        scroll.Loaded += (_, _) => { scroll.ScrollToVerticalOffset(boardScrollOffset); ready = true; };
+        scroll.ScrollChanged += (_, e) => { if (ready && ReferenceEquals(scroll, activeBoardScroll) && e.VerticalChange != 0) boardScrollOffset = e.VerticalOffset; };
+        return frame;
     }
     private static Grid SectionHeader(string caption, UIElement action)
     {
@@ -75,11 +80,12 @@ internal sealed partial class NativeWindow
     private UIElement EventRow(DesktopItem item)
     {
         var ongoing = Local(item.StartAtMillis) <= DateTime.Now && Local(item.EndAtMillis) > DateTime.Now;
-        var body = Column(Text(item.Title, 19, bold: true), Text(TimeLabel(item), 15, Muted));
-        if (item.Location.Length > 0) body.Children.Add(Text("@" + item.Location.TrimStart('@'), 15, Muted));
+        var classic = workspace.Document!.ClassicCalendarColors;
+        var body = Column(Text("日程", 12, EventInk(item.AccentColor, classic)), LimitedTitle(item.Title, 19, EventInk(item.AccentColor, classic)), Text(TimeLabel(item), 15, EventInk(item.AccentColor, classic)));
+        if (item.Location.Length > 0) body.Children.Add(Text("@" + item.Location.TrimStart('@'), 15, EventInk(item.AccentColor, classic)));
         var row = new Border { Padding = new Thickness(14, 10, 10, 10), Margin = new Thickness(0, 0, 0, 14),
             BorderBrush = B(ongoing ? "#E8B841" : item.AccentColor), BorderThickness = new Thickness(4, ongoing ? 1 : 0, ongoing ? 1 : 0, ongoing ? 1 : 0),
-            CornerRadius = new CornerRadius(6), Background = ongoing ? B("#FFFAE9") : Paper, Child = body,
+            CornerRadius = new CornerRadius(6), Background = EventSurface(item.AccentColor, classic), Child = body,
             Cursor = System.Windows.Input.Cursors.Hand };
         row.MouseLeftButtonUp += (_, _) => Preview(item); return row;
     }

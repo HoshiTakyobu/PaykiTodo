@@ -9,15 +9,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PaykiTodo</AssemblyName>
     <RootNamespace>PaykiTodo.Desktop</RootNamespace>
-    <Version>1.17.14</Version>
-    <AssemblyVersion>1.17.14.0</AssemblyVersion>
-    <FileVersion>1.17.14.0</FileVersion>
+    <Version>1.17.15</Version>
+    <AssemblyVersion>1.17.15.0</AssemblyVersion>
+    <FileVersion>1.17.15.0</FileVersion>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\PaykiTodo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\..\app\src\main\assets\content-viewer\**\*" LogicalName="PaykiTodo.Content/content-viewer/%(RecursiveDir)%(Filename)%(Extension)" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
   </ItemGroup>

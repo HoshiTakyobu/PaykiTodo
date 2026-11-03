@@ -1,5 +1,9 @@
 # PaykiTodo Session Ledger
 
+## 2026-11-03：1.17.15 十项体验修复本地完成
+
+261103-2 从 main / 50c217e 增量实现关闭托盘、选色色块、三行/短日程、双色预览、周列表、字体与 PerMonitorV2 声明、矢量箭头、双端离线报告/HTML 帮助与统一今日安排。Android 1.17.15/407、Windows 1.17.15.0、Room 34；273 Android 单测、12 模拟器检查、Lint 0 错误，Windows 139 通过/0 失败/2 同期网络 fixture 跳过（141 不同检查，含 UIA/字体/实际包），共享 Chromium 7 项通过。最终 APK/MSI/484 文件便携目录与 490 文件交付哈希、包内资源及 Release 同证书已核，详见 [真实验收与边界](VALIDATION_UX_1.17.15.md)。新 PaykiUx / emulator-5580 已关闭，旧设备与真实账号未操作。公开 Release 仍 v1.17.14，没有 push/发布/部署/真实安装；原规划 Prompt 保留且排除本轮提交，提交以实际 git log 为准。
+
 ## Current release: v1.17.14 Android and Windows
 
 已按既有授权正式发布稳定[v1.17.14](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.14)；Android1.17.14/406、Windows1.17.14.0、Room34。公开构建省略本机默认部署配置；新安装须自行选择有效服务器，已有非空地址继续优先，未存地址的旧安装可能需要重选。7项公开资产与真实下载哈希已核实，Windows范围100%，便携484条目、full 482条目、1.17.13增量4条目验签重建通过。1.17.13功能验收保留为历史，旧七项目标保持complete，本轮没有设备操作或服务器部署。

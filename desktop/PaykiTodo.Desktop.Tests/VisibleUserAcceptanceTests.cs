@@ -64,7 +64,9 @@ public sealed class VisibleUserAcceptanceTests
                                 else throw new InvalidOperationException("Control has no invoke/toggle pattern");
                                 return true;
                             });
-                            await Task.Delay(180); return;
+                            await Task.Delay(180);
+                            await window.Dispatcher.InvokeAsync(() => { window.UpdateLayout(); }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+                            return;
                         }
                         var handle = UI(() => new System.Windows.Interop.WindowInteropHelper(Window.GetWindow(control)).Handle);
                         Key(0x12, false); Key(0x12, true); SetForegroundWindow(handle);

@@ -2,6 +2,7 @@ param(
     [string]$Evidence = "G:\Workspace\Scratch\PaykiTodo\ui-1.16.22",
     [switch]$PhysicalInput,
     [string]$PackagedExe,
+    [string]$BaselineExe,
     [string]$TestFilter,
     [switch]$IsolatedChild
 )
@@ -15,9 +16,13 @@ if ($Evidence.Contains('"') -or $PSCommandPath.Contains('"') -or ($TestFilter -a
 if ($IsolatedChild) {
     Start-Transcript -LiteralPath (Join-Path $Evidence 'windows-isolated-transcript.txt') -Append | Out-Null
     try {
-        $filter = if ($TestFilter) { $TestFilter } else { 'FullyQualifiedName!~VisibleUserAcceptanceTests' }
+        $filter = if ($TestFilter) { $TestFilter } else { 'FullyQualifiedName!~VisibleUserAcceptanceTests&FullyQualifiedName!~UxRenderingTests' }
         dotnet test "$root\desktop\PaykiTodo.Desktop.Tests\PaykiTodo.Desktop.Tests.csproj" --configuration Debug --filter $filter --logger 'trx;LogFileName=windows-regressions.trx' --results-directory $Evidence
         $testExit = $LASTEXITCODE
+        if ($testExit -eq 0 -and !$TestFilter) {
+            dotnet test "$root\desktop\PaykiTodo.Desktop.Tests\PaykiTodo.Desktop.Tests.csproj" --configuration Debug --no-build --filter 'FullyQualifiedName~UxRenderingTests' --logger 'trx;LogFileName=windows-font-rendering.trx' --results-directory $Evidence
+            $testExit = $LASTEXITCODE
+        }
         if ($testExit -eq 0 -and !$TestFilter) {
             # WPF allows only one Application per process, even after Shutdown.
             dotnet test "$root\desktop\PaykiTodo.Desktop.Tests\PaykiTodo.Desktop.Tests.csproj" --configuration Debug --no-build --filter 'FullyQualifiedName~VisibleUserAcceptanceTests' --logger 'trx;LogFileName=windows-isolated-uia.trx' --results-directory $Evidence
@@ -32,11 +37,13 @@ $oldPhysical = $env:PAYKI_VISIBLE_ACCEPTANCE
 $oldEvidence = $env:PAYKI_UI_EVIDENCE
 $oldDesktop = $env:PAYKI_ISOLATED_DESKTOP
 $oldPackaged = $env:PAYKI_PACKAGED_EXE
+$oldBaseline = $env:PAYKI_BASELINE_EXE
 try {
     $env:PAYKI_UIA_ACCEPTANCE = '1'
     $env:PAYKI_VISIBLE_ACCEPTANCE = '0'
     $env:PAYKI_UI_EVIDENCE = $Evidence
     if ($PackagedExe) { $env:PAYKI_PACKAGED_EXE = (Resolve-Path -LiteralPath $PackagedExe).Path }
+    if ($BaselineExe) { $env:PAYKI_BASELINE_EXE = (Resolve-Path -LiteralPath $BaselineExe).Path }
     $env:PAYKI_ISOLATED_DESKTOP = 'PaykiTodoTests-' + [Guid]::NewGuid().ToString('N')
     $shellPath = (Get-Process -Id $PID).Path
     $arguments = '-NoProfile -NonInteractive -File "' + $PSCommandPath + '" -IsolatedChild -Evidence "' + $Evidence + '"'
@@ -50,4 +57,5 @@ try {
     $env:PAYKI_UI_EVIDENCE = $oldEvidence
     $env:PAYKI_ISOLATED_DESKTOP = $oldDesktop
     $env:PAYKI_PACKAGED_EXE = $oldPackaged
+    $env:PAYKI_BASELINE_EXE = $oldBaseline
 }

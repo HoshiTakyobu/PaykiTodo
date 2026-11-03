@@ -38,6 +38,13 @@ internal sealed partial class NativeWindow : Window
     private bool editingPlanning;
     private DesktopReminders? reminders;
     private bool reauthenticating;
+    private bool exiting;
+    private bool sessionEnding;
+    private bool exitingBeforeSession;
+    private bool initialized;
+    private WindowState hiddenState = WindowState.Normal;
+    internal bool KeepRunningOnClose { get; set; }
+    internal bool ExitRequested => exiting;
     private DesktopSnapshotDocument? renderedDocument;
     private IReadOnlyList<DesktopItem> renderedItems = Array.Empty<DesktopItem>();
     private readonly Dictionary<long, (string Title, string Markdown)> planningDrafts = new();
@@ -45,6 +52,7 @@ internal sealed partial class NativeWindow : Window
     public NativeWindow(DesktopWorkspace? workspace = null, string? profileDirectory = null)
     {
         isolatedProfile = workspace != null || profileDirectory != null;
+        KeepRunningOnClose = workspace == null;
         this.profileDirectory = profileDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
         this.workspace = workspace ?? new DesktopWorkspace(new DesktopSecureStore(this.profileDirectory));
         Dark = this.workspace.Document?.Settings["themeMode"]?.GetValue<string>() == "DARK";
@@ -55,6 +63,7 @@ internal sealed partial class NativeWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         FontFamily = InterfaceFont;
         ConfigureRendering(this);
+        SourceInitialized += (_, _) => System.Windows.Interop.HwndSource.FromHwnd(new System.Windows.Interop.WindowInteropHelper(this).Handle)!.AddHook(OnWindowMessage);
         FontSize = TextSize(14); Background = B("#EEF3F4");
         BuildShell();
         SizeChanged += (_, e) => {
@@ -79,9 +88,52 @@ internal sealed partial class NativeWindow : Window
             finally { syncTickRunning = false; }
             ReviewCountdowns();
         }; timer.Start();
-        Closed += (_, _) => { updateCancellation?.Cancel(); timer.Stop(); reportExpiryTimer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
-        Loaded += async (_, _) => { UpdateStartup(workspace == null && profileDirectory == null); if (workspace == null) reminders = new DesktopReminders(this, this.workspace, OpenItemDetails); await this.workspace.SyncAsync(); };
+        Closing += (_, e) => {
+            if (exiting || !KeepRunningOnClose) return;
+            e.Cancel = true; hiddenState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState; Hide();
+        };
+        if (System.Windows.Application.Current != null) System.Windows.Application.Current.SessionEnding += OnSessionEnding;
+        Closed += (_, _) => {
+            exiting = true; updateCancellation?.Cancel(); timer.Stop(); reportExpiryTimer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged;
+            if (System.Windows.Application.Current != null) System.Windows.Application.Current.SessionEnding -= OnSessionEnding;
+        };
+        Loaded += async (_, _) => {
+            if (initialized || exiting) return; initialized = true;
+            UpdateStartup(workspace == null && profileDirectory == null);
+            if (workspace == null) reminders = new DesktopReminders(this, this.workspace, OpenItemDetails, RestoreMainWindow, RequestExit);
+            await this.workspace.SyncAsync();
+        };
         Render();
+    }
+
+    private void MarkSessionEnding() { if (sessionEnding) return; sessionEnding = true; exitingBeforeSession = exiting; exiting = true; }
+    private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e) => MarkSessionEnding();
+    private IntPtr OnWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled) {
+        if (message == 0x0011) { MarkSessionEnding(); handled = true; return new IntPtr(1); }
+        if (message == 0x0016 && sessionEnding) {
+            handled = true;
+            if (wParam == IntPtr.Zero) { sessionEnding = false; exiting = exitingBeforeSession; }
+            else Dispatcher.BeginInvoke(new Action(() => System.Windows.Application.Current.Shutdown()));
+        }
+        return IntPtr.Zero;
+    }
+    internal void RequestExit() {
+        if (exiting) return;
+        exiting = true;
+        foreach (var child in OwnedWindows.Cast<Window>().ToArray()) child.Close();
+        Close();
+    }
+    internal void RestoreMainWindow() {
+        if (exiting) return;
+        if (!IsVisible) { WindowState = WindowState.Normal; Show(); WindowState = hiddenState; }
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        var bounds = RestoreBounds;
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
+        var physical = new MatrixTransform(transform).TransformBounds(bounds);
+        if (!System.Windows.Forms.Screen.AllScreens.Any(screen => physical.IntersectsWith(new Rect(screen.WorkingArea.X, screen.WorkingArea.Y, screen.WorkingArea.Width, screen.WorkingArea.Height)))) {
+            WindowState = WindowState.Normal; Left = SystemParameters.WorkArea.Left + 20; Top = SystemParameters.WorkArea.Top + 20;
+        }
+        Activate();
     }
 
     private void BuildShell()
@@ -145,6 +197,7 @@ internal sealed partial class NativeWindow : Window
 
     private void OnWorkspaceChanged()
     {
+        if (exiting) return;
         if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(OnWorkspaceChanged); return; }
         ScheduleReportExpiry();
         status.Text = workspace.Status;
@@ -237,7 +290,8 @@ internal sealed partial class NativeWindow : Window
     }
     internal void OpenItemDetails(long id)
     {
-        Show(); WindowState = WindowState.Normal; Activate();
+        if (exiting) return;
+        RestoreMainWindow();
         var item = workspace.Document?.Items.FirstOrDefault(value => value.Id == id);
         if (item == null) { workspace.Notify("这条事项已删除或当前不可用。"); return; }
         if (workspace.Document!.SharedCalendar(item.CalendarId)?["sharedRole"]?.GetValue<string>() == "revoked") { workspace.Notify("此日历的访问权限已撤销。"); return; }

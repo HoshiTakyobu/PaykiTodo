@@ -78,12 +78,43 @@ internal static class NativeUi
     {
         var panel = new StackPanel(); foreach (var element in elements) panel.Children.Add(element); return panel;
     }
-    public static Brush AccentSurface(string hex) => Mix(B(hex), Paper, Dark ? 0.80 : 0.90);
+    public static Brush ColorBrush(string hex) {
+        try { return new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString(hex)); }
+        catch (Exception error) when (error is FormatException or ArgumentException or NotSupportedException) { return B("#3370FF"); }
+    }
+    public static Brush AccentSurface(string hex) => Mix(ColorBrush(hex), Paper, Dark ? 0.80 : 0.90);
     public static Brush AccentInk(string hex)
     {
-        var color = B(hex); var surface = AccentSurface(hex);
+        var color = ColorBrush(hex); var surface = AccentSurface(hex);
         for (var i = 0; i < 14 && Contrast(color, surface) < 4.5; i++) color = Mix(color, Ink, 0.18);
         return color;
+    }
+    public static Brush EventSurface(string hex, bool classic, bool ended = false) {
+        var fill = classic ? Mix(ColorBrush(hex), Paper, 0) : AccentSurface(hex);
+        if (ended) fill = Mix(fill, Paper, 0.25);
+        // Retain white-on-blue classic cards by a small display-only shade adjustment.
+        // Very pale fills keep their hue and use dark text instead.
+        if (classic && Contrast(B("#FFFFFF"), fill) is >= 3 and < 4.5)
+            for (var i = 0; i < 12 && Contrast(B("#FFFFFF"), fill) < 4.5; i++) fill = Mix(fill, B("#000000"), 0.05);
+        return fill;
+    }
+    public static Brush EventInk(string hex, bool classic, bool ended = false) {
+        var fill = EventSurface(hex, classic, ended);
+        var ink = classic ? B("#FFFFFF") : AccentInk(hex);
+        if (classic && Contrast(ink, fill) < 4.5) ink = B("#17212B");
+        for (var i = 0; i < 16 && Contrast(ink, fill) < 4.5; i++) ink = Mix(ink, Dark && !classic ? B("#FFFFFF") : B("#000000"), 0.18);
+        return ink;
+    }
+    public static double LineHeight(double size) {
+        var sample = Text("中文细笔画 Ag 14:00–17:00", size); sample.Margin = new Thickness(0);
+        sample.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        return Math.Ceiling(Math.Max(sample.DesiredSize.Height, sample.FontSize * sample.FontFamily.LineSpacing)) + 1;
+    }
+    public static TextBlock LimitedTitle(string value, double size, Brush ink, int lines = 3) {
+        var title = Text(value, size, ink); title.Margin = new Thickness(0);
+        title.LineHeight = LineHeight(size); title.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+        title.MaxHeight = title.LineHeight * lines; title.TextTrimming = TextTrimming.CharacterEllipsis;
+        return title;
     }
     private static Brush Mix(Brush first, Brush second, double amount)
     {
@@ -294,11 +325,14 @@ internal static class NativeUi
                   <Grid>
                     <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                       <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
-                        <Border Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderThickness="1" CornerRadius="6"><TextBlock Text="⌄" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}"/></Border>
+                        <Border Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderThickness="1" CornerRadius="6"/>
                       </ControlTemplate></ToggleButton.Template>
                     </ToggleButton>
-                    <ContentPresenter x:Name="selection" Margin="10,8,32,8" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"/>
-                    <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Margin="10,6,32,6" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}" BorderThickness="0"/>
+                    <Grid IsHitTestVisible="False"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                      <ContentPresenter x:Name="selection" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"/>
+                      <Path x:Name="arrow" Grid.Column="1" Data="M 0,0 L 8,8 L 16,0" Stretch="Fill" Width="{TemplateBinding FontSize}" Height="{TemplateBinding FontSize}" Margin="4,0,10,0" VerticalAlignment="Center" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                    </Grid>
+                    <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Margin="10,6,42,6" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}" BorderThickness="0"/>
                     <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False">
                       <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="360"><ScrollViewer><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer></Border>
                     </Popup>
@@ -326,7 +360,7 @@ internal static class NativeUi
                   <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="edge" Property="BorderBrush" Value="#609C81"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers>
                 </ControlTemplate></Setter.Value></Setter>
               </Style>
-              <Style TargetType="ComboBoxItem"><Setter Property="Padding" Value="10,8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="row" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"><ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" ContentStringFormat="{TemplateBinding ContentStringFormat}"/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="row" Property="Opacity" Value="0.65"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="FontWeight" Value="SemiBold"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+              <Style TargetType="ComboBoxItem"><Setter Property="Padding" Value="10,8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="row" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderThickness="2,0,0,0" BorderBrush="Transparent"><ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" ContentStringFormat="{TemplateBinding ContentStringFormat}"/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource PaykiTodo.FocusBrush}"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource PaykiTodo.FocusBrush}"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
             </ResourceDictionary>
             """);
         foreach (var type in new[] { typeof(TextBox), typeof(CheckBox), typeof(ComboBox), typeof(DatePicker), typeof(PasswordBox), typeof(ComboBoxItem) }) {

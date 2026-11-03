@@ -68,7 +68,7 @@ internal sealed class DesktopReminders : IDisposable
     private Window? alert;
     private long? notifiedItem;
     private readonly Action<long>? openDetails;
-    public DesktopReminders(Window owner, DesktopWorkspace workspace, Action<long>? openDetails = null)
+    public DesktopReminders(Window owner, DesktopWorkspace workspace, Action<long>? openDetails = null, Action? restoreMain = null, Action? requestExit = null)
     {
         this.owner = owner; this.workspace = workspace; this.openDetails = openDetails;
         workspace.LoginRequired += OnLoginRequired;
@@ -77,15 +77,17 @@ internal sealed class DesktopReminders : IDisposable
         using (var stream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/PaykiTodo;component/Assets/PaykiTodo.ico")).Stream)
             trayIcon = new System.Drawing.Icon(stream);
         tray = new System.Windows.Forms.NotifyIcon { Icon = trayIcon, Text = "PaykiTodo", Visible = true };
-        tray.DoubleClick += (_, _) => { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); };
+        restoreMain ??= () => { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); };
+        requestExit ??= () => owner.Close();
+        tray.DoubleClick += (_, _) => restoreMain();
         tray.BalloonTipClicked += (_, _) => {
             var item = workspace.Document?.Items.FirstOrDefault(item => item.Id == notifiedItem);
-            if (notifiedItem is { } id && openDetails != null) { openDetails(id); return; }
-            if (item != null) { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); }
+            if (notifiedItem is { } id && openDetails != null) { restoreMain(); openDetails(id); return; }
+            if (item != null) restoreMain();
         };
         var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("打开 PaykiTodo", null, (_, _) => { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); });
-        menu.Items.Add("退出", null, (_, _) => owner.Close()); tray.ContextMenuStrip = menu;
+        menu.Items.Add("打开 PaykiTodo", null, (_, _) => restoreMain());
+        menu.Items.Add("退出", null, (_, _) => requestExit()); tray.ContextMenuStrip = menu;
         timer.Tick += (_, _) => Tick(); timer.Start();
     }
     private void OnLoginRequired() => owner.Dispatcher.Invoke(() => tray.ShowBalloonTip(10000, "PaykiTodo 登录已过期", "打开账号重新登录。本机数据和离线提醒保留。", System.Windows.Forms.ToolTipIcon.Info));

@@ -15,8 +15,15 @@ internal sealed partial class NativeWindow
         var duration = new ComboBox { ItemsSource = new[] { 15, 30, 45, 60, 90, 120, document.CalendarDefaultDurationMinutes }.Distinct().Order().ToArray(), SelectedItem = document.CalendarDefaultDurationMinutes };
         var timed = Input(document.CalendarTimedDefaultRemindersCsv);
         var allDay = new AllDayReminderEditor(document.CalendarAllDayDefaultRemindersJson);
-        var colors = new ComboBox { ItemsSource = new[] { "现代（彩色文字）", "经典（白色文字）" }, SelectedIndex = document.ClassicCalendarColors ? 1 : 0 };
+        var colors = new ComboBox { ItemsSource = new[] { "现代：浅色底、彩色文字", "经典：纯色底" }, SelectedIndex = document.ClassicCalendarColors ? 1 : 0 };
         System.Windows.Automation.AutomationProperties.SetName(colors, "日程颜色样式");
+        var preview = new Border { CornerRadius = new CornerRadius(5), BorderThickness = new Thickness(4, 0, 0, 0), Padding = new Thickness(12), Margin = new Thickness(0, 8, 0, 12) };
+        void PreviewStyle() {
+            var classic = colors.SelectedIndex == 1; const string hex = "#3370FF";
+            preview.Background = EventSurface(hex, classic); preview.BorderBrush = ColorBrush(hex);
+            preview.Child = Column(LimitedTitle("小组会：阶段进度与下一阶段安排", 14, EventInk(hex, classic)), Text("14:00–17:00", 12, EventInk(hex, classic)), Text("实验楼 A 座 501", 12, EventInk(hex, classic)));
+        }
+        colors.SelectionChanged += (_, _) => PreviewStyle(); PreviewStyle();
         var zones = new[] { "" }.Concat(TimeZoneInfo.GetSystemTimeZones().Select(DesktopCalendarTime.IanaId)).Distinct().Order().ToList();
         foreach (var value in new[] { document.CalendarDisplayTimeZoneId, document.CalendarAuxiliaryTimeZoneId }) if (!zones.Contains(value)) zones.Add(value);
         var display = new ComboBox { ItemsSource = zones, SelectedItem = document.CalendarDisplayTimeZoneId };
@@ -28,7 +35,7 @@ internal sealed partial class NativeWindow
         var error = Text("", 13, B("#AF3A32"));
         var body = Column(BrandHeading("日历设置", "默认值用于新日程；已有日程保留自己的时间与提醒。"),
             SettingRow("默认时长", "新建日程使用的分钟数", duration), SettingRow("每周开始", "周视图与小月历的排列", week),
-            SettingRow("日程颜色", "浅色底和彩色文字，或纯色底和白色文字", colors),
+            SettingRow("日程颜色", "现代显示侧边色条；经典用纯色底，浅色自动选择可读文字", colors), preview,
             Text("普通日程提前提醒（分钟）", 14), timed, Text("多个值用逗号分隔；留空表示默认不提醒。", 12, Muted),
             new Separator(), allDay.Control, new Separator(),
             SettingRow("显示时区", "留空时跟随设备时区", display), SettingRow("辅助时区", "留空关闭辅助时间标尺", auxiliary), error);

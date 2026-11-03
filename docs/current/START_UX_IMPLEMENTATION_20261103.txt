@@ -1,0 +1,37 @@
+工作目录：G:\Workspace\Project\PaykiTodo
+
+当用户将本提示词作为实施指令交给你时，请在本地最新版本上完成下面两份文档中的 10 项体验修复。前一模型只完成了需求理解、代码定位和验收设计，没有修改产品代码，不要把文档存在当作已完成。
+
+先读：
+1. AGENTS.md，并按其顺序阅读八份当前项目文档。
+2. docs/current/UX_IMPLEMENTATION_HANDOFF_20261103.md
+3. docs/current/UX_ACCEPTANCE_20261103.md
+
+重新核实 git status --short、git log -1 --oneline --decorate、Gradle/Windows 版本、PROJECT_STATUS 和 SESSION_HANDOFF 首节。文档核查基线为 main / 50c217e、Android 1.17.14/406、Windows 1.17.14.0。仓库比文档新时从实际基线增量实现，不检出旧版，不覆盖原有未提交文件。
+
+必须覆盖：
+R1 主窗口关闭到后台托盘，托盘可恢复，显式退出真的结束。
+R2 待办/日程选色显示色块，包括收起值和展开列表。
+R3 日程标题最多三行，合理显示标题、时间、地点，处理短事件空间限制。
+R4 查验并完善已有 MODERN/CLASSIC 样式设置、预览和保存，保留跨端字段。
+R5 Windows 与 Android 内置离线 Markdown 报告阅读器。
+R6 Windows 应用内 HTML 帮助，手机 HTML 内容和响应布局更新。
+R7 保留用户字体，基于真实 DPI/字体/渲染证据修复小字质量与裁切。
+R8 Windows 列表展示所选周并支持上一周/下一周。
+R9 用矢量图形替换字符下拉箭头，视觉高度匹配文字。
+R10 双端每日看板取消独立今日待办区，与日程统一按时序展示。
+
+关键理解：
+- 14:00–17:00 日程与 15:00 待办按日程开始/待办 DDL 排，不能改任务 DDL 为 14:00。
+- 原生 Windows 为 WPF，不能只改 LAN 网页或旧 WebView 兼容壳。
+- 现有托盘、双色模式、部分 DPI 设置和离线帮助已经存在；针对问题完善，不重复开发。
+- 其他未明确边界按主文档 2.1 的推荐默认规则推进，收到用户新说明及时调整；不要冒称默认规则已被逐项确认。
+
+用户原图：G:\Workspace\Scratch\PaykiTodo\ux-handoff-20261103\source-calendar.png 与 source-toolbar.png。
+外部研究核对索引：G:\Workspace\Notes\CalendarStudy\REQUEST_REFERENCE_20261103.md。第三方资料继续独立保留，不抄回产品仓库或历史。
+
+先最小复现，再按主文档逐阶段实现和运行对应验收。使用隔离资料/独立桌面，不抢用户键鼠，不污染真实账号。新增中间证据放 Scratch/PaykiTodo/<本轮目录>，恢复材料放 Backups/PaykiTodo/<来源目录>。
+
+完成后更新当前文档与产品说明，按项目规则升版本、构建、验证并作中文聚焦提交，报告实际包路径和未验证边界。不要自动执行公开发布、服务器部署或把新包安装到用户真实设备；这些动作按用户后续授权处理。不要重新启动旧的已完成发布目标。
+
+若用户当前只要求审阅或补充文档，则继续只做文档，以上提示词不自行构成实施授权。

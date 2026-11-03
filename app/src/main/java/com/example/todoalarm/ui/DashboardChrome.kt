@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -115,6 +116,7 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.DataHealthCleanResult
 import com.example.todoalarm.data.DataHealthReport
+import com.example.todoalarm.data.BoardArrangement
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.PlanningAiProvider
@@ -625,7 +627,9 @@ internal fun DashboardBody(
                 onGetReport = onGetAiReport,
                 targetReportId = targetAiReportId,
                 targetReportSerial = targetAiReportSerial,
-                onDeleteReport = onDeleteAiReport
+                onDeleteReport = onDeleteAiReport,
+                accountIdentity = listOf(uiState.settings.remoteSyncAccountServerUrl,
+                    uiState.settings.remoteSyncUserId.toString(), uiState.settings.remoteSyncUsername).joinToString("\u0000")
             )
         }
         return
@@ -784,9 +788,10 @@ internal fun DashboardBody(
         }
     }
     val boardDate = boardMoment.toLocalDate()
-    val boardTodoItems = remember(section, uiState.missedItems, uiState.todayItems) {
+    val boardTodoItems = remember(section, uiState.missedItems, uiState.todayItems, uiState.upcomingItems, boardDate) {
         if (section == DashboardSection.BOARD) {
-            (uiState.missedItems + uiState.todayItems)
+            (uiState.missedItems + uiState.todayItems + uiState.upcomingItems.filter { it.hasDueDate && !it.dueDate().isAfter(boardDate) })
+                .filter { it.isActive && !it.hiddenFromBoard }
                 .distinctBy { it.id }
                 .sortedWith(
                     compareByDescending<TodoItem> { it.missed }
@@ -815,9 +820,9 @@ internal fun DashboardBody(
             if (items.isEmpty()) null else group.copy(items = items)
         }
     }
-    val allTodayScheduleItems = remember(section, uiState.calendarItems, boardDate) {
+    val allTodayScheduleItems = remember(section, uiState.calendarItems, boardDate, uiState.settings.hiddenCalendarIds) {
         if (section == DashboardSection.BOARD) {
-            uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, boardDate) }
+            uiState.calendarItems.filter { it.isActive && it.calendarId !in uiState.settings.hiddenCalendarIds && DailyBoardSnapshotBuilder.eventOverlapsDay(it, boardDate) }
                 .sortedBy { it.startAtMillis ?: it.dueAtMillis }
         } else {
             emptyList()
@@ -836,14 +841,19 @@ internal fun DashboardBody(
             emptyList()
         }
     }
-    val tomorrowScheduleItems = remember(section, uiState.calendarItems, boardDate) {
+    val tomorrowScheduleItems = remember(section, uiState.calendarItems, boardDate, uiState.settings.hiddenCalendarIds) {
         if (section == DashboardSection.BOARD) {
             val tomorrow = boardDate.plusDays(1)
-            uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, tomorrow) }
+            uiState.calendarItems.filter { it.isActive && it.calendarId !in uiState.settings.hiddenCalendarIds && DailyBoardSnapshotBuilder.eventOverlapsDay(it, tomorrow) }
                 .sortedBy { it.startAtMillis ?: it.dueAtMillis }
         } else {
             emptyList()
         }
+    }
+    val tomorrowTodoItems = remember(section, uiState.upcomingItems, boardDate) {
+        if (section == DashboardSection.BOARD) uiState.upcomingItems.filter {
+            it.isActive && !it.hiddenFromBoard && it.hasDueDate && it.dueDate() == boardDate.plusDays(1)
+        }.distinctBy { it.id } else emptyList()
     }
     val activeAnnouncements = if (section == DashboardSection.BOARD) uiState.activeAnnouncements else emptyList()
     val expandedRecurringSeries = remember(expandedRecurringSeriesIds) { expandedRecurringSeriesIds.toSet() }
@@ -854,12 +864,13 @@ internal fun DashboardBody(
         upcomingExpanded,
         expandedRecurringSeries,
         boardTodoItems,
+        tomorrowTodoItems,
         uiState.missedItems,
         uiState.todayItems,
         uiState.upcomingItemGroups
     ) {
         if (section == DashboardSection.BOARD) {
-            boardTodoItems
+            (boardTodoItems + tomorrowTodoItems).distinctBy { it.id }
         } else if (section == DashboardSection.ACTIVE) {
             buildList {
                 if (missedExpanded) addAll(uiState.missedItems)
@@ -974,65 +985,7 @@ internal fun DashboardBody(
 
                 item {
                     BoardBlockTitle(
-                        title = "今日待办（${boardTodoItems.size}）",
-                        collapsed = boardTodosCollapsed,
-                        onToggle = { boardTodosCollapsed = !boardTodosCollapsed },
-                        onNavigate = onNavigateTasks
-                    )
-                }
-                if (!boardTodosCollapsed) {
-                    if (boardTodoItems.isEmpty()) {
-                        item {
-                            Box(modifier = Modifier.clickable(onClick = onNavigateTasks)) {
-                                EmptyStateCard("今天还没有安排任务。")
-                            }
-                        }
-                    } else {
-                        item(key = "board-quick-checklists") {
-                            Column {
-                                QuickChecklistGroups(
-                                    groups = uiState.quickChecklistGroups,
-                                    items = boardQuickChecklistItems,
-                                    taskGroups = uiState.groups,
-                                    selectionMode = todoBatchSelectionMode,
-                                    selectedTodoIds = selectedTodoIds,
-                                    onToggleSelection = onToggleTodoSelection,
-                                    onEnterSelection = onEnterTodoSelection,
-                                    onToggleGroup = onToggleQuickChecklistGroup,
-                                    onToggleTask = onToggleQuickChecklistTask,
-                                    onEdit = onEdit,
-                                    onComplete = onCompleteTodo,
-                                    onCancel = onCancelTodo,
-                                    onDelete = onDeleteTodo
-                                )
-                            }
-                        }
-                        items(
-                            items = normalBoardTodoItems,
-                            key = { it.id },
-                            contentType = { "active-todo-card" }
-                        ) { item ->
-                            ActiveTodoCard(
-                                item = item,
-                                groups = uiState.groups,
-                                resolvedGroup = resolvedTodoGroups[item.id],
-                                forceShowDetailsKey = if (previewTodoId == item.id) previewTodoSerial else 0,
-                                selectionMode = todoBatchSelectionMode,
-                                selected = item.id in selectedTodoIds,
-                                onSelectionToggle = { onToggleTodoSelection(item.id) },
-                                onEnterSelection = { onEnterTodoSelection(item.id) },
-                                onEdit = { onEdit(item) },
-                                onComplete = { onCompleteTodo(item) },
-                                onCancel = { onCancelTodo(item) },
-                                onDelete = { onDeleteTodo(item) }
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    BoardBlockTitle(
-                        title = "今日日程（${todayScheduleItems.size}）",
+                        title = "今日安排（${boardTodoItems.size + todayScheduleItems.size}）",
                         collapsed = boardTodayEventsCollapsed,
                         onToggle = { boardTodayEventsCollapsed = !boardTodayEventsCollapsed },
                         onNavigate = onNavigateCalendar
@@ -1041,16 +994,20 @@ internal fun DashboardBody(
                 if (!boardTodayEventsCollapsed) {
                     item {
                         TodayScheduleBoardCard(
-                            today = boardDate,
-                            now = boardMoment,
-                            todayEvents = todayScheduleItems,
-                            tomorrowEvents = tomorrowScheduleItems,
-                            todayCollapsed = boardTodayEventsCollapsed,
+                            today = boardDate, now = boardMoment,
+                            todayEvents = todayScheduleItems, tomorrowEvents = tomorrowScheduleItems,
+                            todayCollapsed = false,
                             onOpenEvent = onPreviewCalendarEvent,
-                            onGetEventCheckIns = onGetEventCheckIns,
-                            onLaunchCheckIn = onLaunchCheckIn,
-                            onNavigatePlanning = onNavigatePlanning,
-                            onNavigateCalendar = onNavigateCalendar
+                            onGetEventCheckIns = onGetEventCheckIns, onLaunchCheckIn = onLaunchCheckIn,
+                            onNavigatePlanning = onNavigatePlanning, onNavigateCalendar = onNavigateCalendar,
+                            todayTodos = boardTodoItems,
+                            tomorrowTodos = tomorrowTodoItems,
+                            todoContext = uiState.missedItems + uiState.todayItems + uiState.upcomingItems + uiState.quickChecklistItems,
+                            groups = uiState.groups,
+                            onOpenTodo = { if (todoBatchSelectionMode) onToggleTodoSelection(it.id) else previewTodoTarget = it },
+                            onCompleteTodo = { if (todoBatchSelectionMode) onToggleTodoSelection(it.id) else onCompleteTodo(it) },
+                            selectionMode = todoBatchSelectionMode, selectedTodoIds = selectedTodoIds,
+                            onEnterTodoSelection = { onEnterTodoSelection(it.id) }
                         )
                     }
                 }
@@ -1808,7 +1765,16 @@ internal fun TodayScheduleBoardCard(
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onLaunchCheckIn: (Long) -> Unit,
     onNavigatePlanning: () -> Unit = {},
-    onNavigateCalendar: () -> Unit = {}
+    onNavigateCalendar: () -> Unit = {},
+    todayTodos: List<TodoItem> = emptyList(),
+    tomorrowTodos: List<TodoItem> = emptyList(),
+    todoContext: List<TodoItem> = emptyList(),
+    groups: List<TaskGroup> = emptyList(),
+    onOpenTodo: (TodoItem) -> Unit = {},
+    onCompleteTodo: (TodoItem) -> Unit = {},
+    selectionMode: Boolean = false,
+    selectedTodoIds: Set<Long> = emptySet(),
+    onEnterTodoSelection: (TodoItem) -> Unit = {}
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -1834,32 +1800,51 @@ internal fun TodayScheduleBoardCard(
                     color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                if (!todayCollapsed) {
-                    if (todayEvents.isEmpty()) {
-                        Text("暂无日程", modifier = Modifier.padding(vertical = 12.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        todayEvents.forEach { item ->
-                            BoardScheduleEventRow(item = item, now = now,
-                                onGetEventCheckIns = onGetEventCheckIns,
-                                onLaunchCheckIn = onLaunchCheckIn,
-                                onClick = { onOpenEvent(item) })
+                @Composable
+                fun Entries(todos: List<TodoItem>, events: List<TodoItem>, moment: LocalDateTime?) {
+                    val entries = BoardArrangement.ordered(todos, events)
+                    var section: Int? = null
+                    if (entries.isEmpty()) Text("暂无安排", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    entries.forEach { item ->
+                        val next = BoardArrangement.section(item)
+                        if (section != next) {
+                            section = next
+                            Text(when (next) { 0 -> "全天"; 2 -> "未定时间"; else -> "按时间" },
+                                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        if (item.isEvent) BoardScheduleEventRow(item, moment, onGetEventCheckIns, onLaunchCheckIn) { onOpenEvent(item) }
+                        else BoardScheduleTodoRow(item, groups, todoContext, { onOpenTodo(item) }, { onCompleteTodo(item) }, selectionMode, item.id in selectedTodoIds, { onEnterTodoSelection(item) })
                     }
                 }
-                Text("明天（${tomorrowEvents.size}）",
+                if (!todayCollapsed) Entries(todayTodos, todayEvents, now)
+                Text("明天（${tomorrowEvents.size + tomorrowTodos.size}）",
                     modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                if (tomorrowEvents.isEmpty()) {
-                    Text("明天暂无日程", modifier = Modifier.clickable(onClick = onNavigatePlanning).padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    tomorrowEvents.forEach { item ->
-                        BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
-                    }
-                }
+                Entries(tomorrowTodos, tomorrowEvents, null)
+
             }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun BoardScheduleTodoRow(item: TodoItem, groups: List<TaskGroup>, context: List<TodoItem>, onOpen: () -> Unit, onComplete: () -> Unit,
+    selectionMode: Boolean = false, selected: Boolean = false, onEnterSelection: () -> Unit = {}) {
+    val group = groups.firstOrNull { it.id == item.groupId }
+    val tint = (item.accentColorHex ?: group?.colorHex)?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(if (selectionMode && selected) tint.copy(alpha = 0.12f) else Color.Transparent), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.dp).fillMaxHeight().background(tint, RoundedCornerShape(4.dp)))
+        LightweightCompletionToggle(checked = selectionMode && selected, enabled = item.isActive, onCheck = onComplete,
+            name = (if (selectionMode) "选择待办：" else "完成待办：") + item.title)
+        Column(Modifier.weight(1f).combinedClickable(onClick = onOpen, onLongClick = if (selectionMode) null else onEnterSelection), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val parent = context.firstOrNull { it.id == item.parentTodoId }
+            Text(listOfNotNull("待办", groups.firstOrNull { it.id == item.groupId }?.name, parent?.title).joinToString(" · "),
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            if (item.hasDueDate) Text("DDL " + Instant.ofEpochMilli(item.dueAtMillis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MM-dd HH:mm")),
+                style = MaterialTheme.typography.bodyMedium, color = if (item.dueAtMillis < System.currentTimeMillis()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -1950,11 +1935,11 @@ private fun BoardScheduleEventRow(
                     style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 21.sp),
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = DailyBoardSnapshotBuilder.eventSecondaryText(item),
+                    text = "日程 · " + DailyBoardSnapshotBuilder.eventSecondaryText(item),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
                     fontWeight = FontWeight.Normal,

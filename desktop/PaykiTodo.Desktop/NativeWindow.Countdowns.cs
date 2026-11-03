@@ -10,7 +10,7 @@ internal sealed partial class NativeWindow
 
     private void ReviewCountdowns()
     {
-        if (!IsLoaded || reviewingCountdown || reauthenticating || workspace.Document == null || OwnedWindows.Count > 0) return;
+        if (exiting || !IsVisible || !IsLoaded || reviewingCountdown || reauthenticating || workspace.Document == null || OwnedWindows.Count > 0) return;
         var item = workspace.Document.Items.FirstOrDefault(item => !deferredCountdowns.Contains(item.Id) && workspace.Document.CountdownNeedsDecision(item, DateTime.Now));
         if (item == null) return;
         reviewingCountdown = true;

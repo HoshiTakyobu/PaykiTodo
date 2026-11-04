@@ -15,6 +15,9 @@ This project also depends on third-party open-source components, including but n
 - Marked 18.1.3, MIT License, by MarkedJS and Christopher Jeffrey, bundled for offline Markdown reports and HTML help at `app/src/main/assets/content-viewer/vendor/marked.js`; license text: `app/src/main/assets/content-viewer/vendor/marked.LICENSE`. Source: https://github.com/markedjs/marked/tree/v18.1.3
 - DOMPurify 3.4.17, available under Apache License 2.0 or Mozilla Public License 2.0, by Cure53 and contributors, bundled to sanitize rendered reports at `app/src/main/assets/content-viewer/vendor/purify.js`; license text: `app/src/main/assets/content-viewer/vendor/dompurify.LICENSE`. Source: https://github.com/cure53/DOMPurify/tree/3.4.17 . The bundle also retains the MIT notice for its regenerator-runtime helper.
 
+- Markdig 0.40.0, BSD 2-Clause License, by Alexandre Mutel, used for the native Windows report-list preview. Full notice: `app/src/main/assets/licenses/Markdig.LICENSE.txt` and `Licenses/Markdig.LICENSE.txt` in the Windows distribution. Source: https://github.com/xoofx/markdig/tree/0.40.0
+- commonmark-java 0.24.0, BSD 2-Clause License, by Robin Stocker and contributors, used for the native Android report-list preview. Full notice: `app/src/main/assets/licenses/CommonMark.LICENSE.txt`. Source: https://github.com/commonmark/commonmark-java/tree/commonmark-parent-0.24.0
+
 Those dependencies remain governed by their own upstream licenses. Before redistributing modified builds, verify the exact dependency tree and license metadata from Gradle.
 
 Release signing keys, local API keys, private Base URLs, backups, logs, and generated APK/AAB artifacts are not part of the open-source distribution and must not be committed to the repository.

@@ -110,20 +110,20 @@ internal static class UxUiChecks
                 DesktopItemEdit? result = null;
                 void Exercise(bool commit, DesktopItemEdit value) {
                     InDialog(window, "编辑" + (isEvent ? "日程" : "待办"), () => result = NativeEditors.Item(window, isEvent, workspace.Document!.Groups, value, DateTime.Today, calendars, preferences: workspace.Document), dialog => {
-                        UxRenderingTests.Descendants<Expander>(dialog).Single(x => x.Header as string == "更多选项 · 循环、倒数日与颜色").IsExpanded = true;
+                        // Color is a first-class field, not part of the advanced expander.
                         dialog.UpdateLayout();
                         var control = UxRenderingTests.Descendants<ComboBox>(dialog).Single(x => Name(x) == "事项颜色");
                         control.BringIntoView(); Pump(); control.ApplyTemplate(); control.UpdateLayout();
                         Assert.Equal(value.AccentColor, control.SelectedItem);
-                        Assert.Contains(UxRenderingTests.Descendants<Border>(control), x => x.Width == 20 && x.Height == 20 && x.Background is SolidColorBrush b && b.Color.ToString() == "#FF123ABC");
+                        Assert.Contains(UxRenderingTests.Descendants<Border>(control), x => x.Width == 28 && x.Height == 28 && x.Background is SolidColorBrush b && b.Color.ToString() == "#FF123ABC");
                         Assert.DoesNotContain(UxRenderingTests.Descendants<TextBlock>(control), x => x.Text.StartsWith('#'));
                         var arrow = Assert.IsType<System.Windows.Shapes.Path>(control.Template.FindName("arrow", control));
-                        Assert.Equal(control.FontSize, arrow.Height); Assert.Equal(1.6, arrow.StrokeThickness);
+                        Assert.Equal(6, arrow.Height); Assert.Equal(10, arrow.Width); Assert.Equal(1.5, arrow.StrokeThickness);
                         var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(control)!;
                         ((System.Windows.Automation.Provider.IExpandCollapseProvider)peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.ExpandCollapse)).Expand(); Pump();
                         var popup = Assert.IsType<Popup>(control.Template.FindName("PART_Popup", control));
                         Assert.True(popup.IsOpen);
-                        Assert.Equal(control.Items.Count, UxRenderingTests.Descendants<Border>(popup.Child).Count(x => x.Width == 20 && x.Height == 20));
+                        Assert.Equal(12, UxRenderingTests.Descendants<ComboBoxItem>(popup.Child).Count(x => x.Visibility == Visibility.Visible));
                         Assert.DoesNotContain(UxRenderingTests.Descendants<TextBlock>(popup.Child), x => x.Text.StartsWith('#'));
                         if (!commit) UxRenderingTests.Capture(dialog, Path.Combine(folder, isEvent ? "event-color-popup.png" : "todo-color-popup.png"));
                         control.IsDropDownOpen = false;
@@ -131,17 +131,17 @@ internal static class UxUiChecks
                             UxRenderingTests.Descendants<ComboBox>(dialog).Single(x => Name(x) == "所属日历").SelectedIndex = 1;
                             Assert.Equal("#E9A23B", control.SelectedItem);
                         }
-                        control.SelectedItem = "#14B8A6";
+                        control.SelectedItem = "#17CFB5";
                         Click(dialog, commit ? "完成" : "取消");
                     });
                 }
                 Exercise(false, seed); Assert.Null(result); Assert.True(workspace.Document!.HasSamePersonalSyncContent(original));
-                Exercise(true, seed); Assert.NotNull(result); Assert.Equal("#14B8A6", result!.AccentColor);
+                Exercise(true, seed); Assert.NotNull(result); Assert.Equal("#17CFB5", result!.AccentColor);
                 long id = 0; workspace.Edit(doc => id = doc.SaveItem(result));
-                Assert.Equal("#14B8A6", workspace.Document!.EditFor(id)!.AccentColor);
+                Assert.Equal("#17CFB5", workspace.Document!.EditFor(id)!.AccentColor);
                 InDialog(window, "编辑" + (isEvent ? "日程" : "待办"), () => result = NativeEditors.Item(window, isEvent, workspace.Document!.Groups, workspace.Document.EditFor(id), DateTime.Today, calendars), dialog => {
-                    UxRenderingTests.Descendants<Expander>(dialog).Single(x => x.Header as string == "更多选项 · 循环、倒数日与颜色").IsExpanded = true; dialog.UpdateLayout();
-                    Assert.Equal("#14B8A6", UxRenderingTests.Descendants<ComboBox>(dialog).Single(x => Name(x) == "事项颜色").SelectedItem); Click(dialog, "取消");
+                    dialog.UpdateLayout();
+                    Assert.Equal("#17CFB5", UxRenderingTests.Descendants<ComboBox>(dialog).Single(x => Name(x) == "事项颜色").SelectedItem); Click(dialog, "取消");
                 });
                 workspace.Edit(doc => doc.ReplaceWith(original));
             }
@@ -192,12 +192,12 @@ internal static class UxUiChecks
             window.UpdateLayout(); Pump(); Assert.Equal(day.AddDays(7), selected.GetValue(window));
             UxRenderingTests.Descendants<Button>(window).Single(x => Name(x) == "上一周").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout(); Pump(); Assert.Equal(day, selected.GetValue(window));
             workspace.Edit(doc => doc.Settings["weekStartMode"] = "SUNDAY"); window.UpdateLayout();
-            Assert.Contains(UxRenderingTests.Descendants<TextBlock>(window), x => x.Text == "2026年11月1日 – 2026年11月7日");
+            Assert.Contains(UxRenderingTests.Descendants<TextBlock>(window), x => x.ToolTip as string == "2026年11月1日 – 2026年11月7日");
             selected.SetValue(window, new DateTime(2026, 12, 31)); Navigate(window, "日历");
-            Assert.Contains(UxRenderingTests.Descendants<TextBlock>(window), x => x.Text == "2026年12月27日 – 2027年1月2日");
+            Assert.Contains(UxRenderingTests.Descendants<TextBlock>(window), x => x.ToolTip as string == "2026年12月27日 – 2027年1月2日");
             workspace.Edit(doc => { doc.Settings["weekStartMode"] = "MONDAY"; doc.Settings["calendarDisplayTimeZoneId"] = "America/New_York"; });
             selected.SetValue(window, new DateTime(2026, 11, 3)); Navigate(window, "日历");
-            Assert.Contains(UxRenderingTests.Descendants<TextBlock>(window), x => x.Text == "2026年11月2日 – 2026年11月8日");
+            Assert.Contains(UxRenderingTests.Descendants<TextBlock>(window), x => x.ToolTip as string == "2026年11月2日 – 2026年11月8日");
             Assert.DoesNotContain(UxRenderingTests.Descendants<TextBlock>(window), x => x.Text == "跨周延续");
         } finally { window.Width = width; selected.SetValue(window, initial); workspace.Edit(doc => doc.ReplaceWith(original)); }
     }

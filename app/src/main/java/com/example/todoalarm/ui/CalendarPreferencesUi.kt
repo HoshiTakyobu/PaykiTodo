@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,7 +75,7 @@ internal fun CalendarTimeZoneChoice(title: String, value: String, onChange: (Str
     Row(Modifier.fillMaxWidth().clickable { open = true }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
         Text(value.ifBlank { if (title == "辅助时区") "不显示" else "跟随设备" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
-        Text("  ›", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     if (open) {
         var search by remember { mutableStateOf("") }
@@ -96,7 +97,7 @@ internal fun CalendarTimeZoneChoice(title: String, value: String, onChange: (Str
 @Composable
 internal fun CalendarDefaultsButton() {
     var open by remember { mutableStateOf(false) }
-    TextButton(onClick = { open = true }) { Text("新建日程默认值与时区") }
+    TextButton(onClick = { open = true }) { Text("日历设置") }
     if (open) CalendarPreferencesDialog { open = false }
 }
 
@@ -123,6 +124,6 @@ internal fun CalendarPreferencesDialog(onDismiss: () -> Unit) {
         HorizontalDivider()
         CalendarTimeZoneChoice("日历显示时区", displayZone) { displayZone = it }
         CalendarTimeZoneChoice("辅助时区", auxiliaryZone) { auxiliaryZone = it }
-        Text("日程可以分别选择时区；切换显示时区不会改动已经保存的时间。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("新日程使用这里的时区。切换设置不会改动已有日程保存的时区或时间。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

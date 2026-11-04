@@ -114,3 +114,19 @@ The 2026-10-28 round also requires larger white rounded-square launcher marks, c
 - Recurring event edits, cancellation and deletion explicitly choose current, current-and-future or all. A one-occurrence move keeps its original series anchor. Drag/resize uses 15-minute snapping, previews the candidate and supports Esc cancellation; saving uses the same scope rules as form editing.
 - Countdown AUTO retains the last7 local calendar days by default; KEEP survives completion and the cutoff, HIDE suppresses presentation. Ask recently completed/ended AUTO items whether to keep the memorial. Do not resurrect task active status to show a memorial.
 - Settings uses compact categories: category navigation, title/summary/control rows and light dividers. Mobile backup emphasizes directory/export/restore and collapses maintenance tools.
+
+## 12. 2026-11-04 layout requirements (1.17.16)
+
+These requirements supersede older native-Windows narrow-week, nested-settings and default-font rules above. They do not remove Android's explicit three-day view or change the LAN browser's separate layout.
+
+- Native Windows week view always shows seven days. Hide the auxiliary month before narrowing the work week. Compute minimum window width from the rail, margins, time axis and seven cells whose one-hour tile width is at least approximately 1.5 times its height; default 14-DIP body text uses a 900-DIP minimum. Recalculate for larger fonts, and use the same hour-height scale for grid creation and dragging.
+- Keep date navigation, calendars, view selection, preferences and creation on one compact toolbar row. Agenda lists align a left date rail with right-side entries and equally structured empty days.
+- Arrows are small vector chevrons, not font glyphs or stretched square V shapes. The common dropdown uses a 10-by-6-DIP path independent of body-font metrics.
+- Board task/event entries share a compact height baseline and stripe geometry. Do not display “按时间” or redundant task/event type labels. Task group color and event color remain separate data meanings; grouping and sorting never alter the stored time.
+- Windows item editors use integrated subject/location/notes fields and a clock-led date/time range. Recurrence, calendar and color are not inside the advanced expander. Retain all-day rules, extra slots, countdowns, check-in and authorized participants through the existing transactional draft.
+- Timezone selection belongs in preferences, not the item editor. New drafts use the preference; existing items retain their stored timezone, instants and all-day boundaries.
+- The 12 RGB presets appear in two rows of six rounded-square swatches with a white selected check. Do not display color names or remap legacy custom colors. Calendar/group selectors include rounded-square color legends.
+- Native details fit their content, do not repeat the window title, and group secondary/destructive actions under “更多”. Keep confirmation, scope and access checks intact.
+- Report lists render a bounded native Markdown preview without per-card WebViews or external requests. Keep original text unchanged, and retain the full offline reader; Windows read actions sit on each card's right.
+- Native Settings uses horizontal category navigation and left-aligned content instead of a second vertical sidebar. System-recommended body type is bundled Sarasa UI; preserve explicitly selected fonts and fixed brand/navigation/greeting artwork.
+- Mobile calendar management is named “我的日历” with an icon and count; default/timezone preferences use the compact “日历设置” entry.

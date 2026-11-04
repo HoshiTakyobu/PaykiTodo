@@ -385,7 +385,7 @@ public sealed class NativeWorkspaceTests
         Assert.Equal(count, workspace.Document.Items.Count);
         Modal("新增日历", () => Private("EditCalendar", new object[] { null! }), dialog => {
             Descendants<TextBox>(dialog).Single(input => System.Windows.Automation.AutomationProperties.GetName(input) == "日历名称").Text = "课程表";
-            Descendants<ComboBox>(dialog).Single().SelectedItem = "#7955CC";
+            Descendants<ComboBox>(dialog).Single().SelectedItem = "#8C56EC";
             DialogClick(dialog, "完成");
         });
         var calendar = workspace.Document.Calendars.Single(item => item.Name == "课程表");
@@ -436,12 +436,13 @@ public sealed class NativeWorkspaceTests
         Assert.Equal("Microsoft YaHei", persisted.Settings["desktopFontFamily"]!.GetValue<string>());
         Assert.Equal(22, DesktopFonts.ReadSize(persisted.Settings));
         Assert.Equal(22, NativeUi.InterfaceFontSize);
-        foreach (var width in new[] { 1920d, 920d }) {
-            window.MinWidth = width; window.Width = width; window.UpdateLayout();
+        foreach (var width in new[] { 1920d, Math.Max(920d, NativeWindow.MinimumCalendarWindowWidth) }) {
+            window.Width = width; window.UpdateLayout();
             Assert.Equal(width, window.ActualWidth);
             var section = Descendants<StackPanel>(window).Single(panel => System.Windows.Automation.AutomationProperties.GetAutomationId(panel) == "Settings.Section");
             var layout = Descendants<Grid>(window).Single(panel => System.Windows.Automation.AutomationProperties.GetAutomationId(panel) == "Settings.Layout");
-            Assert.InRange(section.TransformToAncestor(layout).Transform(new Point()).X, layout.ColumnDefinitions[0].ActualWidth + 23, layout.ColumnDefinitions[0].ActualWidth + 25);
+            Assert.Empty(layout.ColumnDefinitions);
+            Assert.InRange(section.TransformToAncestor(layout).Transform(new Point()).X, 0, 1);
             var fontButton = Descendants<Button>(window).Single(button => button.Content as string == "选择字体");
             var bounds = fontButton.TransformToAncestor(window).TransformBounds(new Rect(fontButton.RenderSize));
             Assert.True(bounds.Right < window.ActualWidth - 12); Assert.True(bounds.Bottom < window.ActualHeight);
@@ -451,7 +452,7 @@ public sealed class NativeWorkspaceTests
         Navigate("日历"); window.UpdateLayout(); Screenshot(window, Path.Combine(folder, "windows-calendar-font22.png"));
         var create = Descendants<Button>(window).Single(button => button.Content as string == "＋ 创建日程");
         Assert.True(create.ActualHeight >= create.DesiredSize.Height);
-        Assert.Equal(3, Descendants<Canvas>(window).Count(canvas => canvas.Tag is DateTime));
+        Assert.Equal(7, Descendants<Canvas>(window).Count(canvas => canvas.Tag is DateTime));
         Modal("新增日程", () => Private("EditItem", true, null!, null!, null!), dialog => {
             var clocks = Descendants<TextBox>(dialog).Where(input => input.IsVisible && !input.AcceptsReturn && System.Text.RegularExpressions.Regex.IsMatch(input.Text, "^\\d{2}:\\d{2}$")).ToArray();
             Assert.NotEmpty(clocks);
@@ -500,7 +501,7 @@ public sealed class NativeWorkspaceTests
         List<Canvas> Days() => Descendants<Canvas>(window).Where(c => c.Tag is DateTime).ToList();
         foreach (var width in new[] { 900d, 1100d, 1450d }) {
             window.Width = width; Pump();
-            Assert.Equal(width < 1100 ? 3 : 7, Days().Count);
+            Assert.Equal(7, Days().Count);
             foreach (var button in Descendants<Button>(window).Where(b => b.Content as string == "＋ 创建日程" || b.Content as string == "今天")) {
                 var point = button.TranslatePoint(new Point(), window);
                 Assert.InRange(point.X, 0, window.ActualWidth - button.ActualWidth + 1);
@@ -609,7 +610,10 @@ public sealed class NativeWorkspaceTests
         var calendars = document.Calendars.ToList();
         calendars.Add(new DesktopCalendar("shared:other", "另一共享日历", "#7955CC") { ShareMode = "SHARED", OwnerAccount = "other", MembersJson = "[{\"username\":\"other\",\"displayName\":\"另一成员\",\"role\":\"owner\"}]" });
         DesktopItemEdit? draft = null;
-        void Editor(Action<Window> inspect) => InspectModal(owner, "编辑日程", () => draft = NativeEditors.Item(owner, true, document.Groups, document.EditFor(original.Id), DateTime.Today, calendars), inspect);
+        void Editor(Action<Window> inspect) => InspectModal(owner, "编辑日程", () => draft = NativeEditors.Item(owner, true, document.Groups, document.EditFor(original.Id), DateTime.Today, calendars), editor => {
+            Descendants<Expander>(editor).Single(expander => expander.Header as string == "更多设置").IsExpanded = true;
+            editor.UpdateLayout(); inspect(editor);
+        });
         void Select(Window editor, bool finish) => InspectModal(editor, "选择参与者", () => {
             Descendants<Button>(editor).Single(button => button.Content as string == "选择参与者").BringIntoView(); editor.UpdateLayout(); ClickDialog(editor, "选择参与者");
         }, selection => {

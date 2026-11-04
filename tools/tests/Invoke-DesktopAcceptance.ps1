@@ -7,6 +7,8 @@ param(
     [switch]$IsolatedChild
 )
 $ErrorActionPreference = 'Stop'
+$Evidence = [IO.Path]::GetFullPath($Evidence)
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 New-Item -ItemType Directory -Path $Evidence -Force | Out-Null
 if ($PhysicalInput) {
@@ -16,11 +18,15 @@ if ($Evidence.Contains('"') -or $PSCommandPath.Contains('"') -or ($TestFilter -a
 if ($IsolatedChild) {
     Start-Transcript -LiteralPath (Join-Path $Evidence 'windows-isolated-transcript.txt') -Append | Out-Null
     try {
-        $filter = if ($TestFilter) { $TestFilter } else { 'FullyQualifiedName!~VisibleUserAcceptanceTests&FullyQualifiedName!~UxRenderingTests' }
+        $filter = if ($TestFilter) { $TestFilter } else { 'FullyQualifiedName!~VisibleUserAcceptanceTests&FullyQualifiedName!~UxRenderingTests&FullyQualifiedName!~LayoutRefinementTests' }
         dotnet test "$root\desktop\PaykiTodo.Desktop.Tests\PaykiTodo.Desktop.Tests.csproj" --configuration Debug --filter $filter --logger 'trx;LogFileName=windows-regressions.trx' --results-directory $Evidence
         $testExit = $LASTEXITCODE
         if ($testExit -eq 0 -and !$TestFilter) {
             dotnet test "$root\desktop\PaykiTodo.Desktop.Tests\PaykiTodo.Desktop.Tests.csproj" --configuration Debug --no-build --filter 'FullyQualifiedName~UxRenderingTests' --logger 'trx;LogFileName=windows-font-rendering.trx' --results-directory $Evidence
+            $testExit = $LASTEXITCODE
+        }
+        if ($testExit -eq 0 -and !$TestFilter) {
+            dotnet test "$root\desktop\PaykiTodo.Desktop.Tests\PaykiTodo.Desktop.Tests.csproj" --configuration Debug --no-build --filter 'FullyQualifiedName~LayoutRefinementTests' --logger 'trx;LogFileName=windows-layout-refinement.trx' --results-directory $Evidence
             $testExit = $LASTEXITCODE
         }
         if ($testExit -eq 0 -and !$TestFilter) {

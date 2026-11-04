@@ -65,9 +65,14 @@ internal sealed partial class NativeWindow
         foreach (var report in reports) {
             var heading = (report["type"]?.GetValue<string>() == "WEEKLY" ? "每周回顾" : "每日回顾") + " · " + Local(report["generatedAtMillis"]?.GetValue<long>()).ToString("yyyy-MM-dd HH:mm");
             var text = report["content"]?.GetValue<string>() ?? report["contentMarkdown"]?.GetValue<string>() ?? report["reportText"]?.GetValue<string>() ?? "";
-            var summary = Text(text.Length <= 80 ? text : text[..80] + "…"); summary.MaxHeight = LineHeight(14) * 3; summary.TextTrimming = System.Windows.TextTrimming.CharacterEllipsis;
+            var summary = NativeMarkdownPreview.Create(text);
             var source = report["providerName"]?.GetValue<string>() ?? "未知来源";
-            body.Children.Add(Card(Column(Text(heading, 20, Forest, true), Text("来源：" + source, 12, Muted), summary, Action("阅读报告", () => OpenReport(report, heading)))));
+            var read = QuietAction("阅读报告", () => OpenReport(report, heading)); read.Foreground = Ocean;
+            read.Margin = new Thickness(16, 0, 0, 0); read.VerticalAlignment = VerticalAlignment.Center;
+            var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(Column(Text(heading, 18, Ink, true), Text("来源：" + source, 12, Muted), summary));
+            Grid.SetColumn(read, 1); row.Children.Add(read);
+            var card = Card(row, 18); card.CornerRadius = new CornerRadius(12); body.Children.Add(card);
         }
         if (reports.Count == 0) body.Children.Add(Card(Text("暂无报告。手机生成的报告会随账号数据同步到这里。", 15, Muted)));
         return Page(body);

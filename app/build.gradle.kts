@@ -7,8 +7,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.17.15"
-val paykiVersionCode = 407
+val paykiVersionName = "1.17.16"
+val paykiVersionCode = 408
 
 val paykiPublicBuild = providers.gradleProperty("paykiPublicBuild")
     .map { value -> value.toBooleanStrict() }
@@ -133,6 +133,7 @@ ksp {
 }
 
 dependencies {
+    implementation("org.commonmark:commonmark:0.24.0")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-compose:1.9.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")

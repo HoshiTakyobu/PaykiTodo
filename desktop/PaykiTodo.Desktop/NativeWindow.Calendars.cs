@@ -67,8 +67,9 @@ internal sealed partial class NativeWindow
         if (calendar != null && DesktopSnapshotDocument.IsSharedCalendar(calendar.Id)) { EditSharedCalendarMetadata(calendar); return; }
         var dialog = Dialog(this, calendar == null ? "新增日历" : "编辑日历", 550, 520);
         var name = Input(calendar?.Name ?? ""); System.Windows.Automation.AutomationProperties.SetName(name, "日历名称");
-        var colors = new[] { "#3370FF", "#16A369", "#DB5298", "#BD6B17", "#7955CC", "#D94646" };
-        var color = new ComboBox { ItemsSource = colors.Append(calendar?.ColorHex ?? colors[0]).Distinct().ToList(), SelectedItem = calendar?.ColorHex ?? colors[0] };
+        var colors = NativeColorChoice.Presets;
+        var color = new ComboBox { ItemsSource = colors.Append(calendar?.ColorHex ?? colors[6]).Distinct().ToList(), SelectedItem = calendar?.ColorHex ?? colors[6], Width = 72, HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+        NativeColorChoice.Apply(color);
         System.Windows.Automation.AutomationProperties.SetName(color, "日历颜色");
         var preview = Text("课程安排 · 09:00–09:30", 16, B(color.SelectedItem.ToString()!));
         color.SelectionChanged += (_, _) => preview.Foreground = B(color.SelectedItem.ToString()!);

@@ -10,6 +10,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
@@ -421,17 +422,12 @@ internal fun CalendarEventEditorDialog(
             }
         }
     ) {
-                EditorBlock(title = "主题") {
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text("添加主题") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                EditorBlock(title = "") {
+                    IntegratedEditorText(title, { title = it }, "添加主题", headline = true)
                 }
 
                 EditorBlock(title = "日历") {
-                    PreferenceChoice("所属日历", selectedCalendarId, writableCalendars.map { it.id to it.name }) { id ->
+                    PreferenceChoice("所属日历", selectedCalendarId, writableCalendars.map { it.id to it.name }, colorByKey = writableCalendars.associate { it.id to it.colorHex }) { id ->
                         if (id != selectedCalendarId) participantsJson = "[]"
                         selectedCalendarId = id
                         workspace.calendars.firstOrNull { it.id == id }?.let { accentColorHex = it.colorHex }
@@ -442,13 +438,16 @@ internal fun CalendarEventEditorDialog(
                         CalendarParticipantsEditor(selectedCalendar, participantsJson) { participantsJson = it }
                     }
                 }
-                if (countdownEnabled) EditorBlock(title = "纪念展示") {
-                    PreferenceChoice("结束后", countdownPastMode, CountdownPastChoices) { countdownPastMode = it }
+                if (countdownEnabled) {
+                    EditorBlock(title = "纪念展示") {
+                        PreferenceChoice("结束后", countdownPastMode, CountdownPastChoices) { countdownPastMode = it }
+                    }
                 }
                 EditorBlock(title = "分组") {
                     EditorSelectionRow(
                         title = "日程分组",
                         value = sortedGroups.firstOrNull { it.id == selectedGroupId }?.name ?: "默认分组",
+                        colorHex = sortedGroups.firstOrNull { it.id == selectedGroupId }?.colorHex,
                         onClick = { if (sortedGroups.isNotEmpty()) showGroupPicker = true }
                     )
                     Text(
@@ -705,23 +704,9 @@ internal fun CalendarEventEditorDialog(
                     }
                 }
 
-                EditorBlock(title = "地点") {
-                    OutlinedTextField(
-                        value = location,
-                        onValueChange = { location = it },
-                        label = { Text("添加地点") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                EditorBlock(title = "描述") {
-                    OutlinedTextField(
-                        value = notes,
-                        onValueChange = { notes = it },
-                        label = { Text("添加描述") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
-                    )
+                EditorBlock(title = "") {
+                    IntegratedEditorText(location, { location = it }, "添加地点")
+                    IntegratedEditorText(notes, { notes = it }, "添加备注")
                 }
 
                 EditorBlock(title = "日程标记") {
@@ -1007,33 +992,33 @@ internal fun CalendarEventEditorDialog(
                     }
                 }
 
-                EditorBlock(title = "时区与可见范围") {
-                    CalendarTimeZoneChoice("日程时区", eventTimeZoneId) { eventTimeZoneId = it }
+                EditorBlock(title = "可见范围") {
                     PreferenceChoice("忙闲", eventBusyStatus, listOf("BUSY" to "忙碌", "FREE" to "空闲")) { eventBusyStatus = it }
                     PreferenceChoice("可见范围", eventVisibility, listOf("DEFAULT" to "沿用日历设置", "PRIVATE" to "私密", "PUBLIC" to "公开")) { eventVisibility = it }
                     Text("个人日历的内容只在你的账号内同步；共享日历的成员访问由服务器权限控制。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 EditorBlock(title = "日程颜色") {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        PaykiColorPresets.Rainbow12.forEach { candidate ->
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(RoundedCornerShape(7.dp))
-                                    .background(colorFromHex(candidate))
-                                    .border(
-                                        width = if (accentColorHex == candidate) 3.dp else 1.dp,
-                                        color = if (accentColorHex == candidate) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant,
-                                        shape = RoundedCornerShape(7.dp)
-                                    )
-                                    .semantics { contentDescription = "日程颜色 $candidate" }
-                                    .selectable(selected = accentColorHex == candidate, role = Role.RadioButton) { accentColorHex = candidate }
-                            ) {}
+                    if (PaykiColorPresets.Rainbow12.none { it.equals(accentColorHex, true) }) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(Modifier.size(18.dp).background(colorFromHex(accentColorHex), RoundedCornerShape(4.dp)))
+                            Text("当前颜色", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PaykiColorPresets.Rainbow12.chunked(6).forEach { paletteRow ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                paletteRow.forEach { candidate ->
+                                    Box(
+                                        modifier = Modifier.weight(1f).aspectRatio(1f)
+                                            .clip(RoundedCornerShape(7.dp)).background(colorFromHex(candidate))
+                                            .semantics { contentDescription = "日程颜色 $candidate" }
+                                            .selectable(selected = accentColorHex.equals(candidate, true), role = Role.RadioButton) { accentColorHex = candidate },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (accentColorHex.equals(candidate, true)) Icon(Icons.Rounded.Check, contentDescription = "已选中", tint = Color.White, modifier = Modifier.size(22.dp))
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1150,7 +1135,8 @@ internal fun CalendarEventEditorDialog(
                 ChoiceItem(
                     key = group.id.toString(),
                     title = group.name,
-                    subtitle = if (group.isDefault) "默认分组" else null
+                    subtitle = if (group.isDefault) "默认分组" else null,
+                    colorHex = group.colorHex
                 )
             },
             selectedKey = selectedGroupId.toString(),
@@ -1182,41 +1168,28 @@ private fun EditorBlock(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)
-        )
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            content()
-        }
+        if (title.isNotBlank()) Text(title, style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        content()
     }
 }
 
 private data class ChoiceItem(
     val key: String,
     val title: String,
-    val subtitle: String? = null
+    val subtitle: String? = null,
+    val colorHex: String? = null
 )
 
 @Composable
 private fun EditorSelectionRow(
     title: String,
     value: String,
+    colorHex: String? = null,
     onClick: () -> Unit
 ) {
     Surface(
@@ -1237,6 +1210,7 @@ private fun EditorSelectionRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            colorHex?.let { Box(Modifier.size(16.dp).background(colorFromHex(it), RoundedCornerShape(4.dp))) }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1409,6 +1383,7 @@ private fun SingleChoiceListDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        option.colorHex?.let { Box(Modifier.size(16.dp).background(colorFromHex(it), RoundedCornerShape(4.dp))) }
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(option.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
                             option.subtitle?.let {

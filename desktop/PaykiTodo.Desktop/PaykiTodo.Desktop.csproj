@@ -9,9 +9,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PaykiTodo</AssemblyName>
     <RootNamespace>PaykiTodo.Desktop</RootNamespace>
-    <Version>1.17.15</Version>
-    <AssemblyVersion>1.17.15.0</AssemblyVersion>
-    <FileVersion>1.17.15.0</FileVersion>
+    <Version>1.17.16</Version>
+    <AssemblyVersion>1.17.16.0</AssemblyVersion>
+    <FileVersion>1.17.16.0</FileVersion>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\PaykiTodo.ico</ApplicationIcon>
@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\app\src\main\assets\content-viewer\**\*" LogicalName="PaykiTodo.Content/content-viewer/%(RecursiveDir)%(Filename)%(Extension)" />
+    <PackageReference Include="Markdig" Version="0.40.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
   </ItemGroup>
@@ -32,6 +33,7 @@
     <Resource Include="..\..\app\src\main\res\font\payki_greeting.ttf" Link="Assets\payki_greeting.ttf" />
     <Resource Include="..\..\app\src\main\res\font\sarasa_ui_regular.ttf" Link="Assets\sarasa_ui_regular.ttf" />
     <Resource Include="..\..\app\src\main\res\font\sarasa_ui_semibold.ttf" Link="Assets\sarasa_ui_semibold.ttf" />
+    <Content Include="..\..\app\src\main\assets\licenses\*.txt" Link="Licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\app\src\main\assets\fonts\OFL-Sarasa.txt" Link="OFL-Sarasa.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

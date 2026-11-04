@@ -129,6 +129,7 @@ internal sealed partial class NativeWindow
         body.Children.Add(Card(Column(Text("外观与习惯", 20, bold: true),
             SettingRow("界面主题", "选择适合当前环境的显示方式", theme),
             SettingRow("字体与字号", (DesktopFonts.Find(workspace.Document.Settings["desktopFontFamily"]?.GetValue<string>())?.DisplayName ?? "系统推荐") + $" · {InterfaceFontSize:0} px", Action("选择字体", ChooseInterfaceFont)),
+            SettingRow("日历与时区", "统一设置默认时区、时长、提醒与日历显示方式", Action("日历设置", ShowCalendarPreferences)),
             SettingRow("历史倒数日", "目标日期过去多少天后自动隐藏；保留纪念的事项始终展示", pastDays),
             SettingRow("使用说明", "离线阅读操作方法、提醒与备份说明；也可以按 F1 打开", Action("打开使用说明", ShowUsageGuide)))));
         body.Children.Add(Card(Column(Text("数据与备份", 20, bold: true), Text("迁移包可在手机与电脑间导入。导入或切换云端版本前会自动保留本机安全副本。", 13, Muted),
@@ -168,25 +169,26 @@ internal sealed partial class NativeWindow
         var categories = new[] { "账号与同步", "常规", "数据与备份", "分组管理", "AI 与规划", "连接手机", "关于" };
         var shell = new Grid { Margin = new Thickness(28, 0, 24, 18) };
         System.Windows.Automation.AutomationProperties.SetAutomationId(shell, "Settings.Layout");
-        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(168, TextSize(126) + 32)) }); shell.ColumnDefinitions.Add(new ColumnDefinition());
-        var rail = Column();
+        shell.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); shell.RowDefinitions.Add(new RowDefinition());
+        var tabs = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
         for (var index = 0; index < categories.Length; index++) {
-            var target = index; var entry = Action(categories[index], () => { settingsCategory = target; Render(); });
-            entry.HorizontalContentAlignment = HorizontalAlignment.Left; entry.Margin = new Thickness(0, 2, 8, 4);
-            entry.Padding = new Thickness(12, 10, 8, 10);
-            entry.BorderThickness = new Thickness(index == settingsCategory ? 3 : 0, 0, 0, 0);
-            entry.BorderBrush = Ocean; entry.Foreground = index == settingsCategory ? Ocean : Ink;
-            entry.Background = index == settingsCategory ? B("#E8F0FF") : System.Windows.Media.Brushes.Transparent;
+            var target = index; var entry = QuietAction(categories[index], () => { settingsCategory = target; Render(); });
+            entry.Padding = new Thickness(10, 10, 10, 10); entry.Margin = new Thickness(0, 0, 4, 0);
+            entry.Foreground = index == settingsCategory ? Ocean : Muted;
+            entry.FontWeight = index == settingsCategory ? EmphasisWeight : FontWeights.Normal;
             System.Windows.Automation.AutomationProperties.SetAutomationId(entry, "Settings.Category." + index);
-            rail.Children.Add(entry);
+            tabs.Children.Add(new Border { BorderBrush = index == settingsCategory ? Ocean : System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new Thickness(0, 0, 0, 2), Child = entry });
         }
-        shell.Children.Add(new Border { Background = System.Windows.Media.Brushes.Transparent, BorderBrush = B("#E1E7F0"),
-            BorderThickness = new Thickness(0, 0, 1, 0), Padding = new Thickness(0, 12, 4, 8), Child = Scroll(rail) });
+        var tabScroll = new ScrollViewer { Content = tabs, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, 0, 20) };
+        shell.Children.Add(tabScroll);
         var chosen = body.Children[settingsCategory]; body.Children.Remove(chosen);
-        var section = Column(Text(categories[settingsCategory], 23, bold: true), Text("按你的习惯，安排每一天。", 13, Muted), chosen);
-        section.MaxWidth = 1000; section.HorizontalAlignment = HorizontalAlignment.Left; section.Margin = new Thickness(24, 12, 0, 0);
+        var section = Column(chosen);
+        section.MaxWidth = 1000; section.HorizontalAlignment = HorizontalAlignment.Left;
         System.Windows.Automation.AutomationProperties.SetAutomationId(section, "Settings.Section");
-        var scroll = Scroll(section); Grid.SetColumn(scroll, 1); shell.Children.Add(scroll); return shell;
+        var scroll = Scroll(section);
+        section.SetBinding(FrameworkElement.WidthProperty, new System.Windows.Data.Binding(nameof(ScrollViewer.ViewportWidth)) { Source = scroll });
+        Grid.SetRow(scroll, 1); shell.Children.Add(scroll); return shell;
     }
 
     private static UIElement SettingRow(string title, string summary, UIElement control)

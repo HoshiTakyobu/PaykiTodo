@@ -39,12 +39,11 @@ internal sealed partial class NativeWindow
             var entries = BoardArrangement.Ordered(todos, events); int? section = null;
             foreach (var item in entries) {
                 var next = BoardArrangement.Section(item);
-                if (section != next) { section = next; scheduleBody.Children.Add(Text(next == 0 ? "全天" : next == 2 ? "未定时间" : "按时间", 13, Muted)); }
-                if (item.IsEvent) scheduleBody.Children.Add(EventRow(item));
-                else {
-                    var parent = workspace.Document!.Items.FirstOrDefault(value => value.Id == item.ParentTodoId);
-                    scheduleBody.Children.Add(Column(Text(parent == null ? "待办" : "待办 · " + parent.Title, 12, Muted), TodoRow(item)));
+                if (section != next) {
+                    section = next;
+                    if (next != 1) scheduleBody.Children.Add(Text(next == 0 ? "全天" : "未定时间", 12, Muted));
                 }
+                scheduleBody.Children.Add(ArrangementRow(item));
             }
             if (entries.Count == 0) scheduleBody.Children.Add(Text("暂无安排", 14, Muted));
         }
@@ -77,17 +76,39 @@ internal sealed partial class NativeWindow
         grid.Children.Add(heading); ((FrameworkElement)action).VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(action, 1); grid.Children.Add(action); return grid;
     }
-    private UIElement EventRow(DesktopItem item)
+    private UIElement EventRow(DesktopItem item) => ArrangementRow(item);
+    private UIElement ArrangementRow(DesktopItem item)
     {
-        var ongoing = Local(item.StartAtMillis) <= DateTime.Now && Local(item.EndAtMillis) > DateTime.Now;
-        var classic = workspace.Document!.ClassicCalendarColors;
-        var body = Column(Text("日程", 12, EventInk(item.AccentColor, classic)), LimitedTitle(item.Title, 19, EventInk(item.AccentColor, classic)), Text(TimeLabel(item), 15, EventInk(item.AccentColor, classic)));
-        if (item.Location.Length > 0) body.Children.Add(Text("@" + item.Location.TrimStart('@'), 15, EventInk(item.AccentColor, classic)));
-        var row = new Border { Padding = new Thickness(14, 10, 10, 10), Margin = new Thickness(0, 0, 0, 14),
-            BorderBrush = B(ongoing ? "#E8B841" : item.AccentColor), BorderThickness = new Thickness(4, ongoing ? 1 : 0, ongoing ? 1 : 0, ongoing ? 1 : 0),
-            CornerRadius = new CornerRadius(6), Background = EventSurface(item.AccentColor, classic), Child = body,
-            Cursor = System.Windows.Input.Cursors.Hand };
-        row.MouseLeftButtonUp += (_, _) => Preview(item); return row;
+        var groups = workspace.Document!.GroupsForItem(item);
+        var color = item.IsEvent ? item.AccentColor : groups.FirstOrDefault()?.ColorHex ?? item.AccentColor;
+        var classic = workspace.Document.ClassicCalendarColors;
+        var ink = EventInk(color, classic);
+        var title = Text(item.Title, 18, ink, true); title.TextWrapping = TextWrapping.NoWrap; title.TextTrimming = TextTrimming.CharacterEllipsis;
+        var details = new List<string> { TimeLabel(item) };
+        if (!item.IsEvent && groups.Count > 0) details.Add(string.Join("、", groups.Select(group => group.Name)));
+        var parent = workspace.Document.Items.FirstOrDefault(value => value.Id == item.ParentTodoId);
+        var metadata = Text(string.Join(" · ", details), 14, ink); metadata.TextWrapping = TextWrapping.NoWrap; metadata.TextTrimming = TextTrimming.CharacterEllipsis;
+        var text = Column(title, metadata); text.VerticalAlignment = VerticalAlignment.Center;
+        var extra = item.IsEvent ? item.Location : parent?.Title ?? "";
+        if (extra.Length > 0) { var line = Text(extra, 12, ink); line.TextWrapping = TextWrapping.NoWrap; line.TextTrimming = TextTrimming.CharacterEllipsis; text.Children.Add(line); }
+        var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition());
+        layout.Children.Add(text);
+        if (!item.IsEvent) {
+            layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(38) });
+            var complete = TaskToggle(item.Completed, !item.Canceled);
+            System.Windows.Automation.AutomationProperties.SetName(complete, "完成待办：" + item.Title);
+            complete.ToolTip = "我已完成";
+            complete.Checked += (_, _) => Change(document => document.Complete(item.Id));
+            complete.Unchecked += (_, _) => Change(document => document.Restore(item.Id));
+            Grid.SetColumn(complete, 1); layout.Children.Add(complete);
+        }
+        text.Cursor = System.Windows.Input.Cursors.Hand;
+        text.MouseLeftButtonUp += (_, e) => { Preview(item); e.Handled = true; };
+        var row = new Border { Height = TextSize(84), Padding = new Thickness(14, 8, 10, 8), Margin = new Thickness(0, 0, 0, 10),
+            BorderBrush = ColorBrush(color), BorderThickness = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(6),
+            Background = EventSurface(color, classic), Child = layout, ToolTip = item.Title + "\n" + string.Join(" · ", details) };
+        System.Windows.Automation.AutomationProperties.SetAutomationId(row, "Arrangement." + item.Id);
+        return row;
     }
     private UIElement TodoRow(DesktopItem item, bool nested = false)
     {
@@ -125,7 +146,7 @@ internal sealed partial class NativeWindow
         Grid.SetColumn(text, 1); grid.Children.Add(text);
         if (nested && workspace.Document.Items.Any(child => child.ParentTodoId == item.Id)) {
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var fold = Action(item.QuickChecklistCollapsed ? "▸" : "▾", () => Change(document => document.ToggleQuickChecklistItem(item.Id)));
+            var fold = ChevronAction(item.QuickChecklistCollapsed ? "right" : "down", item.QuickChecklistCollapsed ? "展开子任务" : "收起子任务", () => Change(document => document.ToggleQuickChecklistItem(item.Id)));
             fold.ToolTip = item.QuickChecklistCollapsed ? "展开子任务" : "收起子任务";
             System.Windows.Automation.AutomationProperties.SetName(fold, fold.ToolTip.ToString());
             fold.Width = 28; fold.MinHeight = 28; fold.Padding = new Thickness(3); fold.Margin = new Thickness(8, 0, 0, 0);
@@ -152,9 +173,11 @@ internal sealed partial class NativeWindow
             if (item.RecurringSeriesId is { } key && series.TryGetValue(key, out var instances) && instances.Count > 1 && instances.Contains(item)) {
                 if (!emitted.Add(key)) continue;
                 var expanded = expandedTodoSeries.Contains(key);
-                var toggle = Action($"{(expanded ? "▾" : "▸")}  {instances[0].Title} · {instances.Count} 次循环", () => {
+                var toggle = QuietAction($"{instances[0].Title} · {instances.Count} 次循环", () => {
                     if (!expandedTodoSeries.Add(key)) expandedTodoSeries.Remove(key); Render();
                 });
+                var caption = Text($"{instances[0].Title} · {instances.Count} 次循环", 14); caption.Margin = new Thickness(8, 0, 0, 0);
+                toggle.Content = Row(Chevron(expanded ? "down" : "right"), caption);
                 System.Windows.Automation.AutomationProperties.SetAutomationId(toggle, "Todo.Series." + key);
                 host.Children.Add(toggle);
                 if (expanded) foreach (var instance in instances) host.Children.Add(TodoRow(instance));
@@ -180,6 +203,7 @@ internal sealed partial class NativeWindow
     {
         var filters = new ComboBox { MinWidth = 150, MaxWidth = 230, Height = 40, MinHeight = 40, Margin = new Thickness(12, 0, 0, 6), DisplayMemberPath = "Name", VerticalAlignment = VerticalAlignment.Top };
         System.Windows.Automation.AutomationProperties.SetName(filters, "待办分组");
+        NativeColorChoice.ApplyLegend(filters);
         var groups = new[] { new DesktopGroup(0, "全部分组", "#326F59") }.Concat(workspace.Document!.Groups).ToList();
         filters.ItemsSource = groups; filters.SelectedItem = groups.FirstOrDefault(group => group.Id == (selectedGroup ?? 0)) ?? groups[0];
         filters.SelectionChanged += (_, _) => { selectedGroup = (filters.SelectedItem as DesktopGroup)?.Id; Render(); };
@@ -235,7 +259,9 @@ internal sealed partial class NativeWindow
         var id = initial.Id; var calendarId = initial.CalendarId; var generation = workspace.AccountGeneration;
         var current = workspace.Document?.Items.FirstOrDefault(value => value.Id == id);
         if (!CanReadItemDetails(current)) { workspace.Notify("这条事项当前不可用或已无访问权限。"); return; }
-        var dialog = Dialog(this, initial.IsEvent ? "日程详情" : "待办详情", 620, 650);
+        var dialog = Dialog(this, initial.IsEvent ? "日程详情" : "待办详情", 600, 450);
+        dialog.Background = Paper; dialog.MinHeight = 220; dialog.MaxHeight = SystemParameters.WorkArea.Height * 0.9;
+        dialog.SizeToContent = SizeToContent.Height;
         var closed = false; var replyStatus = "";
         bool Accessible() => generation == workspace.AccountGeneration && CanReadItemDetails(workspace.Document?.Items.FirstOrDefault(value => value.Id == id)) &&
             workspace.Document?.Items.FirstOrDefault(value => value.Id == id)?.CalendarId == calendarId;
@@ -245,7 +271,8 @@ internal sealed partial class NativeWindow
             if (!Accessible()) { dialog.Content = null; dialog.Close(); return; }
             var item = workspace.Document!.Items.First(value => value.Id == id);
             var edit = workspace.Document.EditFor(id)!;
-            var body = Column(BrandHeading(dialog.Title), Text(item.Title, 24, bold: true), Text(TimeLabel(item), 16, item.IsEvent ? Ocean : Forest));
+            var heading = Text(item.Title, 23, bold: true); heading.Margin = new Thickness(0, 0, 0, 10);
+            var body = Column(heading, IconRow(ClockDrawing, Text(TimeLabel(item), 15, Muted)));
             if (item.IsEvent) {
                 var calendar = workspace.Document.Calendars.FirstOrDefault(value => value.Id == item.CalendarId);
                 body.Children.Add(Text("日历  ·  " + (calendar?.Name ?? "常规日历"), 14, B(calendar?.ColorHex ?? item.AccentColor)));
@@ -294,9 +321,12 @@ internal sealed partial class NativeWindow
             }
             if (!string.IsNullOrWhiteSpace(item.Location)) body.Children.Add(Text("地点  ·  " + item.Location, 14, Muted));
             if (!string.IsNullOrWhiteSpace(item.Notes)) body.Children.Add(Text(item.Notes, 15));
-            var actions = new WrapPanel { Margin = new Thickness(0, 22, 0, 0) };
-            void Add(string label, Action action, bool primary = false) {
-                var button = Action(label, () => { if (!Accessible()) { Refresh(); return; } dialog.Close(); action(); }, primary);
+            var actions = new WrapPanel { Margin = new Thickness(0) };
+            var moreMenu = new ContextMenu { Background = Paper, Foreground = Ink, FontFamily = InterfaceFont, FontSize = TextSize(14) };
+            void Add(string label, Action action, bool primary = false, bool secondary = false) {
+                void Execute() { if (!Accessible()) { Refresh(); return; } dialog.Close(); action(); }
+                if (secondary) { var entry = new MenuItem { Header = label, Padding = new Thickness(12, 8, 12, 8) }; entry.Click += (_, _) => Execute(); moreMenu.Items.Add(entry); return; }
+                var button = primary ? Action(label, Execute, true) : QuietAction(label, Execute);
                 if (item.IsEvent && primary) { button.Background = B("#3370FF"); button.BorderBrush = B("#3370FF"); }
                 actions.Children.Add(button);
             }
@@ -310,9 +340,15 @@ internal sealed partial class NativeWindow
                 if (scope == null || !Confirm(cancel ? "取消所选事项并放入历史记录？" : "删除所选事项？子任务也会一并删除。")) return;
                 Change(document => { if (cancel) document.Cancel(item.Id, scope.Value); else document.Delete(item.Id, scope.Value); });
             }
-            if (writable && !item.Completed && !item.Canceled) Add("取消事项", () => Remove(true));
-            if (writable) Add("删除", () => Remove(false));
-            actions.Children.Add(Action("关闭", () => dialog.Close()));
+            if (writable && !item.Completed && !item.Canceled) Add("取消事项", () => Remove(true), secondary: true);
+            if (writable) Add("删除", () => Remove(false), secondary: true);
+            if (moreMenu.Items.Count > 0) {
+                var more = QuietAction("更多", () => moreMenu.IsOpen = true);
+                var label = Row(Text("更多", 14), Chevron()); more.Content = label; more.ContextMenu = moreMenu;
+                moreMenu.PlacementTarget = more; moreMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                actions.Children.Add(more);
+            }
+            var close = QuietAction("关闭", () => dialog.Close()); close.IsCancel = true; actions.Children.Add(close);
             dialog.Content = DialogLayout(body, actions); dialog.UpdateLayout();
         }
         void Changed() => dialog.Dispatcher.Invoke(Refresh);

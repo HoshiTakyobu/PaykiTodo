@@ -1,5 +1,17 @@
 # Feature Ledger
 
+## 2026-11-05：1.17.16 GitHub 发布收尾进行中
+
+用户已授权本轮整理提交、文档和双端安装包并提交到 GitHub，覆盖前一轮暂不提交的限制。核对 ui/1.17.16-layout-refinement / 9452d19 与未提交源码后，接收 1.17.16 / 408、Windows 1.17.16.0 的完整实现；保留原验收边界，不重新启动 UI 需求。
+
+现有 Debug / 签名 Release 已确认公开配置，包名、版本、同证书及资源检查通过；原 492 文件交付与 487 文件 Windows payload 逐一核对。此次复用已验收 APK / MSI，补充完整便携 ZIP、以公开 1.17.14 为基线的签名增量和 full 更新资产，Windows 范围沿用 100%。准备目录 Deliverables/PaykiTodo/1.17.16-public；公开版本在正式发布前仍为 v1.17.14。本轮不重建 APK、不操作设备或部署服务器，原历史规划 Prompt 继续排除提交。
+
+## Current local implementation: 1.17.16 layout refinement completed
+
+Android 1.17.16 / 408、Windows 1.17.16.0、Room 34：双端去除看板规则／类型冗余标签、统一紧凑条目；日程编辑器不再显示时区行，使用设置且保留旧事项时区。Windows 融入式主题／时间／地点／备注、常显重复与颜色、内容高度详情与更多菜单、横向设置和默认更纱 UI 字体已完成。双端 12 色两行六列方块、分组／日历色标和原生 Markdown 列表摘要，手机紧凑日历管理入口已完成。Windows 日期与工具栏同排、日期轨列表、按字体计算最小宽度并始终显示完整七天；旧色、提醒、循环、共享权限、报告原文与事务编辑保留。
+
+276 Android 单测、15 个不同设备检查、Lint 0 错误；Windows 145 个不同检查中 142 通过／0 失败／3 个同期 Android 或网络夹具跳过。Debug、同证书 Release、MSI 和完整便携目录已交付，492 文件哈希核对完成；见 [1.17.16 验收](VALIDATION_LAYOUT_1.17.16.md)。专用模拟器已关闭。用户要求 GitHub 工作交由另一位 agent，本轮未 commit／push／发布／部署，公开版本仍为 v1.17.14。
+
 ## Current local implementation: 1.17.15 UX repairs completed
 
 Android 1.17.15/407、Windows 1.17.15.0、Room 34：关闭到托盘与真正退出、Windows 待办/日程选色色块及矢量下拉箭头、三行标题/紧凑日程/现代经典预览/所选周列表、双端离线 Markdown 报告与 HTML 帮助、双端统一今日安排已完成本地实现及验收。保留用户字体和真实字重，修正正式 EXE 的 PerMonitorV2 声明与文字行高/对比度；业务时间、提醒、循环、报告原文及跨端样式字段保持。手机待办沿用主分组取色，日程保留独立色块；LAN 与小组件保留原布局及兼容字段。

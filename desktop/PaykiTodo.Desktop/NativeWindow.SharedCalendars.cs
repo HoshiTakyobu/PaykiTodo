@@ -19,7 +19,8 @@ internal sealed partial class NativeWindow
             if (metadata["canManage"]?.GetValue<bool>() != true) { ShowSharedMembers(metadata); return; }
             var dialog = Dialog(this, "编辑共享日历", 560, 530);
             var name = Input(metadata["name"]!.GetValue<string>()); var description = Input(metadata["description"]?.GetValue<string>() ?? "", true); description.MinHeight = 70;
-            var color = new ComboBox { ItemsSource = new[] { current.ColorHex, "#3370FF", "#16A369", "#DB5298", "#7955CC", "#D94646" }.Distinct().ToArray(), SelectedItem = current.ColorHex };
+            var color = new ComboBox { ItemsSource = NativeColorChoice.Presets.Append(current.ColorHex).Distinct().ToArray(), SelectedItem = current.ColorHex, Width = 72, HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+            NativeColorChoice.Apply(color);
             var error = Text("", 13, B("#AF3A32"));
             dialog.Content = DialogLayout(Column(BrandHeading("共享日历"), Text("名称", 13), name, Text("说明", 13), description, Text("颜色", 13), color, error),
                 Action("成员", () => ShowSharedMembers(metadata)), Action("取消", () => dialog.Close()), Action("完成", async () => {
@@ -86,7 +87,8 @@ internal sealed partial class NativeWindow
     private void CreateSharedCalendar(Action finished)
     {
         var dialog = Dialog(this, "新建共享日历", 550, 470); var name = Input(); var description = Input("", true); description.MinHeight = 75;
-        var color = new ComboBox { ItemsSource = new[] { "#3370FF", "#16A369", "#DB5298", "#7955CC", "#D94646" }, SelectedIndex = 0 };
+        var color = new ComboBox { ItemsSource = NativeColorChoice.Presets, SelectedIndex = 6, Width = 72, HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+        NativeColorChoice.Apply(color);
         var error = Text("", 13, B("#AF3A32"));
         dialog.Content = DialogLayout(Column(BrandHeading("新建共享日历"), Text("名称", 13), name, Text("说明", 13), description, Text("颜色", 13), color, error),
             Action("取消", () => dialog.Close()), Action("完成", async () => {

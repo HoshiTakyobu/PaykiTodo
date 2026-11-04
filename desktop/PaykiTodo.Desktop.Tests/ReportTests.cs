@@ -105,11 +105,11 @@ public sealed class ReportTests
         });
         Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.AI 报告")
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
-        Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "即将过期的可见正文");
+        Assert.Contains(Descendants<TextBlock>(window), text => new System.Windows.Documents.TextRange(text.ContentStart, text.ContentEnd).Text == "即将过期的可见正文");
         var frame = new DispatcherFrame(); var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         timeout.Tick += (_, _) => { timeout.Stop(); frame.Continue = false; }; timeout.Start(); Dispatcher.PushFrame(frame);
         window.UpdateLayout();
-        Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "即将过期的可见正文");
+        Assert.DoesNotContain(Descendants<TextBlock>(window), text => new System.Windows.Documents.TextRange(text.ContentStart, text.ContentEnd).Text == "即将过期的可见正文");
         Assert.DoesNotContain(Raw(store.LoadDocument()!)["aiReports"]!.AsArray().OfType<JsonObject>(), row => row["content"]?.GetValue<string>() == "即将过期的可见正文");
     }
 

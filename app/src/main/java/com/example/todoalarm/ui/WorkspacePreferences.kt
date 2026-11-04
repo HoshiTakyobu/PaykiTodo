@@ -1,6 +1,9 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -67,16 +70,22 @@ internal fun CountdownDecisionDialog(item: TodoItem, onDismiss: () -> Unit, onDe
 }
 
 @Composable
-internal fun PreferenceChoice(title: String, value: String, choices: List<Pair<String, String>>, onSelect: (String) -> Unit) {
+internal fun PreferenceChoice(title: String, value: String, choices: List<Pair<String, String>>, colorByKey: Map<String, String> = emptyMap(), onSelect: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         Row(Modifier.fillMaxWidth().clickable { expanded = true }.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-            Text(choices.firstOrNull { it.first == value }?.second ?: value, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
-            Text("  ›", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            colorByKey[value]?.let { Box(Modifier.padding(end = 8.dp).size(16.dp).background(colorFromHex(it), RoundedCornerShape(4.dp))) }
+            Text(choices.firstOrNull { it.first == value }?.second ?: value, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, modifier = Modifier.padding(start = 4.dp).size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
-            choices.forEach { (key, label) -> DropdownMenuItem(text = { Text(label) }, onClick = { expanded = false; onSelect(key) }) }
+            choices.forEach { (key, label) -> DropdownMenuItem(text = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    colorByKey[key]?.let { Box(Modifier.size(16.dp).background(colorFromHex(it), RoundedCornerShape(4.dp))) }
+                    Text(label)
+                }
+            }, onClick = { expanded = false; onSelect(key) }) }
         }
     }
 }

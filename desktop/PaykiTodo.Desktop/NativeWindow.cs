@@ -58,7 +58,7 @@ internal sealed partial class NativeWindow : Window
         Dark = this.workspace.Document?.Settings["themeMode"]?.GetValue<string>() == "DARK";
         SetInterfaceFont(this.workspace.Document?.Settings["desktopFontFamily"]?.GetValue<string>());
         SetInterfaceFontSize(DesktopFonts.ReadSize(this.workspace.Document?.Settings));
-        Title = "PaykiTodo"; Width = 1280; Height = 850; MinWidth = 900; MinHeight = 620;
+        Title = "PaykiTodo"; MinWidth = Math.Max(900, MinimumCalendarWindowWidth); Width = Math.Max(1280, MinWidth); Height = 850; MinHeight = 620;
         Icon = AppIcon; UseLayoutRounding = true; SnapsToDevicePixels = true;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         FontFamily = InterfaceFont;
@@ -67,7 +67,7 @@ internal sealed partial class NativeWindow : Window
         FontSize = TextSize(14); Background = B("#EEF3F4");
         BuildShell();
         SizeChanged += (_, e) => {
-            if (page == "日历" && ((e.PreviousSize.Width < TextSize(1100)) != (e.NewSize.Width < TextSize(1100)) || (e.PreviousSize.Width < TextSize(1350)) != (e.NewSize.Width < TextSize(1350))))
+            if (page == "日历" && (e.PreviousSize.Width < MiniCalendarBreakpoint) != (e.NewSize.Width < MiniCalendarBreakpoint))
                 Dispatcher.BeginInvoke(new Action(() => { if (page == "日历") Render(); }));
         };
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && calendarDraft != null) { ClearCalendarDraft(); e.Handled = true; } };
@@ -138,6 +138,7 @@ internal sealed partial class NativeWindow : Window
 
     private void BuildShell()
     {
+        MinWidth = Math.Max(900, MinimumCalendarWindowWidth);
         var query = search.Text;
         root = new Grid(); content = new ContentControl(); navigation = new StackPanel();
         title = Text("每日看板", 25, bold: true); status = Text("", 12, Muted); search = Input(query);

@@ -15,8 +15,8 @@ PaykiTodo 为事项保留本地副本，支持日历、循环安排、倒数日�
 | 版本 | 当前状态 |
 | --- | --- |
 | 已公开发布 | [v1.17.14](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.14)：Android签名APK、Windows MSI与完整便携ZIP，附签名更新资产 |
-| 当前源码 | Android 1.17.15 / versionCode 407；Windows 1.17.15.0，本地开发版 |
-| 本轮变化 | 双端统一今日安排、离线报告和 HTML 帮助；Windows 关闭到托盘、日程选色与排版、周列表及下拉图形更新，尚未公开发布 |
+| 当前源码 | Android 1.17.16 / versionCode 408；Windows 1.17.16.0，本地开发版 |
+| 本轮变化 | 融入式日程编辑、两行六列色盘、同高看板条目、紧凑详情、报告列表排版预览、横向设置分类及始终七天的桌面周视图；尚未公开发布 |
 
 当前1.17.14安装包已公开，包含v1.15.18以来的双端增量。[更新日志](CHANGELOG.md)记录各版本变化。
 

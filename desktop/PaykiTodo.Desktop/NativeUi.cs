@@ -18,11 +18,11 @@ using HorizontalAlignment = System.Windows.HorizontalAlignment;
 
 namespace PaykiTodo.Desktop;
 
-internal static class NativeUi
+internal static partial class NativeUi
 {
     private const string StyleKey = "PaykiTodo.ControlStyles";
     public static FontFamily BundledFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
-    public static FontFamily InterfaceFont { get; private set; } = new("Microsoft YaHei UI");
+    public static FontFamily InterfaceFont { get; private set; } = BundledFont;
     public static double InterfaceFontSize { get; private set; } = DesktopFonts.DefaultSize;
     public static double TextSize(double size) => size * InterfaceFontSize / DesktopFonts.DefaultSize;
     public static void SetInterfaceFontSize(double size) => InterfaceFontSize = DesktopFonts.ValidSize(size);
@@ -325,12 +325,12 @@ internal static class NativeUi
                   <Grid>
                     <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                       <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
-                        <Border Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderThickness="1" CornerRadius="6"/>
+                        <Border Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderThickness="{Binding BorderThickness, RelativeSource={RelativeSource AncestorType=ComboBox}}" CornerRadius="6"/>
                       </ControlTemplate></ToggleButton.Template>
                     </ToggleButton>
                     <Grid IsHitTestVisible="False"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                       <ContentPresenter x:Name="selection" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"/>
-                      <Path x:Name="arrow" Grid.Column="1" Data="M 0,0 L 8,8 L 16,0" Stretch="Fill" Width="{TemplateBinding FontSize}" Height="{TemplateBinding FontSize}" Margin="4,0,10,0" VerticalAlignment="Center" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                      <Path x:Name="arrow" Grid.Column="1" Data="M 1,1 L 5,5 L 9,1" Width="10" Height="6" Margin="2,0,8,0" VerticalAlignment="Center" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
                     </Grid>
                     <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Margin="10,6,42,6" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}" BorderThickness="0"/>
                     <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False">
@@ -339,11 +339,11 @@ internal static class NativeUi
                   </Grid><ControlTemplate.Triggers><Trigger Property="IsEditable" Value="True"><Setter TargetName="selection" Property="Visibility" Value="Collapsed"/><Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger></ControlTemplate.Triggers>
                 </ControlTemplate></Setter.Value></Setter>
               </Style>
-              <Style TargetType="p:DatePickerTextBox" BasedOn="{StaticResource {x:Type TextBox}}"><Setter Property="Padding" Value="10,8"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="BorderThickness" Value="0"/></Style>
+              <Style TargetType="p:DatePickerTextBox" BasedOn="{StaticResource {x:Type TextBox}}"><Setter Property="Padding" Value="4,4"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="BorderThickness" Value="0"/></Style>
               <Style TargetType="DatePicker">
                 <Setter Property="MinHeight" Value="40"/><Setter Property="Margin" Value="0,4,8,16"/>
                 <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DatePicker">
-                  <Border x:Name="edge" CornerRadius="6" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Background="{TemplateBinding Background}">
+                  <Border x:Name="edge" CornerRadius="6" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}">
                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="34"/></Grid.ColumnDefinitions>
                       <p:DatePickerTextBox x:Name="PART_TextBox" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}" FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}"/>
                       <Button x:Name="PART_Button" Grid.Column="1" Background="Transparent" BorderThickness="0" Margin="2" Padding="4" Focusable="False"><TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE787;" Foreground="{TemplateBinding Foreground}" FontSize="16"/></Button>
@@ -351,6 +351,20 @@ internal static class NativeUi
                     </Grid>
                   </Border>
                   <ControlTemplate.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="edge" Property="BorderBrush" Value="#609C81"/></Trigger></ControlTemplate.Triggers>
+                </ControlTemplate></Setter.Value></Setter>
+              </Style>
+              <Style TargetType="Expander">
+                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
+                  <StackPanel><ToggleButton x:Name="toggle" HorizontalContentAlignment="Left" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                    <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                      <Border Background="Transparent" Padding="0,10"><StackPanel Orientation="Horizontal">
+                        <Path x:Name="chevron" Data="M 1,1 L 5,5 L 9,1" Width="10" Height="6" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Margin="2,0,10,0" RenderTransformOrigin="0.5,0.5" VerticalAlignment="Center"><Path.RenderTransform><RotateTransform Angle="-90"/></Path.RenderTransform></Path>
+                        <ContentPresenter Content="{Binding Header, RelativeSource={RelativeSource AncestorType=Expander}}" VerticalAlignment="Center"/>
+                      </StackPanel></Border>
+                      <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="chevron" Property="RenderTransform"><Setter.Value><RotateTransform Angle="0"/></Setter.Value></Setter></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="{DynamicResource PaykiTodo.FocusBrush}"/></Trigger></ControlTemplate.Triggers>
+                    </ControlTemplate></ToggleButton.Template>
+                  </ToggleButton><ContentPresenter x:Name="body" Visibility="Collapsed"/></StackPanel>
+                  <ControlTemplate.Triggers><Trigger Property="IsExpanded" Value="True"><Setter TargetName="body" Property="Visibility" Value="Visible"/></Trigger></ControlTemplate.Triggers>
                 </ControlTemplate></Setter.Value></Setter>
               </Style>
               <Style TargetType="PasswordBox">

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -1809,7 +1810,7 @@ internal fun TodayScheduleBoardCard(
                         val next = BoardArrangement.section(item)
                         if (section != next) {
                             section = next
-                            Text(when (next) { 0 -> "全天"; 2 -> "未定时间"; else -> "按时间" },
+                            if (next != 1) Text(if (next == 0) "全天" else "未定时间",
                                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         if (item.isEvent) BoardScheduleEventRow(item, moment, onGetEventCheckIns, onLaunchCheckIn) { onOpenEvent(item) }
@@ -1833,19 +1834,21 @@ internal fun TodayScheduleBoardCard(
 private fun BoardScheduleTodoRow(item: TodoItem, groups: List<TaskGroup>, context: List<TodoItem>, onOpen: () -> Unit, onComplete: () -> Unit,
     selectionMode: Boolean = false, selected: Boolean = false, onEnterSelection: () -> Unit = {}) {
     val group = groups.firstOrNull { it.id == item.groupId }
-    val tint = (item.accentColorHex ?: group?.colorHex)?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).background(if (selectionMode && selected) tint.copy(alpha = 0.12f) else Color.Transparent), verticalAlignment = Alignment.CenterVertically) {
+    val tint = (group?.colorHex ?: item.accentColorHex)?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    Row(Modifier.fillMaxWidth().heightIn(min = 84.dp).height(IntrinsicSize.Min)
+        .background(tint.copy(alpha = if (selectionMode && selected) 0.16f else 0.06f), RoundedCornerShape(6.dp)).padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(4.dp).fillMaxHeight().background(tint, RoundedCornerShape(4.dp)))
+        Column(Modifier.weight(1f).combinedClickable(onClick = onOpen, onLongClick = if (selectionMode) null else onEnterSelection), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            val parent = context.firstOrNull { it.id == item.parentTodoId }
+            Text(item.title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 21.sp), fontWeight = FontWeight.SemiBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            if (item.hasDueDate) Text("DDL " + Instant.ofEpochMilli(item.dueAtMillis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MM-dd HH:mm")),
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp), color = if (item.dueAtMillis < System.currentTimeMillis()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            val contextLabel = listOfNotNull(group?.name, parent?.title).joinToString(" · ")
+            if (contextLabel.isNotBlank()) Text(contextLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
         LightweightCompletionToggle(checked = selectionMode && selected, enabled = item.isActive, onCheck = onComplete,
             name = (if (selectionMode) "选择待办：" else "完成待办：") + item.title)
-        Column(Modifier.weight(1f).combinedClickable(onClick = onOpen, onLongClick = if (selectionMode) null else onEnterSelection), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val parent = context.firstOrNull { it.id == item.parentTodoId }
-            Text(listOfNotNull("待办", groups.firstOrNull { it.id == item.groupId }?.name, parent?.title).joinToString(" · "),
-                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
-            if (item.hasDueDate) Text("DDL " + Instant.ofEpochMilli(item.dueAtMillis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MM-dd HH:mm")),
-                style = MaterialTheme.typography.bodyMedium, color = if (item.dueAtMillis < System.currentTimeMillis()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-        }
     }
 }
 
@@ -1892,26 +1895,22 @@ private fun BoardScheduleEventRow(
         }
     }
     val gold = Color(0xFFFFC94A)
-    val rowShape = RoundedCornerShape(14.dp)
-    val rowColor = if (inProgress) gold else tint
+    val rowShape = RoundedCornerShape(6.dp)
+    val rowColor = tint
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = rowShape,
-        color = if (inProgress) rowColor.copy(alpha = 0.055f) else Color.Transparent,
-        border = if (inProgress) BorderStroke(1.dp, rowColor.copy(alpha = 0.88f)) else null
+        color = tint.copy(alpha = 0.06f),
+        border = if (inProgress) BorderStroke(1.dp, gold.copy(alpha = 0.88f)) else null
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 84.dp)
                 .height(IntrinsicSize.Min)
-                .padding(
-                    start = if (inProgress) 2.dp else 0.dp,
-                    top = if (inProgress) 10.dp else 5.dp,
-                    end = if (inProgress) 5.dp else 4.dp,
-                    bottom = if (inProgress) 10.dp else 5.dp
-                ),
+                .padding(top = 8.dp, end = 4.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top
         ) {
@@ -1939,7 +1938,7 @@ private fun BoardScheduleEventRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "日程 · " + DailyBoardSnapshotBuilder.eventSecondaryText(item),
+                    text = DailyBoardSnapshotBuilder.eventSecondaryText(item),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
                     fontWeight = FontWeight.Normal,

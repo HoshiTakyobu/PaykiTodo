@@ -1,5 +1,19 @@
 # Session Handoff
 
+## 2026-11-05：1.17.16 GitHub 发布收尾进行中
+
+用户已授权本轮整理提交、文档和双端安装包并提交到 GitHub，覆盖前一轮暂不提交的限制。核对 ui/1.17.16-layout-refinement / 9452d19 与未提交源码后，接收 1.17.16 / 408、Windows 1.17.16.0 的完整实现；保留原验收边界，不重新启动 UI 需求。
+
+现有 Debug / 签名 Release 已确认公开配置，包名、版本、同证书及资源检查通过；原 492 文件交付与 487 文件 Windows payload 逐一核对。此次复用已验收 APK / MSI，补充完整便携 ZIP、以公开 1.17.14 为基线的签名增量和 full 更新资产，Windows 范围沿用 100%。准备目录 Deliverables/PaykiTodo/1.17.16-public；公开版本在正式发布前仍为 v1.17.14。本轮不重建 APK、不操作设备或部署服务器，原历史规划 Prompt 继续排除提交。
+
+## 2026-11-05：1.17.16 本地实现、验收和交付完成，未提交 Git
+
+基线 `9452d19` / 1.17.15，工作分支 `ui/1.17.16-layout-refinement`；Android 1.17.16 / 408、Windows 1.17.16.0、Room 34。完整需求在 [本轮目标](../goals/2026-11-04-paykitodo-1.17.16-layout.md)，逐项实施、初次失败、复验与边界在 [1.17.16 验收](VALIDATION_LAYOUT_1.17.16.md)。主要内容为融入式编辑器、12 色方块、统一看板、紧凑详情、Markdown 摘要、横向设置和始终七天的桌面周视图；不要重新驱动 1.17.15 的旧目标。
+
+Android 276 单测、15 项不同设备检查通过；Lint 0 错误／138 警告／30 信息。Debug、同证书签名 Release 与包内帮助／许可证已核对，正常冷启动通过。专用无窗口 PaykiUx / emulator-5580 已恢复原测试显示覆盖并关闭，真实设备和账号未操作。Windows 当前源码 145 项不同检查：142 通过、0 失败、3 个同期 Android／网络夹具缺失而跳过；包括独立 UIA、字号矩阵、新布局和成品检查。最后的旧色值大小写边界已通过源码回归，最终 MSI 已重新打包；实际 DLL 返回正确的 `Collapsed`，4 项成品检查复验通过，不重复累计测试数量。
+
+交付已完成：`G:\Workspace\Deliverables\PaykiTodo\1.17.16` 共 492 文件，SHA256.json 覆盖其余 491，487 文件的完整 Windows-portable 与最终 payload 逐一匹配。APK 位于 `app/build/outputs/apk/debug/PaykiTodo-1.17.16-debug.apk` 和 `app/build/outputs/apk/release/PaykiTodo-1.17.16-release.apk`；MSI 位于 `desktop/installer-output/PaykiTodo-1.17.16-windows-x64.msi`；实际最终 Windows 源目录为 `desktop/obj/installer/1.17.16-4418c0a79a324f93bd9147c283278b52/payload`，不能用旧 `desktop/dist`。所有版本、证书、包内资源和交付哈希已核对，详见验收文档。用户要求不提交到 GitHub、交由另一位 agent 处理；本轮保留未提交工作区，不执行 commit、push 或发布。原未跟踪 `docs/goals/PaykiTodo_规划台实现Prompt.md` 保持独立。
+
 ## 2026-11-03：1.17.15 十项体验修复本地完成
 
 261103-2 从 main / 50c217e 增量完成 R1–R10，Android 1.17.15/407、Windows 1.17.15.0、Room 34。原需求交接/验收表的“本轮未实施”是前期文档轮状态，当前以 [1.17.15 验收](VALIDATION_UX_1.17.15.md) 为准。本轮没有待重新实施的必项；后续先核实际 git/版本，再按新的用户任务继续，旧发布目标不重启。中文聚焦提交以实际 git log 为准，原未跟踪 `docs/goals/PaykiTodo_规划台实现Prompt.md` 保留且排除提交。

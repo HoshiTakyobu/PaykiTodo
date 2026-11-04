@@ -371,13 +371,7 @@ private fun AiReportCard(
                     if (report.isLocalFallback) AiReportPill("本地", MaterialTheme.colorScheme.outline)
                 }
             }
-            Text(
-                text = report.content.replace(Regex("\\s+"), " ").trim().take(80).ifBlank { "（空报告）" },
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            ReportMarkdownPreview(report.content)
             Text(
                 text = "来源：${report.providerName.ifBlank { "未知来源" }}",
                 style = MaterialTheme.typography.bodySmall,

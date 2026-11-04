@@ -482,9 +482,16 @@ internal fun CalendarPanel(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     CalendarDefaultsButton()
-                    TextButton(onClick = { showCalendars = true }) { Text("日历 · ${workspace.calendars.count { it.id !in workspace.settings.hiddenCalendarIds }}") }
+                    Surface(onClick = { showCalendars = true }, shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surface) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("我的日历", style = MaterialTheme.typography.labelLarge)
+                            Text(workspace.calendars.count { it.id !in workspace.settings.hiddenCalendarIds }.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
                 Surface(
                     modifier = Modifier.fillMaxWidth(),

@@ -9,9 +9,9 @@ namespace PaykiTodo.Desktop;
 
 internal sealed partial class NativeWindow
 {
-    internal static DesktopItemEdit CalendarDragEdit(DesktopItemEdit edit, int days, double verticalPixels, bool resize, string? displayZoneId = null)
+    internal static DesktopItemEdit CalendarDragEdit(DesktopItemEdit edit, int days, double verticalPixels, bool resize, string? displayZoneId = null, double hourHeight = 48)
     {
-        var minutes = (int)Math.Round(verticalPixels * 60 / HourHeight / 15, MidpointRounding.AwayFromZero) * 15;
+        var minutes = (int)Math.Round(verticalPixels * 60 / hourHeight / 15, MidpointRounding.AwayFromZero) * 15;
         var zone = displayZoneId ?? edit.EventTimeZoneId;
         var start = DesktopCalendarTime.Wall(edit.StartAtMillis!.Value, zone); var end = DesktopCalendarTime.Wall(edit.EndAtMillis!.Value, zone);
         if (resize) end = new[] { start.AddMinutes(15), end.AddMinutes(minutes) }.Max();
@@ -47,7 +47,7 @@ internal sealed partial class NativeWindow
             var oldColumn = ((DateTime)dayCanvas.Tag - visibleStart).Days;
             var newColumn = Math.Clamp((int)((current.X - TimeAxisWidth) / columnWidth), 0, count - 1);
             var edit = workspace.Document?.EditFor(item.Id); if (edit == null) { Reset(); return; }
-            try { candidate = CalendarDragEdit(edit, newColumn - oldColumn, current.Y - point.Y, resizing, workspace.Document?.CalendarDisplayTimeZoneId); }
+            try { candidate = CalendarDragEdit(edit, newColumn - oldColumn, current.Y - point.Y, resizing, workspace.Document?.CalendarDisplayTimeZoneId, HourHeight); }
             catch (InvalidOperationException) { candidate = null; overlay?.Children.Clear(); return; }
             if (overlay == null) { overlay = new Canvas { IsHitTestVisible = false }; Grid.SetColumnSpan(overlay, count + 1); System.Windows.Controls.Panel.SetZIndex(overlay, 25); grid.Children.Add(overlay); }
             overlay.Children.Clear(); tile.Opacity = .3;

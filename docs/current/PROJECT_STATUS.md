@@ -1,5 +1,17 @@
 # Project Status
 
+## 2026-11-05：1.17.16 GitHub 发布收尾进行中
+
+用户已授权本轮整理提交、文档和双端安装包并提交到 GitHub，覆盖前一轮暂不提交的限制。核对 ui/1.17.16-layout-refinement / 9452d19 与未提交源码后，接收 1.17.16 / 408、Windows 1.17.16.0 的完整实现；保留原验收边界，不重新启动 UI 需求。
+
+现有 Debug / 签名 Release 已确认公开配置，包名、版本、同证书及资源检查通过；原 492 文件交付与 487 文件 Windows payload 逐一核对。此次复用已验收 APK / MSI，补充完整便携 ZIP、以公开 1.17.14 为基线的签名增量和 full 更新资产，Windows 范围沿用 100%。准备目录 Deliverables/PaykiTodo/1.17.16-public；公开版本在正式发布前仍为 v1.17.14。本轮不重建 APK、不操作设备或部署服务器，原历史规划 Prompt 继续排除提交。
+
+## Current local version: 1.17.16 layout refinement verified
+
+从 `9452d19` / 1.17.15 完成本轮布局反馈，工作分支 `ui/1.17.16-layout-refinement`，Android 1.17.16 / 408、Windows 1.17.16.0、Room 34。融入式编辑、12 色方块、同高看板、紧凑详情、报告列表排版、横向设置及始终七天的桌面周视图均已实施；完整结果见 [1.17.16 验收](VALIDATION_LAYOUT_1.17.16.md)。276 Android 单测、15 项不同设备检查通过，Lint 0 错误／138 警告／30 信息；Windows 145 项不同检查中 142 通过、0 失败、3 项同期 Android／网络夹具缺失而跳过，最终重包另完成 4 项既有成品检查复验。
+
+Debug、同证书签名 Release、MSI 和完整便携目录已交付到 `G:\Workspace\Deliverables\PaykiTodo\1.17.16`，492 文件／491 个清单条目逐一核对。最终 Windows payload 为 `desktop/obj/installer/1.17.16-4418c0a79a324f93bd9147c283278b52/payload`，487 文件；不要用旧 `desktop/dist`。专用 PaykiUx 模拟器已关闭，真实用户资料、设备和服务器未操作。按用户最新要求保留未提交工作区，不执行 Git commit／push／公开发布；原规划 Prompt 保持，公开版本仍为 v1.17.14。
+
 ## Current local version: 1.17.15 UX repairs verified
 
 本轮从 main / 50c217e 增量完成 10 项体验修复，Android 1.17.15 / versionCode 407、Windows 1.17.15.0，Room 34 保持。托盘关闭与退出、色块与矢量箭头、日历三行/短日程/双色预览/周列表、双端离线报告与 HTML 帮助、统一今日安排已实现；正式 Windows EXE 的 DPI 声明修为 PerMonitorV2。最新提交以实际 git log 为准，原未跟踪规划 Prompt 保留并排除本轮提交。公开版本仍为 v1.17.14，本轮没有 push、公开发布、服务器部署或真实设备安装。

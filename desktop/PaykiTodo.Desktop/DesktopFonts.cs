@@ -18,7 +18,7 @@ internal static class DesktopFonts
         .OrderBy(font => font.DisplayName, StringComparer.Create(CultureInfo.GetCultureInfo("zh-CN"), true)).ToArray());
 
     public static IReadOnlyList<DesktopFontChoice> Choices => new[] {
-        new DesktopFontChoice("", "系统推荐（微软雅黑 UI）", new FontFamily("Microsoft YaHei UI"), new[] { "系统推荐", "系统推荐（微软雅黑 UI）" }),
+        new DesktopFontChoice("", "系统推荐（更纱黑体 UI）", NativeUi.BundledFont, new[] { "系统推荐", "系统推荐（更纱黑体 UI）", "系统推荐（微软雅黑 UI）" }),
         new DesktopFontChoice("Sarasa UI SC", "更纱黑体 UI SC（内置）", NativeUi.BundledFont, new[] { "Sarasa UI SC", "更纱黑体 UI SC（内置）" })
     }.Concat(Installed.Value.Where(font => font.Key != "Sarasa UI SC")).ToArray();
 

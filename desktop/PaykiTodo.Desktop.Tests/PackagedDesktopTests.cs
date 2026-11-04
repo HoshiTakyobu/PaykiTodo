@@ -146,7 +146,10 @@ public sealed class PackagedDesktopTests
             while (process.MainWindowHandle == IntPtr.Zero && !process.HasExited && DateTime.UtcNow < deadline) { Thread.Sleep(100); process.Refresh(); }
             Assert.False(process.HasExited); Assert.NotEqual(IntPtr.Zero, process.MainWindowHandle);
             WriteDpiEvidence(process.MainWindowHandle, executable, "baseline-exe-dpi.json");
-            Assert.True(process.CloseMainWindow()); Assert.True(process.WaitForExit(10000));
+            Assert.True(process.CloseMainWindow());
+            // Older baselines exit on X; newer baselines intentionally stay in their tray.
+            // This case measures DPI only, so end just this isolated fixture process if needed.
+            if (!process.WaitForExit(1500)) { process.Kill(true); process.WaitForExit(); }
         } finally { if (!process.HasExited) { process.Kill(true); process.WaitForExit(); } }
     }
 

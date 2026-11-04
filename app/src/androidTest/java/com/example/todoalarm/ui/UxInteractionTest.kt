@@ -66,7 +66,7 @@ class UxInteractionTest {
         val positions = listOf("会前准备", "小组讨论", "会中提交", "会后整理").map { compose.onNodeWithText(it).fetchSemanticsNode().boundsInRoot.top }
         assertTrue(positions.zipWithNext().all { (left, right) -> left < right })
         compose.onNodeWithText("DDL 11-03 15:00").assertExists()
-        compose.onNodeWithText("待办 · 阶段记录清单").assertExists()
+        compose.onNodeWithText("阶段记录清单").assertExists()
         compose.onNodeWithText("会中提交").performScrollTo().performTouchInput { longClick() }
         compose.onNodeWithContentDescription("选择待办：会中提交").assertIsOn().performClick()
         compose.onNodeWithContentDescription("完成待办：会中提交").performClick()
@@ -89,12 +89,12 @@ class UxInteractionTest {
         } }
         compose.onNodeWithText("日程颜色").performScrollTo()
         compose.onNode(hasScrollAction() and hasAnyDescendant(hasText("日程颜色")))
-            .performScrollToNode(hasContentDescription("日程颜色 #35BD4B"))
-        compose.onNodeWithContentDescription("日程颜色 #35BD4B").performScrollTo().performClick().assertIsSelected()
+            .performScrollToNode(hasContentDescription("日程颜色 #51BA43"))
+        compose.onNodeWithContentDescription("日程颜色 #51BA43").performScrollTo().performClick().assertIsSelected()
         assertNull(saved)
         capture("event-color-swatch-selected")
         compose.onNodeWithText("完成").performClick()
         compose.waitUntil(5_000) { saved != null }
-        assertEquals("#35BD4B", saved!!.accentColorHex); assertEquals(start, saved!!.startAt); assertEquals(start.plusHours(3), saved!!.endAt)
+        assertEquals("#51BA43", saved!!.accentColorHex); assertEquals(start, saved!!.startAt); assertEquals(start.plusHours(3), saved!!.endAt)
     }
 }

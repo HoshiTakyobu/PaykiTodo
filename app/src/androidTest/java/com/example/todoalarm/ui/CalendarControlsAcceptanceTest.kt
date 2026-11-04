@@ -13,6 +13,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.todoalarm.data.AppSettings
@@ -55,11 +56,11 @@ class CalendarControlsAcceptanceTest {
             }
         }
         compose.onNodeWithText("https://old.example").assertDoesNotExist()
-        compose.onNodeWithText("选择登录服务器").performClick()
+        compose.onNodeWithText("选择登录服务器").performScrollTo().performClick()
         compose.onNode(hasText("服务器地址") and hasSetTextAction()).performTextReplacement("https://changed.example")
         compose.onNodeWithText("取消").performClick()
         assertNull(selected)
-        compose.onNodeWithText("选择登录服务器").performClick()
+        compose.onNodeWithText("选择登录服务器").performScrollTo().performClick()
         compose.onNode(hasText("服务器地址") and hasSetTextAction()).performTextReplacement("https://changed.example")
         compose.onNodeWithText("完成").performClick()
         compose.waitUntil(5000) { selected != null }

@@ -10,7 +10,7 @@ Windows 客户端以原生 WPF 提供每日看板、待办、日历、规划、�
 
 每日看板提供本地／可选 AI 临时规划，预览确认后导入，不保存新文档；支持课程多时段。循环课程的相对分钟提醒每次生效，绝对时刻只归属整门课中开始时刻不早于该提醒的最近实例，修改预览后实时重算。窗口外拥有者提前生成，补齐和系列编辑保留各实例自己的单次绝对提醒。设置内容靠左，分类导航采用同底色，字体支持中文名称与12—22 px字号预览。日报与手机共用提示规则，生成满168小时过期。支持GitHub稳定版本检查、签名后台/灰度/增量更新与启动回退。原有日历、OCR、账号同步和备份能力保持。
 
-最新公开版本为[v1.17.14](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.14)，提供[MSI](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-windows-x64.msi)和[完整便携ZIP](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-windows-x64.zip)。Windows签名更新范围100%，增量基线1.17.13，其他基线使用full回退；完整便携484条目、应用内full 482条目，用途不同。公开包不提供可用预置服务器，首次登录自行选择，已有选择继续优先。
+最新公开版本为[v1.17.16](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.16)，提供[MSI](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.16/PaykiTodo-1.17.16-windows-x64.msi)和[完整便携ZIP](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.16/PaykiTodo-1.17.16-windows-x64.zip)。Windows签名更新范围100%，增量基线1.17.14，其他基线使用full回退；完整便携487条目、应用内full 485条目，用途不同。公开包不提供可用预置服务器，首次登录自行选择，已有选择继续优先。
 
 ## 开发与构建
 

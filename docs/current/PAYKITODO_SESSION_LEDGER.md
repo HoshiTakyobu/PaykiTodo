@@ -1,10 +1,12 @@
 # PaykiTodo Session Ledger
 
-## 2026-11-05：1.17.16 GitHub 发布收尾进行中
+## 2026-11-05：v1.17.16 双端正式发布完成
 
-用户已授权本轮整理提交、文档和双端安装包并提交到 GitHub，覆盖前一轮暂不提交的限制。核对 ui/1.17.16-layout-refinement / 9452d19 与未提交源码后，接收 1.17.16 / 408、Windows 1.17.16.0 的完整实现；保留原验收边界，不重新启动 UI 需求。
+已按用户本轮授权整理另一个 agent 的成果并公开稳定 [v1.17.16](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.16)，Android 1.17.16 / versionCode 408、Windows 1.17.16.0、Room 34。功能提交 `10cae66`，目标独立归档 `a29b942`；main 正常快进推送，发布标签指向 `a29b94258dadf5c0b29f9896e6576755a3d88c74`，[公开模式 CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/runs/41882369044) 单测、Debug 构建和空白检查通过。
 
-现有 Debug / 签名 Release 已确认公开配置，包名、版本、同证书及资源检查通过；原 492 文件交付与 487 文件 Windows payload 逐一核对。此次复用已验收 APK / MSI，补充完整便携 ZIP、以公开 1.17.14 为基线的签名增量和 full 更新资产，Windows 范围沿用 100%。准备目录 Deliverables/PaykiTodo/1.17.16-public；公开版本在正式发布前仍为 v1.17.14。本轮不重建 APK、不操作设备或部署服务器，原历史规划 Prompt 继续排除提交。
+复用前一轮已验收且字节未变的 Debug / 同证书 Release APK 和 MSI，本轮没有重建 APK / MSI。新增 487 文件完整便携 ZIP、485 文件 full、以公开 1.17.14 为基线的 7 文件 delta 与签名清单；Windows 范围 100%。七项公开资产的实际下载 SHA-256 全部一致，两端生产更新解析器用未经改写的真实发布 JSON 验证通过；实体设备升级与 OEM 行为未冒称实测。详细结果见 [发布核对](PUBLIC_RELEASE_1.17.16.md)。
+
+交付 `G:\Workspace\Deliverables\PaykiTodo\1.17.16-public`，共 497 文件，SHA256.json 覆盖其余 496；签名 APK 为该目录下 `PaykiTodo-1.17.16-release.apk`，仓库构建输出 `app/build/outputs/apk/release/PaykiTodo-1.17.16-release.apk` 同样存在。原 1.17.16 交付与 1.17.14 基线逐文件保持，真实资料、设备和服务器未操作。仅原未跟踪历史规划 Prompt 保留并排除提交，当前没有待发布或待重新实施的本轮必项；后续先核实际 Git 再响应新任务。下方为历史阶段，不恢复旧的暂不提交限制。
 
 ## 2026-11-05：1.17.16 布局改进、验收与本地交付完成
 

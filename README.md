@@ -14,22 +14,22 @@ PaykiTodo 为事项保留本地副本，支持日历、循环安排、倒数日�
 
 | 版本 | 当前状态 |
 | --- | --- |
-| 已公开发布 | [v1.17.14](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.14)：Android签名APK、Windows MSI与完整便携ZIP，附签名更新资产 |
-| 当前源码 | Android 1.17.16 / versionCode 408；Windows 1.17.16.0，本地开发版 |
-| 本轮变化 | 融入式日程编辑、两行六列色盘、同高看板条目、紧凑详情、报告列表排版预览、横向设置分类及始终七天的桌面周视图；尚未公开发布 |
+| 已公开发布 | [v1.17.16](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.16)：Android签名APK、Windows MSI与完整便携ZIP，附签名更新资产 |
+| 当前源码 | Android 1.17.16 / versionCode 408；Windows 1.17.16.0，已发布源码 |
+| 本轮变化 | 融入式日程编辑、两行六列色盘、同高看板条目、紧凑详情、报告列表排版预览、横向设置分类及始终七天的桌面周视图；已公开发布 |
 
-当前1.17.14安装包已公开，包含v1.15.18以来的双端增量。[更新日志](CHANGELOG.md)记录各版本变化。
+当前1.17.16安装包已公开，包含v1.15.18以来的双端增量。[更新日志](CHANGELOG.md)记录各版本变化。
 
-- [Android签名APK](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-release.apk)
-- [Windows MSI](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-windows-x64.msi)与[完整便携ZIP](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/PaykiTodo-1.17.14-windows-x64.zip)
-- [SHA256校验清单](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.14/SHA256SUMS.txt)
+- [Android签名APK](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.16/PaykiTodo-1.17.16-release.apk)
+- [Windows MSI](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.16/PaykiTodo-1.17.16-windows-x64.msi)与[完整便携ZIP](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.16/PaykiTodo-1.17.16-windows-x64.zip)
+- [SHA256校验清单](https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.17.16/SHA256SUMS.txt)
 
 - Android：8.0 及以上。正式使用选择签名 Release APK；Debug 包与 Release 包签名不同，不能直接互相覆盖安装。
 - Windows：Windows 10 1809+ / Windows 11 x64，提供 MSI 安装版及完整便携目录。便携版不能只复制单个 EXE。账号验证、报告和帮助阅读使用 Microsoft Edge WebView2；安装包包含其安装入口。
 
-在“设置 → 关于”检查稳定版本。Android Release 支持后台下载、校验签名后交给系统安装；Debug 显示签名差异和发布页。Windows 自动检查并按发布灰度后台准备更新，手动下载可提前参与；更新包校验完成后重新启动切换，启动失败会回退。公开 v1.17.14 采用 100% Windows 自动检查范围；windows-x64.zip 供完整便携安装，windows-full.zip 供应用内更新，其增量仅适用于 1.17.13。没有更新器的旧版需先使用完整安装包。[更新资产维护说明](docs/current/WINDOWS_UPDATE_PROTOCOL.md)介绍发布流程。
+在“设置 → 关于”检查稳定版本。Android Release 支持后台下载、校验签名后交给系统安装；Debug 显示签名差异和发布页。Windows 自动检查并按发布灰度后台准备更新，手动下载可提前参与；更新包校验完成后重新启动切换，启动失败会回退。公开 v1.17.16 采用 100% Windows 自动检查范围；windows-x64.zip 供完整便携安装，windows-full.zip 供应用内更新，其增量仅适用于 1.17.14。没有更新器的旧版需先使用完整安装包。[更新资产维护说明](docs/current/WINDOWS_UPDATE_PROTOCOL.md)介绍发布流程。
 
-从本地 Windows 1.17.15.0 起，点主窗口 X 或 Alt+F4 会隐藏到托盘，后台提醒和同步继续；双击托盘恢复。准备好的更新需托盘“退出”后重新启动才切换，普通关闭不会重启程序。
+从 Windows 1.17.15.0 起，点主窗口 X 或 Alt+F4 会隐藏到托盘，后台提醒和同步继续；双击托盘恢复。准备好的更新需托盘“退出”后重新启动才切换，普通关闭不会重启程序。
 
 ## 先用起来
 
@@ -54,7 +54,7 @@ PaykiTodo 为事项保留本地副本，支持日历、循环安排、倒数日�
 | AI 报告 | 双端离线 Markdown 阅读、复制原文，旧报告无需重新生成；共用提示规则，日报生成满 168 小时过期，周报按设置保留 |
 | 备份 | 导出/恢复迁移包，关键恢复操作前保留安全副本 |
 
-以上介绍当前源码行为；公开 v1.17.14 尚不包含本轮变化。循环课程的提前分钟提醒针对每次课程；显式绝对时刻只提醒一次，归属整门课程中开始时刻不早于该提醒的最近实例，预览显示所属课程。有限生效范围内没有目标时提示修正，确认前保留原文。
+以上功能已包含在公开 v1.17.16 中。循环课程的提前分钟提醒针对每次课程；显式绝对时刻只提醒一次，归属整门课程中开始时刻不早于该提醒的最近实例，预览显示所属课程。有限生效范围内没有目标时提示修正，确认前保留原文。
 
 ## 使用说明
 

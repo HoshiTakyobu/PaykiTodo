@@ -1,15 +1,15 @@
 # Windows 更新资产与启动协议
 
-1.17.11引入GitHub稳定发布检查、后台下载、灰度、文件增量重建和独立启动器。当前稳定[v1.17.14](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.14)已公开，Windows清单范围100%、增量基线1.17.13；七项公开资产与实际下载核对通过。
+1.17.11引入GitHub稳定发布检查、后台下载、灰度、文件增量重建和独立启动器。当前稳定[v1.17.16](https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.17.16)已公开，Windows清单范围100%、增量基线1.17.14；七项公开资产与实际下载核对通过。
 
-完整便携ZIP包含启动器及update-files.json；应用内完整更新ZIP不包含该基线元数据和调试符号。1.17.14实际分别为484和482条目，已验签和核对；不能把windows-full.zip当作完整便携安装包。
+完整便携ZIP包含启动器及update-files.json；应用内完整更新ZIP不包含该基线元数据和调试符号。1.17.16实际分别为487和485条目，已验签和核对；不能把windows-full.zip当作完整便携安装包。
 
 ## 维护者生成资产
 
 先通过 tools/build/Build-WindowsInstaller.ps1 或 tools/Build-PaykiTodoDesktop.ps1 构建完整含启动器的版本目录。使用 PowerShell 7运行：
 
 ```powershell
-./tools/build/New-WindowsUpdateRelease.ps1 -PayloadDirectory <1.17.14版本目录> -OutputDirectory <新的输出目录> -Version 1.17.14 -RolloutPercent 100 -RolloutSeed PaykiTodo-1.17.14 -BaselineDirectory <1.17.13旧完整目录> -BaselineVersion 1.17.13
+./tools/build/New-WindowsUpdateRelease.ps1 -PayloadDirectory <1.17.16版本目录> -OutputDirectory <新的输出目录> -Version 1.17.16 -RolloutPercent 100 -RolloutSeed PaykiTodo-1.17.16 -BaselineDirectory <1.17.14旧完整目录> -BaselineVersion 1.17.14
 # 100代表所有具备更新器的旧版本客户端均在自动检查范围内；调整比例必须重新签名。
 ```
 
